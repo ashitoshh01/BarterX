@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 
 // Sample initial data for the Barter Marketplace
 const INITIAL_ITEMS = [
@@ -78,11 +82,14 @@ const INITIAL_ITEMS = [
 
 const CATEGORIES = ["All", "Electronics", "Fashion", "Music", "Home & Living", "Services"];
 
-export default function App() {
+function Marketplace() {
   const [items, setItems] = useState(INITIAL_ITEMS);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   // Create listing modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -104,7 +111,7 @@ export default function App() {
       wanting: newWanting,
       category: newCategory,
       image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80", // Default placeholder image
-      owner: "You",
+      owner: user?.username || "You",
       location: newLocation || "Local",
       date: "Just now"
     };
@@ -140,7 +147,7 @@ export default function App() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-teal-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
               <svg className="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
@@ -150,7 +157,7 @@ export default function App() {
               <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent">BarterX</span>
               <span className="hidden sm:inline-block text-[10px] text-teal-400/80 bg-teal-400/10 px-1.5 py-0.5 rounded ml-2 font-mono">BETA</span>
             </div>
-          </div>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
             <a href="#" className="hover:text-teal-400 transition-colors">Marketplace</a>
@@ -160,20 +167,32 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="relative group overflow-hidden rounded-xl p-px font-semibold text-xs text-white uppercase tracking-wider"
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-teal-400 to-indigo-500 transition-all duration-300 group-hover:scale-105"></span>
-              <span className="relative block px-4 py-2.5 rounded-[11px] bg-slate-900 transition-colors duration-300 group-hover:bg-slate-900/90">
-                + Create Listing
-              </span>
-            </button>
-            <div className="h-9 w-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-teal-400 cursor-pointer hover:border-teal-500 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="relative group overflow-hidden rounded-xl p-px font-semibold text-xs text-white uppercase tracking-wider"
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-teal-400 to-indigo-500 transition-all duration-300 group-hover:scale-105"></span>
+                  <span className="relative block px-4 py-2.5 rounded-[11px] bg-slate-900 transition-colors duration-300 group-hover:bg-slate-900/90">
+                    + Create Listing
+                  </span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-teal-400 cursor-pointer hover:border-teal-500 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <button onClick={logout} className="text-xs text-slate-400 hover:text-white transition-colors">Logout</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Sign In</Link>
+                <Link to="/signup" className="px-4 py-2 rounded-xl bg-teal-400 text-slate-950 font-bold text-xs hover:bg-teal-300 transition-colors">Join BarterX</Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -473,5 +492,15 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Marketplace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+    </Routes>
   );
 }
