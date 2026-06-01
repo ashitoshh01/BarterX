@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@theme {
+  --color-sand-50: #fbf8f5;
+  --color-sand-100: #f5ebe0;
+  --color-sand-200: #eedecb;
+  --color-sand-300: #d8c2aa;
+  --color-sand-400: #c0ad99;
+  --color-sand-500: #ab9985;
+  
+  --color-wine-50: #fcf4f4;
+  --color-wine-100: #f6d4d8;
+  --color-wine-200: #ecadb5;
+  --color-wine-800: #5c131c;
+  --color-wine-900: #4c0b12;
+  --color-wine-950: #30050a;
+}
