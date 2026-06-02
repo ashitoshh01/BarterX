@@ -226,6 +226,45 @@ export default function Profile() {
 
               {/* Statistics/Completion Sidebar */}
               <div className="space-y-6">
+                {/* Trust Score Card */}
+                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-4">
+                  <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Trust Score</h4>
+                  <div className="text-center space-y-3">
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${
+                      (profile.trust_score || 50) >= 80 ? 'bg-green-900/10 text-green-900 border-green-900/20'
+                        : (profile.trust_score || 50) >= 50 ? 'bg-amber-900/10 text-amber-800 border-amber-800/20'
+                        : 'bg-red-900/10 text-red-800 border-red-800/20'
+                    }`}>
+                      <span className="font-serif-aesthetic text-xl font-bold">{profile.trust_score ?? 50}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">/ 100</span>
+                    </div>
+                    <div className="w-full bg-sand-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${
+                          (profile.trust_score || 50) >= 80 ? 'bg-green-800'
+                            : (profile.trust_score || 50) >= 50 ? 'bg-amber-700'
+                            : 'bg-red-700'
+                        }`}
+                        style={{ width: `${profile.trust_score ?? 50}%` }}
+                      ></div>
+                    </div>
+                    <span className={`text-[9px] font-bold uppercase tracking-widest ${
+                      (profile.trust_score || 50) >= 80 ? 'text-green-800' : (profile.trust_score || 50) >= 50 ? 'text-amber-700' : 'text-red-700'
+                    }`}>
+                      {(profile.trust_score || 50) >= 80 ? 'High Trust' : (profile.trust_score || 50) >= 50 ? 'Medium Trust' : 'Low Trust'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Reward Points Card */}
+                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-3">
+                  <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Reward Points</h4>
+                  <div className="text-center">
+                    <span className="font-serif-aesthetic text-3xl font-bold text-wine-900">{profile.reward_points ?? 0}</span>
+                    <p className="text-[9px] font-bold text-wine-900/50 uppercase tracking-widest mt-1">Points Earned</p>
+                  </div>
+                </div>
+
                 {/* Stats Summary cards */}
                 <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-4">
                   <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Account Registry Metrics</h4>

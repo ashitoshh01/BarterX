@@ -1,34 +1,31 @@
 from rest_framework import viewsets, generics, permissions, filters, status
-# pyrefly: ignore [missing-import]
 from rest_framework.decorators import action
-# pyrefly: ignore [missing-import]
 from rest_framework.response import Response
-# pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
-
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+from django.db.models import Q
 import random
 import re
 
 from .models import (
-    BarterItem,
-    Category,
-    BarterOffer,
-    ChatMessage,
-    UserReview,
-    UserProfile,
-    OTPVerification,
-    TradeTransaction,
+    BarterItem, Category, BarterOffer, ChatMessage, UserReview,
+    UserProfile, OTPVerification, TradeTransaction,
+    BarterInterest, Notification, ChatRoom, DealConfirmation
 )
-
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
     ChatMessageSerializer, UserReviewSerializer, UserSerializer, UserProfileSerializer,
-    TradeTransactionSerializer
+    TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
+    ChatRoomSerializer, RoomChatMessageSerializer, DealConfirmationSerializer,
+    BarterItemCompactSerializer
 )
 from .email_services import send_otp_email
 
+
+# ============================================================
+# EXISTING VIEWS (preserved)
+# ============================================================
 
 class SendOTPView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
@@ -43,36 +40,27 @@ class SendOTPView(generics.GenericAPIView):
         if not re.match(r'[^@]+@[^@]+\.[^@]+', email):
             return Response({"email": ["Please enter a valid email address."]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check existing user email conflict
         if User.objects.filter(email=email).exists():
             return Response({"email": ["This email is already registered."]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check existing username conflict (for individuals)
         if account_type == 'individual':
             if not username:
                 return Response({"username": ["Username is required."]}, status=status.HTTP_400_BAD_REQUEST)
             if User.objects.filter(username=username).exists():
                 return Response({"username": ["This username is already taken."]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate 6-digit numeric OTP
         otp = str(random.randint(100000, 999999))
         otp_hash = make_password(otp)
 
-        # Update or create the verification record, resetting attempts and created_at
         OTPVerification.objects.update_or_create(
             email=email,
-            defaults={
-                'otp_hash': otp_hash,
-                'attempts': 0,
-                'created_at': timezone.now()
-            }
+            defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
         )
 
-        # Send the OTP email
         try:
             send_otp_email(email, otp)
-        except Exception as e:
-            return Response({"detail": "Failed to send email. Please check configuration."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"detail": "Failed to send email."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": "Verification code sent successfully."}, status=status.HTTP_200_OK)
 
@@ -84,14 +72,12 @@ class RegisterView(generics.CreateAPIView):
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    """List and retrieve categories (read-only for all users)."""
     queryset = Category.objects.all().order_by('name')
     serializer_class = CategorySerializer
     permission_classes = (permissions.AllowAny,)
 
 
 class BarterItemViewSet(viewsets.ModelViewSet):
-    """Full CRUD for barter items. List/retrieve is public; create/update/delete requires auth."""
     queryset = BarterItem.objects.all().order_by('-created_at')
     serializer_class = BarterItemSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -108,70 +94,57 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_items(self, request):
-        """Return items belonging to the currently authenticated user."""
         items = BarterItem.objects.filter(owner=request.user).order_by('-created_at')
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
 
 
-
-
 class BarterOfferViewSet(viewsets.ModelViewSet):
-    """Manage barter offers. Requires authentication."""
     serializer_class = BarterOfferSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         user = self.request.user
-        return BarterOffer.objects.filter(
-            sender=user
-        ) | BarterOffer.objects.filter(receiver=user)
+        return BarterOffer.objects.filter(Q(sender=user) | Q(receiver=user))
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
     def perform_update(self, serializer):
         offer = serializer.save()
-        # Automatically generate TradeTransaction if offer is accepted
         if offer.status == 'accepted':
             TradeTransaction.objects.get_or_create(
                 offer=offer,
                 defaults={
-                    'item_1': offer.offered_item,
-                    'item_2': offer.requested_item,
-                    'user_1': offer.sender,
-                    'user_2': offer.receiver,
+                    'item_1': offer.offered_item, 'item_2': offer.requested_item,
+                    'user_1': offer.sender, 'user_2': offer.receiver,
                 }
             )
-            # Update the status of both items to 'traded'
             offer.offered_item.status = 'traded'
             offer.offered_item.save()
             offer.requested_item.status = 'traded'
             offer.requested_item.save()
 
+
 class TradeTransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    """View completed trades history. Read only."""
     queryset = TradeTransaction.objects.all().order_by('-completed_at')
     serializer_class = TradeTransactionSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
+
 class ChatMessageViewSet(viewsets.ModelViewSet):
-    """Manage chat messages. Requires authentication."""
     serializer_class = ChatMessageSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         user = self.request.user
-        return ChatMessage.objects.filter(
-            sender=user
-        ) | ChatMessage.objects.filter(receiver=user)
+        return ChatMessage.objects.filter(Q(sender=user) | Q(receiver=user))
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
 
 class UserReviewViewSet(viewsets.ModelViewSet):
-    """Manage user reviews. Requires authentication."""
     serializer_class = UserReviewSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -183,14 +156,405 @@ class UserReviewViewSet(viewsets.ModelViewSet):
 
 
 class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only view of user profiles."""
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
-        """Get the current user's profile."""
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
+
+
+# ============================================================
+# NEW VIEWS: BARTER INTEREST → CHAT → DEAL FLOW
+# ============================================================
+
+def _create_notification(user, ntype, title, message, interest=None):
+    """Helper to create notifications."""
+    Notification.objects.create(
+        user=user, notification_type=ntype,
+        title=title, message=message, barter_interest=interest
+    )
+
+
+class BarterInterestViewSet(viewsets.ModelViewSet):
+    """Step 1: Raise, accept, reject barter interests."""
+    serializer_class = BarterInterestSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        return BarterInterest.objects.filter(Q(requester=user) | Q(receiver=user))
+
+    def create(self, request, *args, **kwargs):
+        """Raise a new barter interest (swap proposal)."""
+        requested_item_id = request.data.get('requested_item')
+        offered_item_id = request.data.get('offered_item')
+
+        if not requested_item_id:
+            return Response({"detail": "requested_item is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            requested_item = BarterItem.objects.get(id=requested_item_id)
+        except BarterItem.DoesNotExist:
+            return Response({"detail": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if requested_item.owner == request.user:
+            return Response({"detail": "Cannot request your own item."}, status=status.HTTP_400_BAD_REQUEST)
+        if requested_item.status != 'active':
+            return Response({"detail": "Requested item is not available."}, status=status.HTTP_400_BAD_REQUEST)
+
+        offered_item = None
+        if offered_item_id:
+            try:
+                offered_item = BarterItem.objects.get(id=offered_item_id)
+            except BarterItem.DoesNotExist:
+                return Response({"detail": "Offered item not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            if str(requested_item_id) == str(offered_item_id):
+                return Response({"detail": "Cannot offer the same product."}, status=status.HTTP_400_BAD_REQUEST)
+            if offered_item.owner != request.user:
+                return Response({"detail": "You can only offer your own items."}, status=status.HTTP_400_BAD_REQUEST)
+            if offered_item.status != 'active':
+                return Response({"detail": "Offered item is not available."}, status=status.HTTP_400_BAD_REQUEST)
+            if BarterInterest.objects.filter(offered_item=offered_item, status='completed').exists():
+                return Response({"detail": "This item is already involved in a finalized barter."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        # Check duplicate pending/accepted interest
+        duplicate_query = BarterInterest.objects.filter(
+            requester=request.user, requested_item=requested_item,
+            status__in=['pending', 'accepted']
+        )
+        if offered_item:
+            duplicate_query = duplicate_query.filter(offered_item=offered_item)
+        else:
+            duplicate_query = duplicate_query.filter(offered_item__isnull=True)
+
+        if duplicate_query.exists():
+            return Response({"detail": "You already have a pending or active interest for this swap."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Auto-accept and create chat room immediately
+        interest = BarterInterest.objects.create(
+            requester=request.user, receiver=requested_item.owner,
+            requested_item=requested_item, offered_item=offered_item,
+            status='accepted'
+        )
+
+        # Reserve requested item
+        requested_item.status = 'reserved'
+        requested_item.save()
+        if offered_item:
+            offered_item.status = 'reserved'
+            offered_item.save()
+
+        # Create chat room
+        room, _ = ChatRoom.objects.get_or_create(
+            barter_interest=interest,
+            defaults={'user1': interest.requester, 'user2': interest.receiver}
+        )
+
+        # Create DealConfirmation record
+        DealConfirmation.objects.get_or_create(barter_interest=interest)
+
+        # Create notification for the item owner
+        requester_name = request.user.profile.display_name if (hasattr(request.user, 'profile') and request.user.profile.display_name) else request.user.username
+        notification_message = f"{requester_name} is interested in your product: {requested_item.title}. Chat with him"
+        
+        _create_notification(
+            user=requested_item.owner, ntype='interest_received',
+            title='New Swap Interest',
+            message=notification_message,
+            interest=interest
+        )
+
+        serializer = self.get_serializer(interest)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        """Accept a barter interest → creates chat room."""
+        interest = self.get_object()
+        if interest.receiver != request.user:
+            return Response({"detail": "Only the receiver can accept."}, status=status.HTTP_403_FORBIDDEN)
+        
+        if interest.status != 'pending':
+            if interest.status in ['accepted', 'completed']:
+                room = ChatRoom.objects.filter(barter_interest=interest).first()
+                if room:
+                    return Response({"detail": "Already accepted.", "chat_room_id": room.id})
+            return Response({"detail": f"Cannot accept an interest with status '{interest.status}'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        interest.status = 'accepted'
+        interest.save()
+
+        # Reserve requested item
+        interest.requested_item.status = 'reserved'
+        interest.requested_item.save()
+        if interest.offered_item:
+            interest.offered_item.status = 'reserved'
+            interest.offered_item.save()
+
+        # Create chat room
+        room, _ = ChatRoom.objects.get_or_create(
+            barter_interest=interest,
+            defaults={'user1': interest.requester, 'user2': interest.receiver}
+        )
+
+        # Create DealConfirmation record
+        DealConfirmation.objects.get_or_create(barter_interest=interest)
+
+        # Notify requester
+        receiver_name = request.user.profile.display_name if (hasattr(request.user, 'profile') and request.user.profile.display_name) else request.user.username
+        _create_notification(
+            user=interest.requester, ntype='interest_accepted',
+            title='Interest Accepted!',
+            message=f"{receiver_name} accepted your swap interest for {interest.requested_item.title}. Chat is now open!",
+            interest=interest
+        )
+
+        return Response({"detail": "Interest accepted. Chat room created.", "chat_room_id": room.id})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a barter interest."""
+        interest = self.get_object()
+        if interest.receiver != request.user:
+            return Response({"detail": "Only the receiver can reject."}, status=status.HTTP_403_FORBIDDEN)
+        if interest.status != 'pending':
+            return Response({"detail": f"Cannot reject an interest with status '{interest.status}'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        interest.status = 'rejected'
+        interest.save()
+
+        receiver_name = request.user.profile.display_name if hasattr(request.user, 'profile') else request.user.username
+        _create_notification(
+            user=interest.requester, ntype='interest_rejected',
+            title='Interest Declined',
+            message=f"{receiver_name} declined your swap interest for {interest.requested_item.title}.",
+            interest=interest
+        )
+
+        return Response({"detail": "Interest rejected."})
+
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    """Step 2: In-app notifications."""
+    serializer_class = NotificationSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        notif = self.get_object()
+        notif.is_read = True
+        notif.save()
+        return Response({"detail": "Marked as read."})
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({"unread_count": count})
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"detail": "All notifications marked as read."})
+
+
+class ChatRoomViewSet(viewsets.ReadOnlyModelViewSet):
+    """Step 4: Chat rooms list."""
+    serializer_class = ChatRoomSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        return ChatRoom.objects.filter(Q(user1=user) | Q(user2=user)).order_by('-created_at')
+
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        """Get all messages for a chat room (polling endpoint)."""
+        room = self.get_object()
+        if not room.is_participant(request.user):
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Mark messages from other user as read
+        room.messages.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
+
+        msgs = room.messages.all().order_by('created_at')
+        serializer = RoomChatMessageSerializer(msgs, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def send_message(self, request, pk=None):
+        """Send a message in a chat room (supports text + image)."""
+        room = self.get_object()
+        if not room.is_participant(request.user):
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        message_text = request.data.get('message', '').strip()
+        media_file = request.FILES.get('media', None)
+
+        if not message_text and not media_file:
+            return Response({"detail": "Message or media is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        msg = ChatMessage.objects.create(
+            room=room, sender=request.user,
+            message=message_text, media=media_file
+        )
+
+        serializer = RoomChatMessageSerializer(msg, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'])
+    def confirmation_status(self, request, pk=None):
+        """Get deal confirmation status for a chat room."""
+        room = self.get_object()
+        if not room.is_participant(request.user):
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            dc = room.barter_interest.deal_confirmation
+            serializer = DealConfirmationSerializer(dc)
+            return Response(serializer.data)
+        except DealConfirmation.DoesNotExist:
+            return Response({"detail": "No deal confirmation exists."}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['post'])
+    def request_confirmation(self, request, pk=None):
+        """Step 5: Request deal confirmation (rate-limited per user)."""
+        room = self.get_object()
+        if not room.is_participant(request.user):
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        interest = room.barter_interest
+        if interest.status != 'accepted':
+            return Response({"detail": "Interest must be accepted first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        dc, _ = DealConfirmation.objects.get_or_create(barter_interest=interest)
+
+        # Determine which user field to use
+        is_user1 = (request.user == interest.requester)
+        count_field = 'user1_request_count' if is_user1 else 'user2_request_count'
+        cooldown_field = 'user1_cooldown_until' if is_user1 else 'user2_cooldown_until'
+
+        # Check cooldown
+        cooldown_until = getattr(dc, cooldown_field)
+        if cooldown_until and timezone.now() < cooldown_until:
+            remaining = (cooldown_until - timezone.now()).seconds
+            return Response({"detail": f"Cooldown active. Wait {remaining}s.", "cooldown_remaining": remaining},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Reset count if cooldown has expired
+        if cooldown_until and timezone.now() >= cooldown_until:
+            setattr(dc, count_field, 0)
+            setattr(dc, cooldown_field, None)
+
+        current_count = getattr(dc, count_field)
+        if current_count >= 3:
+            # Set 60 second cooldown
+            from datetime import timedelta
+            setattr(dc, cooldown_field, timezone.now() + timedelta(seconds=60))
+            dc.save()
+            return Response({"detail": "Rate limit reached. 60s cooldown activated.", "cooldown_remaining": 60},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Increment count
+        setattr(dc, count_field, current_count + 1)
+        dc.save()
+
+        # Notify the other participant
+        other_user = interest.receiver if is_user1 else interest.requester
+        requester_name = request.user.profile.display_name if hasattr(request.user, 'profile') else request.user.username
+        _create_notification(
+            user=other_user, ntype='deal_requested',
+            title='Deal Confirmation Requested',
+            message=f"{requester_name} has requested to finalize the barter deal.",
+            interest=interest
+        )
+
+        return Response({"detail": "Confirmation request sent.", "request_count": current_count + 1})
+
+    @action(detail=True, methods=['post'])
+    def respond_confirmation(self, request, pk=None):
+        """Step 5: Respond to deal confirmation (accept/decline)."""
+        room = self.get_object()
+        if not room.is_participant(request.user):
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        action_type = request.data.get('action')  # 'accept' or 'decline'
+        if action_type not in ('accept', 'decline'):
+            return Response({"detail": "Action must be 'accept' or 'decline'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        interest = room.barter_interest
+        try:
+            dc = interest.deal_confirmation
+        except DealConfirmation.DoesNotExist:
+            return Response({"detail": "No deal confirmation exists."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_user1 = (request.user == interest.requester)
+
+        if action_type == 'accept':
+            if is_user1:
+                dc.user1_confirmed = True
+            else:
+                dc.user2_confirmed = True
+            dc.save()
+
+            # Check if both confirmed → complete the deal
+            if dc.user1_confirmed and dc.user2_confirmed:
+                dc.completed_at = timezone.now()
+                dc.save()
+
+                interest.status = 'completed'
+                interest.save()
+
+                # Mark items as traded
+                interest.requested_item.status = 'traded'
+                interest.requested_item.save()
+                if interest.offered_item:
+                    interest.offered_item.status = 'traded'
+                    interest.offered_item.save()
+
+                # Award trust & points to both users (Steps 7 & 8)
+                for u in [interest.requester, interest.receiver]:
+                    profile, _ = UserProfile.objects.get_or_create(user=u)
+                    profile.adjust_trust(5)   # +5 trust for completed barter
+                    profile.add_points(50)    # +50 reward points
+
+                # Notify both users
+                for u in [interest.requester, interest.receiver]:
+                    _create_notification(
+                        user=u, ntype='deal_completed',
+                        title='Barter Completed! 🎉',
+                        message=f"Your barter deal has been finalized. +5 Trust, +50 Points awarded!",
+                        interest=interest
+                    )
+
+                return Response({"detail": "Deal completed! Both parties confirmed.", "status": "completed"})
+
+            return Response({"detail": "Your confirmation recorded. Waiting for the other party."})
+
+        else:  # decline
+            # Penalize trust for spam rejection
+            requester_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+            # Don't penalize the decliner, just reset the request
+            other_user = interest.requester if not is_user1 else interest.receiver
+            other_profile, _ = UserProfile.objects.get_or_create(user=other_user)
+            other_profile.adjust_trust(-1)  # -1 trust for rejected confirmation spam
+
+            # Reset confirmation for the requester
+            if is_user1:
+                dc.user2_confirmed = False  # Reset other's state if they re-request
+            else:
+                dc.user1_confirmed = False
+            dc.save()
+
+            return Response({"detail": "Confirmation declined."})

@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import HowItWorks from './pages/HowItWorks';
+import SwapProposal from './pages/SwapProposal';
+import OfferReview from './pages/OfferReview';
+import Notifications from './pages/Notifications';
+import MyChats from './pages/MyChats';
+import ChatRoomPage from './pages/ChatRoom';
 
 // Sample initial data for the Barter Marketplace
 const INITIAL_ITEMS = [
@@ -111,23 +117,42 @@ const CATEGORIES = [
 ];
 
 function Marketplace() {
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [items, setItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
+  const [loadingItems, setLoadingItems] = useState(true);
   
-  const { user, logout } = useAuth();
+  const { user, logout, tokens } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Create listing modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch items from API on mount (fallback to hardcoded)
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const res = await axios.get('http://localhost:8000/api/items/');
+        if (res.data && res.data.length > 0) {
+          setItems(res.data);
+        } else {
+          setItems(INITIAL_ITEMS);
+        }
+      } catch {
+        setItems(INITIAL_ITEMS);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+    fetchItems();
+  }, []);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('create') === 'true') {
       setIsModalOpen(true);
-      // Clean query parameter from address bar
       navigate('/', { replace: true });
     }
   }, [location, navigate]);
@@ -139,41 +164,63 @@ function Marketplace() {
   const [newCategory, setNewCategory] = useState("Electronics & Gadgets");
   const [newLocation, setNewLocation] = useState("");
 
-  const handleCreateListing = (e) => {
+  const handleCreateListing = async (e) => {
     e.preventDefault();
     if (!newTitle || !newOffering || !newWanting) return;
 
-    const newItem = {
-      id: Date.now(),
-      title: newTitle,
-      description: newDescription,
-      offering: newOffering,
-      wanting: newWanting,
-      category: newCategory,
-      image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80", // Default placeholder image
-      owner: user?.username || "You",
-      location: newLocation || "Local",
-      date: "Just now"
-    };
-
-    setItems([newItem, ...items]);
+    // Try posting to API if user is authenticated
+    if (tokens?.access) {
+      try {
+        const res = await axios.post('http://localhost:8000/api/items/', {
+          title: newTitle,
+          description: newDescription,
+          offering: newOffering,
+          wanting: newWanting,
+          location: newLocation || 'Local',
+          image_url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+        }, { headers: { Authorization: `Bearer ${tokens.access}` } });
+        setItems([res.data, ...items]);
+      } catch {
+        // Fallback to local-only if API fails
+        const newItem = {
+          id: Date.now(), title: newTitle, description: newDescription,
+          offering: newOffering, wanting: newWanting, category_name: newCategory,
+          image_url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+          owner_username: user?.username || 'You', location: newLocation || 'Local',
+          created_at: new Date().toISOString()
+        };
+        setItems([newItem, ...items]);
+      }
+    }
     setIsModalOpen(false);
+    setNewTitle(""); setNewDescription(""); setNewOffering("");
+    setNewWanting(""); setNewCategory("Electronics & Gadgets"); setNewLocation("");
+  };
 
-    // Reset Form
-    setNewTitle("");
-    setNewDescription("");
-    setNewOffering("");
-    setNewWanting("");
-    setNewCategory("Electronics & Gadgets");
-    setNewLocation("");
+  // Helper: get category from either API or hardcoded format
+  const getCategory = (item) => item.category_name || item.category || '';
+  const getImage = (item) => item.image_url || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80';
+  const getOwner = (item) => item.owner_username || item.owner || 'Unknown';
+  const getDate = (item) => {
+    if (item.date) return item.date;
+    if (item.created_at) {
+      const diff = Date.now() - new Date(item.created_at).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'Just now';
+      if (mins < 60) return `${mins} mins ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs} hours ago`;
+      return `${Math.floor(hrs / 24)} days ago`;
+    }
+    return '';
   };
 
   const filteredItems = items.filter(item => {
-    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.offering.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.wanting.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || getCategory(item) === selectedCategory;
+    const matchesSearch = (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.offering || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.wanting || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -216,14 +263,24 @@ function Marketplace() {
 
           <div className="flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-6">
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="rounded-full bg-wine-900 border-2 border-wine-900 text-sand-100 hover:bg-wine-800 px-5 py-2.5 font-semibold text-xs tracking-wider uppercase transition-all duration-200 shadow-md"
                 >
                   + Create Listing
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <NotificationBell />
+                  <Link
+                    to="/my-chats"
+                    className="h-9 w-9 rounded-full bg-sand-200 border border-sand-300 flex items-center justify-center text-wine-900 hover:scale-105 transition-all"
+                    title="My Chats"
+                  >
+                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </Link>
                   <Link 
                     to="/profile" 
                     className="h-9 w-9 rounded-full bg-wine-900 border border-sand-300 flex items-center justify-center text-sand-100 hover:scale-105 transition-all shadow-sm"
@@ -347,12 +404,12 @@ function Marketplace() {
                 <div className="relative aspect-[16/10] overflow-hidden bg-sand-200 p-2.5">
                   <div className="w-full h-full rounded-[18px] overflow-hidden relative">
                     <img
-                      src={item.image}
+                      src={getImage(item)}
                       alt={item.title}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                     />
                     <span className="absolute top-3 left-3 bg-wine-900/90 backdrop-blur-sm border border-sand-200/20 px-3 py-1 rounded-full text-[9px] font-bold text-sand-100 uppercase tracking-widest">
-                      {item.category}
+                      {getCategory(item)}
                     </span>
                   </div>
                 </div>
@@ -361,8 +418,8 @@ function Marketplace() {
                 <div className="p-6 flex-1 flex flex-col justify-between gap-5 text-wine-900">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-wine-900/60 font-semibold uppercase tracking-wider">
-                      <span>Owner: {item.owner}</span>
-                      <span>• {item.date}</span>
+                      <span>Owner: {getOwner(item)}</span>
+                      <span>• {getDate(item)}</span>
                     </div>
                     <h3 className="text-2xl font-normal font-serif-aesthetic leading-snug group-hover:text-wine-800 transition-colors">
                       {item.title}
@@ -403,12 +460,12 @@ function Marketplace() {
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3 pt-2">
-                    <button className="flex-1 py-3 rounded-2xl bg-sand-200 hover:bg-wine-900 hover:text-sand-100 font-bold text-xs uppercase tracking-wider text-wine-900 transition-all border border-sand-500/20 hover:border-wine-900 flex items-center justify-center gap-1.5">
+                    <Link to={user ? `/swap/${item.id}` : '/login'} className="flex-1 py-3 rounded-2xl bg-sand-200 hover:bg-wine-900 hover:text-sand-100 font-bold text-xs uppercase tracking-wider text-wine-900 transition-all border border-sand-500/20 hover:border-wine-900 flex items-center justify-center gap-1.5">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                       Propose Swap
-                    </button>
+                    </Link>
                     <span className="text-xs text-wine-900/60 font-semibold tracking-wider uppercase shrink-0 flex items-center gap-1">
                       <svg className="w-3.5 h-3.5 text-wine-900/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -569,6 +626,44 @@ function Marketplace() {
 import { Navigate } from 'react-router-dom';
 import Profile from './pages/Profile';
 
+// Notification Bell component for the header
+function NotificationBell() {
+  const { tokens } = useAuth();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!tokens?.access) return;
+    const fetchCount = async () => {
+      try {
+        const res = await axios.get('http://localhost:8000/api/notifications/unread_count/', {
+          headers: { Authorization: `Bearer ${tokens.access}` }
+        });
+        setUnread(res.data.unread_count || 0);
+      } catch { /* ignore */ }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 10000);
+    return () => clearInterval(interval);
+  }, [tokens]);
+
+  return (
+    <Link
+      to="/notifications"
+      className="relative h-9 w-9 rounded-full bg-sand-200 border border-sand-300 flex items-center justify-center text-wine-900 hover:scale-105 transition-all"
+      title="Notifications"
+    >
+      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+      {unread > 0 && (
+        <span className="absolute -top-1 -right-1 h-4.5 min-w-4.5 rounded-full bg-wine-900 text-sand-100 flex items-center justify-center text-[9px] font-bold px-1">
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -594,14 +689,12 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
-      <Route 
-        path="/profile" 
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        } 
-      />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/swap/:itemId" element={<ProtectedRoute><SwapProposal /></ProtectedRoute>} />
+      <Route path="/offer/:interestId" element={<ProtectedRoute><OfferReview /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
+      <Route path="/chat/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
     </Routes>
   );
 }

@@ -11,6 +11,9 @@ from .views import (
     UserProfileViewSet,
     SendOTPView,
     TradeTransactionViewSet,
+    BarterInterestViewSet,
+    NotificationViewSet,
+    ChatRoomViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +24,10 @@ router.register(r'messages', ChatMessageViewSet, basename='chat-message')
 router.register(r'reviews', UserReviewViewSet, basename='user-review')
 router.register(r'profiles', UserProfileViewSet, basename='user-profile')
 router.register(r'transactions', TradeTransactionViewSet, basename='trade-transaction')
+# New endpoints for barter interest flow
+router.register(r'interests', BarterInterestViewSet, basename='barter-interest')
+router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'chatrooms', ChatRoomViewSet, basename='chat-room')
 
 urlpatterns = [
     path('', include(router.urls)),
