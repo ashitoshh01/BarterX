@@ -89,9 +89,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const signup = async (username, email, password) => {
+    const sendOTP = async (signupData) => {
         try {
-            await axios.post(`${API_URL}register/`, { username, email, password });
+            const response = await axios.post(`${API_URL}register/send-otp/`, signupData);
+            return { success: true, message: response.data.message };
+        } catch (error) {
+            return { success: false, error: error.response?.data || 'Failed to send verification code.' };
+        }
+    };
+
+    const signup = async (signupData) => {
+        try {
+            await axios.post(`${API_URL}register/`, signupData);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.response?.data || 'Signup failed' };
@@ -99,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, tokens, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, tokens, login, signup, sendOTP, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );

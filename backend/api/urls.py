@@ -1,8 +1,5 @@
-# pyrefly: ignore [missing-import]
 from django.urls import path, include
-# pyrefly: ignore [missing-import]
 from rest_framework.routers import DefaultRouter
-# pyrefly: ignore [missing-import]
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView,
@@ -12,6 +9,7 @@ from .views import (
     ChatMessageViewSet,
     UserReviewViewSet,
     UserProfileViewSet,
+    SendOTPView,
     TradeTransactionViewSet,
 )
 
@@ -26,6 +24,8 @@ router.register(r'transactions', TradeTransactionViewSet, basename='trade-transa
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('profile/', UserProfileViewSet.as_view({'get': 'me'}), name='profile-me'),
+    path('register/send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

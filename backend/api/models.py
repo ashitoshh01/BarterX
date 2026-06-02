@@ -12,6 +12,21 @@ class UserProfile(models.Model):
     profile_picture_url = models.URLField(max_length=500, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     average_rating = models.FloatField(default=0.0)
+    
+    account_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('individual', 'Individual'),
+            ('business', 'Business')
+        ],
+        default='individual'
+    )
+    display_name = models.CharField(max_length=255, default="")
+    business_category = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
@@ -109,13 +124,49 @@ class UserReview(models.Model):
     def __str__(self):
         return f"Review by {self.reviewer.username} for {self.reviewed_user.username} ({self.rating} stars)"
 
-# 7. Trade Transaction Model
+class OTPVerification(models.Model):
+    email = models.EmailField(db_index=True)
+    otp_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now=True)
+    attempts = models.IntegerField(default=0)
+
+    def is_expired(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        return timezone.now() > self.created_at + timedelta(minutes=5)
+
+    def __str__(self):
+        return f"OTP for {self.email} (Attempts: {self.attempts})"
+
+
 class TradeTransaction(models.Model):
-    offer = models.OneToOneField(BarterOffer, on_delete=models.CASCADE, related_name='transaction')
-    item_1 = models.ForeignKey(BarterItem, on_delete=models.SET_NULL, null=True, related_name='trade_as_item_1')
-    item_2 = models.ForeignKey(BarterItem, on_delete=models.SET_NULL, null=True, related_name='trade_as_item_2')
-    user_1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_user_1')
-    user_2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_user_2')
+    offer = models.OneToOneField(
+        BarterOffer,
+        on_delete=models.CASCADE,
+        related_name='transaction'
+    )
+    item_1 = models.ForeignKey(
+        BarterItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='trade_as_item_1'
+    )
+    item_2 = models.ForeignKey(
+        BarterItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='trade_as_item_2'
+    )
+    user_1 = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='trades_as_user_1'
+    )
+    user_2 = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='trades_as_user_2'
+    )
     completed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
