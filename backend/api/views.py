@@ -5,14 +5,27 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
+
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 import random
 import re
-from .models import BarterItem, Category, BarterOffer, ChatMessage, UserReview, UserProfile, OTPVerification
+
+from .models import (
+    BarterItem,
+    Category,
+    BarterOffer,
+    ChatMessage,
+    UserReview,
+    UserProfile,
+    OTPVerification,
+    TradeTransaction,
+)
+
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
-    ChatMessageSerializer, UserReviewSerializer, UserSerializer, UserProfileSerializer
+    ChatMessageSerializer, UserReviewSerializer, UserSerializer, UserProfileSerializer,
+    TradeTransactionSerializer
 )
 from .email_services import send_otp_email
 
@@ -101,6 +114,8 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+
+
 class BarterOfferViewSet(viewsets.ModelViewSet):
     """Manage barter offers. Requires authentication."""
     serializer_class = BarterOfferSerializer
@@ -115,6 +130,30 @@ class BarterOfferViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
+    def perform_update(self, serializer):
+        offer = serializer.save()
+        # Automatically generate TradeTransaction if offer is accepted
+        if offer.status == 'accepted':
+            TradeTransaction.objects.get_or_create(
+                offer=offer,
+                defaults={
+                    'item_1': offer.offered_item,
+                    'item_2': offer.requested_item,
+                    'user_1': offer.sender,
+                    'user_2': offer.receiver,
+                }
+            )
+            # Update the status of both items to 'traded'
+            offer.offered_item.status = 'traded'
+            offer.offered_item.save()
+            offer.requested_item.status = 'traded'
+            offer.requested_item.save()
+
+class TradeTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+    """View completed trades history. Read only."""
+    queryset = TradeTransaction.objects.all().order_by('-completed_at')
+    serializer_class = TradeTransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
 
 class ChatMessageViewSet(viewsets.ModelViewSet):
     """Manage chat messages. Requires authentication."""

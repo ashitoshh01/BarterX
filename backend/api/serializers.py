@@ -3,7 +3,8 @@ import re
 from rest_framework import serializers
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
-from .models import UserProfile, Category, BarterItem, BarterOffer, ChatMessage, UserReview, OTPVerification
+
+from .models import UserProfile, Category, BarterItem, BarterOffer, ChatMessage, UserReview, TradeTransaction, OTPVerification
 
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
@@ -173,6 +174,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BarterItem
         fields = '__all__'
+        read_only_fields = ('owner',)
 
 class BarterOfferSerializer(serializers.ModelSerializer):
     sender_username = serializers.ReadOnlyField(source='sender.username')
@@ -198,4 +200,14 @@ class UserReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserReview
+        fields = '__all__'
+
+class TradeTransactionSerializer(serializers.ModelSerializer):
+    user_1_username = serializers.ReadOnlyField(source='user_1.username')
+    user_2_username = serializers.ReadOnlyField(source='user_2.username')
+    item_1_title = serializers.ReadOnlyField(source='item_1.title')
+    item_2_title = serializers.ReadOnlyField(source='item_2.title')
+
+    class Meta:
+        model = TradeTransaction
         fields = '__all__'
