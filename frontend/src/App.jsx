@@ -224,11 +224,15 @@ function Marketplace() {
                   + Create Listing
                 </button>
                 <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-full bg-wine-900 border border-sand-300 flex items-center justify-center text-sand-100 cursor-pointer shadow-sm">
+                  <Link 
+                    to="/profile" 
+                    className="h-9 w-9 rounded-full bg-wine-900 border border-sand-300 flex items-center justify-center text-sand-100 hover:scale-105 transition-all shadow-sm"
+                    title="View Profile"
+                  >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                  </div>
+                  </Link>
                   <button onClick={logout} className="text-xs font-bold text-wine-900/70 hover:text-wine-900 transition-colors uppercase tracking-wider">Logout</button>
                 </div>
               </div>
@@ -562,6 +566,27 @@ function Marketplace() {
   );
 }
 
+import { Navigate } from 'react-router-dom';
+import Profile from './pages/Profile';
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sand-400 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-wine-900"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -569,6 +594,14 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
     </Routes>
   );
 }

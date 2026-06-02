@@ -1,16 +1,67 @@
-# pyrefly: ignore [missing-import]
-from rest_framework import viewsets, generics, permissions, filters
+from rest_framework import viewsets, generics, permissions, filters, status
 # pyrefly: ignore [missing-import]
 from rest_framework.decorators import action
 # pyrefly: ignore [missing-import]
 from rest_framework.response import Response
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
-from .models import BarterItem, Category, BarterOffer, ChatMessage, UserReview, UserProfile
+from django.contrib.auth.hashers import make_password
+from django.utils import timezone
+import random
+import re
+from .models import BarterItem, Category, BarterOffer, ChatMessage, UserReview, UserProfile, OTPVerification
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
     ChatMessageSerializer, UserReviewSerializer, UserSerializer, UserProfileSerializer
 )
+from .email_services import send_otp_email
+
+
+class SendOTPView(generics.GenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip()
+        username = request.data.get('username', '').strip()
+        account_type = request.data.get('account_type', 'individual')
+
+        if not email:
+            return Response({"email": ["Email is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        if not re.match(r'[^@]+@[^@]+\.[^@]+', email):
+            return Response({"email": ["Please enter a valid email address."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check existing user email conflict
+        if User.objects.filter(email=email).exists():
+            return Response({"email": ["This email is already registered."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check existing username conflict (for individuals)
+        if account_type == 'individual':
+            if not username:
+                return Response({"username": ["Username is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(username=username).exists():
+                return Response({"username": ["This username is already taken."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate 6-digit numeric OTP
+        otp = str(random.randint(100000, 999999))
+        otp_hash = make_password(otp)
+
+        # Update or create the verification record, resetting attempts and created_at
+        OTPVerification.objects.update_or_create(
+            email=email,
+            defaults={
+                'otp_hash': otp_hash,
+                'attempts': 0,
+                'created_at': timezone.now()
+            }
+        )
+
+        # Send the OTP email
+        try:
+            send_otp_email(email, otp)
+        except Exception as e:
+            return Response({"detail": "Failed to send email. Please check configuration."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"message": "Verification code sent successfully."}, status=status.HTTP_200_OK)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -98,14 +149,9 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
-    @action(detail=False, methods=['get', 'patch'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
-        """Get or update the current user's profile."""
+        """Get the current user's profile."""
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        if request.method == 'PATCH':
-            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
