@@ -38,12 +38,22 @@ class BarterItem(models.Model):
         ('traded', 'Traded'),
     ]
 
+    CONDITION_CHOICES = [
+        ('brand_new', 'Brand New'),
+        ('like_new', 'Like New'),
+        ('used', 'Used'),
+        ('refurbished', 'Refurbished'),
+        ('not_applicable', 'Not Applicable (Service)'),
+    ]
+
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, null=True)
     offering = models.CharField(max_length=200)
     wanting = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='items')
     image_url = models.URLField(max_length=500, blank=True, null=True)
+    image = models.ImageField(upload_to='item_images/', blank=True, null=True)
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='not_applicable')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
     location = models.CharField(max_length=150, default="Remote")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
@@ -98,3 +108,15 @@ class UserReview(models.Model):
 
     def __str__(self):
         return f"Review by {self.reviewer.username} for {self.reviewed_user.username} ({self.rating} stars)"
+
+# 7. Trade Transaction Model
+class TradeTransaction(models.Model):
+    offer = models.OneToOneField(BarterOffer, on_delete=models.CASCADE, related_name='transaction')
+    item_1 = models.ForeignKey(BarterItem, on_delete=models.SET_NULL, null=True, related_name='trade_as_item_1')
+    item_2 = models.ForeignKey(BarterItem, on_delete=models.SET_NULL, null=True, related_name='trade_as_item_2')
+    user_1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_user_1')
+    user_2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_user_2')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Trade Transaction: {self.user_1.username} & {self.user_2.username} at {self.completed_at}"

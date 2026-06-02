@@ -12,6 +12,7 @@ from .views import (
     ChatMessageViewSet,
     UserReviewViewSet,
     UserProfileViewSet,
+    TradeTransactionViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +22,7 @@ router.register(r'offers', BarterOfferViewSet, basename='barter-offer')
 router.register(r'messages', ChatMessageViewSet, basename='chat-message')
 router.register(r'reviews', UserReviewViewSet, basename='user-review')
 router.register(r'profiles', UserProfileViewSet, basename='user-profile')
+router.register(r'transactions', TradeTransactionViewSet, basename='trade-transaction')
 
 urlpatterns = [
     path('', include(router.urls)),
