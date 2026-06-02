@@ -39,6 +39,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BarterItem
         fields = '__all__'
+        read_only_fields = ('owner',)
 
 class BarterOfferSerializer(serializers.ModelSerializer):
     sender_username = serializers.ReadOnlyField(source='sender.username')

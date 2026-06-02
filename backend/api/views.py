@@ -50,52 +50,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
-    def smart_matches(self, request, pk=None):
-        """
-        AI-Based Smart Matching: Finds other items where:
-        1. Type matches (Product for Product, Service for Service)
-        2. The other user's 'offering' matches your 'wanting'
-        3. The other user's 'wanting' matches your 'offering'
-        """
-        try:
-            my_item = self.get_object()
-        except BarterItem.DoesNotExist:
-            return Response({"error": "Item not found"}, status=404)
 
-        # Rule 1: Type Match (is_service must match)
-        matches = BarterItem.objects.filter(
-            category__is_service=my_item.category.is_service,
-            status='active'
-        ).exclude(owner=request.user)
-
-        # Rule 2: Intent Match (Basic Text Similarity using icontains for keywords)
-        # In a real heavy AI system we'd use vector embeddings, but this is a solid text-based start.
-        my_wants = my_item.wanting.split()
-        my_offers = my_item.offering.split()
-
-        # Build a simple scoring list
-        scored_matches = []
-        for item in matches:
-            score = 0
-            # If their offering contains any of my want words
-            if any(word.lower() in item.offering.lower() for word in my_wants):
-                score += 1
-            # If their wanting contains any of my offering words
-            if any(word.lower() in item.wanting.lower() for word in my_offers):
-                score += 1
-            
-            # Additional score if categories exactly match what we might want
-            if score > 0:
-                scored_matches.append((score, item))
-
-        # Sort by highest score first
-        scored_matches.sort(key=lambda x: x[0], reverse=True)
-        
-        # Return top 10 matches
-        top_items = [item for score, item in scored_matches[:10]]
-        serializer = self.get_serializer(top_items, many=True)
-        return Response(serializer.data)
 
 
 class BarterOfferViewSet(viewsets.ModelViewSet):
