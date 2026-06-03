@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import NavBar from '../components/NavBar';
 
 const API = 'http://localhost:8000/api';
+const ff = { fontFamily: "'Inter',-apple-system,sans-serif" };
 
 export default function MyChats() {
   const { user, tokens } = useAuth();
@@ -14,99 +16,76 @@ export default function MyChats() {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const res = await axios.get(`${API}/chatrooms/`, {
-          headers: { Authorization: `Bearer ${tokens?.access}` }
-        });
+        const res = await axios.get(`${API}/chatrooms/`, { headers: { Authorization: `Bearer ${tokens?.access}` } });
         setRooms(res.data);
       } catch { /* ignore */ }
       finally { setLoading(false); }
     };
-    if (tokens?.access) fetchRooms();
-    else navigate('/login');
+    if (tokens?.access) fetchRooms(); else navigate('/login');
   }, [tokens, navigate]);
 
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Now';
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h`;
-    return `${Math.floor(hrs / 24)}d`;
+  const timeAgo = (d) => {
+    if (!d) return '';
+    const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+    if (m < 1) return 'Now'; if (m < 60) return `${m}m`; const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-wine-900 border-r-2"></div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ff }}>
+      <div style={{ width: 36, height: 36, border: '3px solid #e8e8ed', borderTopColor: '#0071e3', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-sand-400 text-wine-900 flex flex-col">
-      <header className="bg-sand-400/85 backdrop-blur-md border-b border-sand-500/30 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-full bg-wine-900 border-2 border-sand-200 flex items-center justify-center shadow-md">
-              <svg className="w-6 h-6 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold tracking-wide font-serif-aesthetic">BarterX</span>
-          </Link>
-          <Link to="/" className="text-xs font-bold uppercase tracking-wider text-wine-900/70 hover:text-wine-900">← Home</Link>
-        </div>
-      </header>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', color: '#1d1d1f', ...ff }}>
+      <NavBar />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 space-y-6">
-        <h1 className="text-3xl font-serif-aesthetic font-normal">Barter Chats</h1>
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '36px 24px 72px' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1d1d1f', margin: '0 0 8px', letterSpacing: '-0.02em' }}>Barter Chats</h1>
+        <p style={{ fontSize: 13.5, color: '#86868b', margin: '0 0 28px' }}>{rooms.length} active conversation{rooms.length !== 1 ? 's' : ''}</p>
 
         {rooms.length === 0 ? (
-          <div className="py-16 text-center border-2 border-dashed border-sand-500/40 rounded-[28px] bg-sand-100/50">
-            <span className="text-4xl block mb-3">💬</span>
-            <h3 className="text-xl font-serif-aesthetic font-normal">No Active Chats</h3>
-            <p className="text-xs text-wine-900/50 mt-1 font-medium">When a swap interest is accepted, a chat will appear here.</p>
+          <div style={{ textAlign: 'center', padding: '72px 32px', backgroundColor: '#fff', borderRadius: 20, border: '2px dashed #d2d2d7' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>No active chats</h3>
+            <p style={{ fontSize: 13.5, color: '#86868b', margin: '0 0 24px' }}>When a swap interest is accepted, a chat room will appear here.</p>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 20px', borderRadius: 9, background: '#0071e3', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>Browse Listings</Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {rooms.map(room => {
               const otherName = room.user1_username === user?.username ? room.user2_display_name : room.user1_display_name;
               const interest = room.barter_interest_detail;
               const itemTitle = interest?.requested_item_detail?.title || 'Item';
+              const statusColor = interest?.status === 'completed' ? '#16a34a' : interest?.status === 'accepted' ? '#0071e3' : '#6e6e73';
+              const statusBg = interest?.status === 'completed' ? '#f0fdf4' : interest?.status === 'accepted' ? '#e8f4fd' : '#f5f5f7';
+
               return (
-                <Link
-                  key={room.id}
-                  to={`/chat/${room.id}`}
-                  className="block bg-sand-100 border border-sand-500/20 rounded-[20px] p-5 hover:border-wine-900/20 hover:shadow-md transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-wine-900/10 flex items-center justify-center shrink-0">
-                      <svg className="w-6 h-6 text-wine-900/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
+                <Link key={room.id} to={`/chat/${room.id}`} style={{ display: 'block', backgroundColor: '#fff', borderRadius: 14, padding: '18px 20px', textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.5px solid transparent', transition: 'all 0.18s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#0071e3'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {/* Avatar */}
+                    <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#0071e3,#2997ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{(otherName || '?').charAt(0).toUpperCase()}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="font-bold text-sm">{otherName}</h4>
-                        <span className="text-[10px] text-wine-900/50 font-semibold shrink-0">
-                          {room.last_message ? timeAgo(room.last_message.created_at) : ''}
-                        </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
+                        <h4 style={{ fontSize: 14.5, fontWeight: 700, color: '#1d1d1f', margin: 0 }}>{otherName}</h4>
+                        <span style={{ fontSize: 11, color: '#86868b', fontWeight: 500, flexShrink: 0 }}>{room.last_message ? timeAgo(room.last_message.created_at) : ''}</span>
                       </div>
-                      <p className="text-xs text-wine-900/60 font-medium mt-0.5 truncate">
+                      <p style={{ fontSize: 13, color: '#6e6e73', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {room.last_message ? room.last_message.message : `Swap: ${itemTitle}`}
                       </p>
-                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${
-                        interest?.status === 'completed' ? 'bg-green-900/10 text-green-900 border-green-900/20'
-                          : interest?.status === 'accepted' ? 'bg-blue-900/10 text-blue-900 border-blue-900/20'
-                          : 'bg-sand-200 text-wine-900/60 border-sand-500/20'
-                      }`}>
+                      <span style={{ display: 'inline-block', backgroundColor: statusBg, color: statusColor, fontSize: 10, fontWeight: 600, padding: '2px 9px', borderRadius: 20, textTransform: 'capitalize' }}>
                         {interest?.status}
                       </span>
                     </div>
                     {room.unread_count > 0 && (
-                      <div className="h-6 min-w-6 rounded-full bg-wine-900 text-sand-100 flex items-center justify-center text-[10px] font-bold px-1.5">
+                      <div style={{ minWidth: 22, height: 22, borderRadius: 11, backgroundColor: '#0071e3', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0, padding: '0 5px' }}>
                         {room.unread_count}
                       </div>
                     )}

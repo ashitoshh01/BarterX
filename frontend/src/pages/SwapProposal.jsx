@@ -2,197 +2,129 @@ import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import NavBar from '../components/NavBar';
 
 const API = 'http://localhost:8000/api';
+const ff = { fontFamily: "'Inter',-apple-system,sans-serif" };
 
 export default function SwapProposal() {
   const { itemId } = useParams();
   const { tokens } = useAuth();
   const navigate = useNavigate();
-
   const [requestedItem, setRequestedItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [createdChatRoomId, setCreatedChatRoomId] = useState(null);
+  const [chatRoomId, setChatRoomId] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
         const res = await axios.get(`${API}/items/${itemId}/`);
         setRequestedItem(res.data);
-      } catch (err) {
-        setError('Failed to load product details.');
-      } finally {
-        setLoading(false);
-      }
+      } catch { setError('Failed to load product details.'); }
+      finally { setLoading(false); }
     };
-    if (tokens?.access) fetchData();
-    else navigate('/login');
+    if (tokens?.access) fetchData(); else navigate('/login');
   }, [itemId, tokens, navigate]);
 
   const handleSubmit = async () => {
-    setSubmitting(true);
-    setError(null);
+    setSubmitting(true); setError(null);
     try {
-      const res = await axios.post(`${API}/interests/`, {
-        requested_item: requestedItem.id
-      }, { headers: { Authorization: `Bearer ${tokens?.access}` } });
-      if (res.data.chat_room_id) {
-        setCreatedChatRoomId(res.data.chat_room_id);
-      }
+      const res = await axios.post(`${API}/interests/`, { requested_item: requestedItem.id }, { headers: { Authorization: `Bearer ${tokens?.access}` } });
+      if (res.data.chat_room_id) setChatRoomId(res.data.chat_room_id);
       setSuccess(true);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to send interest.');
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err) { setError(err.response?.data?.detail || 'Failed to send interest.'); }
+    finally { setSubmitting(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-wine-900 border-r-2"></div>
-          <span className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Loading Product...</span>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ff }}>
+      <div style={{ width: 36, height: 36, border: '3px solid #e8e8ed', borderTopColor: '#0071e3', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center p-4">
-        <div className="bg-sand-100 border border-sand-500/20 max-w-md w-full rounded-[28px] p-8 text-center space-y-5 shadow-md">
-          <div className="h-16 w-16 mx-auto rounded-full bg-green-900/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-green-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h3 className="text-2xl font-serif-aesthetic font-normal text-wine-900">Interest Submitted!</h3>
-          <p className="text-sm text-wine-900/60 font-medium leading-relaxed">
-            You have notified the owner about your interest! They will connect with you soon.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            {createdChatRoomId && (
-              <Link to={`/chat/${createdChatRoomId}`} className="flex-1 py-3 rounded-2xl bg-wine-900 hover:bg-wine-800 text-sand-100 font-bold text-xs uppercase tracking-wider text-center transition-colors shadow-md">
-                Chat with Owner
-              </Link>
-            )}
-            <Link to="/" className="flex-1 py-3 rounded-2xl bg-sand-200 hover:bg-sand-300 text-wine-900 font-bold text-xs uppercase tracking-wider text-center transition-colors border border-sand-500/10">
-              Back to Home
+  if (success) return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, ...ff }}>
+      <div style={{ backgroundColor: '#fff', borderRadius: 20, padding: '40px 36px', maxWidth: 420, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.1)' }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <svg width="28" height="28" fill="none" stroke="#16a34a" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1d1d1f', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Interest Submitted!</h2>
+        <p style={{ fontSize: 14, color: '#6e6e73', margin: '0 0 28px', lineHeight: 1.6 }}>The owner has been notified about your interest. They'll connect with you soon.</p>
+        <div style={{ display: 'flex', gap: 12, flexDirection: 'column' }}>
+          {chatRoomId && (
+            <Link to={`/chat/${chatRoomId}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 46, borderRadius: 10, background: '#0071e3', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+              Chat with Owner
             </Link>
-          </div>
+          )}
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 46, borderRadius: 10, border: '1.5px solid #d2d2d7', background: '#fff', color: '#1d1d1f', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+            Back to Home
+          </Link>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-sand-400 text-wine-900 flex flex-col">
-      {/* Header */}
-      <header className="bg-sand-400/85 backdrop-blur-md border-b border-sand-500/30 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="h-11 w-11 rounded-full bg-wine-900 border-2 border-sand-200 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-300">
-              <svg className="w-6 h-6 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold tracking-wide font-serif-aesthetic text-wine-900">BarterX</span>
-          </Link>
-          <button onClick={() => navigate(-1)} className="text-xs font-bold uppercase tracking-wider text-wine-900/70 hover:text-wine-900 transition-colors">
-            ← Back
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', color: '#1d1d1f', ...ff }}>
+      <NavBar />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '36px 24px 72px' }}>
+        <div style={{ marginBottom: 28 }}>
+          <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 500, color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 16 }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            Back
           </button>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-serif-aesthetic font-normal text-wine-900 mb-2">Product Details</h1>
-          <p className="text-sm text-wine-900/60 font-medium">Review the product information below and let the owner know if you're interested</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1d1d1f', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Product Details</h1>
+          <p style={{ fontSize: 13.5, color: '#86868b', margin: 0 }}>Review the item and let the owner know if you're interested</p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center text-sm text-red-800 font-medium">
-            {error}
-          </div>
-        )}
+        {error && <div style={{ backgroundColor: '#fff2f2', border: '1.5px solid #ffd2d2', borderRadius: 12, padding: '12px 16px', fontSize: 13.5, color: '#cc0000', fontWeight: 500, marginBottom: 20 }}>{error}</div>}
 
         {requestedItem && (
-          <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] overflow-hidden shadow-sm">
-            {/* Image Gallery Container */}
-            <div className="aspect-[16/9] w-full bg-sand-200 p-3">
-              <div className="w-full h-full rounded-[22px] overflow-hidden shadow-inner">
-                <img
-                  src={requestedItem.image_url || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80"}
-                  alt={requestedItem.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+          <div style={{ backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+            {/* Image */}
+            <div style={{ aspectRatio: '16/9', overflow: 'hidden', backgroundColor: '#f5f5f7' }}>
+              <img src={requestedItem.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'} alt={requestedItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
 
-            {/* Product Body Details */}
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <span className="px-3.5 py-1 rounded-full bg-wine-900/10 text-wine-900 text-[10px] font-bold uppercase tracking-widest inline-block">
-                  {requestedItem.category_name || 'Uncategorized'}
-                </span>
-                <h2 className="text-3xl font-serif-aesthetic font-normal leading-tight text-wine-900">
-                  {requestedItem.title}
-                </h2>
+            <div style={{ padding: '28px 32px' }}>
+              <span style={{ display: 'inline-block', backgroundColor: '#e8f4fd', color: '#0071e3', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20, letterSpacing: '0.04em', marginBottom: 12 }}>
+                {requestedItem.category_name || 'Uncategorized'}
+              </span>
+              <h2 style={{ fontSize: 26, fontWeight: 700, color: '#1d1d1f', margin: '0 0 16px', letterSpacing: '-0.02em' }}>{requestedItem.title}</h2>
+              {requestedItem.description && (
+                <p style={{ fontSize: 14, color: '#6e6e73', lineHeight: 1.65, margin: '0 0 24px' }}>{requestedItem.description}</p>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28 }}>
+                {[
+                  { l: 'Condition', v: requestedItem.condition?.replace('_', ' ') },
+                  { l: 'Location', v: requestedItem.location },
+                  { l: 'Owner', v: requestedItem.owner_username },
+                  { l: 'Seeking', v: requestedItem.wanting || 'Open Discussion' },
+                ].map(s => (
+                  <div key={s.l} style={{ backgroundColor: '#f5f5f7', borderRadius: 12, padding: '14px 16px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 }}>{s.l}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: '#1d1d1f', textTransform: s.l === 'Condition' ? 'capitalize' : 'none' }}>{s.v}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-wine-900/40">Description</h4>
-                <p className="text-sm text-wine-900/80 font-medium leading-relaxed">
-                  {requestedItem.description}
-                </p>
-              </div>
-
-              {/* Grid Specifications */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-sand-200/40 rounded-2xl p-4 border border-sand-500/10">
-                  <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[9px] mb-1">Condition</span>
-                  <span className="font-bold text-wine-950 text-sm capitalize">{requestedItem.condition?.replace('_', ' ')}</span>
-                </div>
-                <div className="bg-sand-200/40 rounded-2xl p-4 border border-sand-500/10">
-                  <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[9px] mb-1">Location</span>
-                  <span className="font-bold text-wine-950 text-sm">{requestedItem.location}</span>
-                </div>
-                <div className="bg-sand-200/40 rounded-2xl p-4 border border-sand-500/10">
-                  <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[9px] mb-1">Owner</span>
-                  <span className="font-bold text-wine-950 text-sm">{requestedItem.owner_username}</span>
-                </div>
-                <div className="bg-sand-200/40 rounded-2xl p-4 border border-sand-500/10">
-                  <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[9px] mb-1">Owner Seeking</span>
-                  <span className="font-bold text-wine-950 text-sm">{requestedItem.wanting || 'Open Discussion'}</span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="border-t border-sand-500/15 pt-6 flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="px-8 py-4 rounded-full bg-sand-200 hover:bg-sand-300 text-wine-900 font-bold text-xs uppercase tracking-wider transition-colors border border-sand-500/10"
-                >
+              <div style={{ display: 'flex', gap: 12, borderTop: '1px solid #e8e8ed', paddingTop: 24 }}>
+                <button onClick={() => navigate(-1)} style={{ flex: 1, height: 48, borderRadius: 10, border: '1.5px solid #d2d2d7', backgroundColor: '#fff', color: '#1d1d1f', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.18s' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f5f5f7'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}>
                   Cancel
                 </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-10 py-4 rounded-full bg-wine-900 hover:bg-wine-800 text-sand-100 font-bold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-sand-100"></div>
-                      Notifying Owner...
-                    </>
-                  ) : (
-                    'I\'m Interested'
-                  )}
+                <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, height: 48, borderRadius: 10, background: submitting ? '#86868b' : '#0071e3', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.18s' }}
+                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = '#0064d0'; }}
+                  onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = '#0071e3'; }}>
+                  {submitting ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Notifying Owner...</> : "I'm Interested →"}
                 </button>
               </div>
             </div>
