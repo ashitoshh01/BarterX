@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import NavBar from '../components/NavBar';
 
 const API = 'http://localhost:8000/api';
 
@@ -14,9 +15,7 @@ export default function Notifications() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/notifications/`, {
-        headers: { Authorization: `Bearer ${tokens?.access}` }
-      });
+      const res = await axios.get(`${API}/notifications/`, { headers: { Authorization: `Bearer ${tokens?.access}` } });
       setNotifications(res.data);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
@@ -29,32 +28,21 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     try {
-      await axios.post(`${API}/notifications/${id}/read/`, {}, {
-        headers: { Authorization: `Bearer ${tokens?.access}` }
-      });
+      await axios.post(`${API}/notifications/${id}/read/`, {}, { headers: { Authorization: `Bearer ${tokens?.access}` } });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch { /* ignore */ }
   };
 
   const markAllRead = async () => {
     try {
-      await axios.post(`${API}/notifications/mark_all_read/`, {}, {
-        headers: { Authorization: `Bearer ${tokens?.access}` }
-      });
+      await axios.post(`${API}/notifications/mark_all_read/`, {}, { headers: { Authorization: `Bearer ${tokens?.access}` } });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch { /* ignore */ }
   };
 
   const getNotifAction = (notif) => {
-    if (notif.notification_type === 'interest_received' && notif.barter_interest_id) {
-      return { label: 'Chat', isChatAction: true };
-    }
-    if (notif.notification_type === 'interest_accepted' && notif.barter_interest_id) {
+    if (['interest_received', 'interest_accepted', 'deal_requested'].includes(notif.notification_type) && notif.barter_interest_id)
       return { label: 'Open Chat', isChatAction: true };
-    }
-    if (notif.notification_type === 'deal_requested' && notif.barter_interest_id) {
-      return { label: 'View Chat', isChatAction: true };
-    }
     return null;
   };
 
@@ -63,149 +51,84 @@ export default function Notifications() {
       setActionLoadingId(notif.id);
       await markAsRead(notif.id);
       try {
-        // Auto-accept/retrieve chat room id
-        const res = await axios.post(`${API}/interests/${notif.barter_interest_id}/accept/`, {}, {
-          headers: { Authorization: `Bearer ${tokens?.access}` }
-        });
-        if (res.data.chat_room_id) {
-          navigate(`/chat/${res.data.chat_room_id}`);
-        } else {
-          navigate('/my-chats');
-        }
-      } catch (err) {
-        // Fallback: check if chat room is already created and can be fetched
+        const res = await axios.post(`${API}/interests/${notif.barter_interest_id}/accept/`, {}, { headers: { Authorization: `Bearer ${tokens?.access}` } });
+        navigate(res.data.chat_room_id ? `/chat/${res.data.chat_room_id}` : '/my-chats');
+      } catch {
         try {
-          const interestRes = await axios.get(`${API}/interests/${notif.barter_interest_id}/`, {
-            headers: { Authorization: `Bearer ${tokens?.access}` }
-          });
-          if (interestRes.data.chat_room_id) {
-            navigate(`/chat/${interestRes.data.chat_room_id}`);
-          } else {
-            navigate('/my-chats');
-          }
-        } catch {
-          navigate('/my-chats');
-        }
-      } finally {
-        setActionLoadingId(null);
-      }
-    } else if (action.path) {
-      await markAsRead(notif.id);
-      navigate(action.path);
-    }
+          const ir = await axios.get(`${API}/interests/${notif.barter_interest_id}/`, { headers: { Authorization: `Bearer ${tokens?.access}` } });
+          navigate(ir.data.chat_room_id ? `/chat/${ir.data.chat_room_id}` : '/my-chats');
+        } catch { navigate('/my-chats'); }
+      } finally { setActionLoadingId(null); }
+    } else if (action.path) { await markAsRead(notif.id); navigate(action.path); }
   };
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'interest_received': return '📥';
-      case 'interest_accepted': return '✅';
-      case 'interest_rejected': return '❌';
-      case 'deal_requested': return '🤝';
-      case 'deal_completed': return '🎉';
-      default: return '🔔';
-    }
-  };
+  const ICON_MAP = { interest_received: '📥', interest_accepted: '✅', interest_rejected: '❌', deal_requested: '🤝', deal_completed: '🎉' };
+  const timeAgo = (d) => { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 1) return 'Just now'; if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`; };
 
-  const timeAgo = (dateStr) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  };
+  const ff = { fontFamily: "'Inter',-apple-system,sans-serif" };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-wine-900 border-r-2"></div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', ...ff }}>
+      <div style={{ width: 36, height: 36, border: '3px solid #e8e8ed', borderTopColor: '#0071e3', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  const unread = notifications.filter(n => !n.is_read).length;
 
   return (
-    <div className="min-h-screen bg-sand-400 text-wine-900 flex flex-col">
-      <header className="bg-sand-400/85 backdrop-blur-md border-b border-sand-500/30 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="h-11 w-11 rounded-full bg-wine-900 border-2 border-sand-200 flex items-center justify-center shadow-md">
-              <svg className="w-6 h-6 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold tracking-wide font-serif-aesthetic">BarterX</span>
-          </Link>
-          <Link to="/" className="text-xs font-bold uppercase tracking-wider text-wine-900/70 hover:text-wine-900 transition-colors">
-            ← Back to Home
-          </Link>
-        </div>
-      </header>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', color: '#1d1d1f', ...ff }}>
+      <NavBar />
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-serif-aesthetic font-normal text-wine-900">Notifications</h1>
-          {notifications.some(n => !n.is_read) && (
-            <button
-              onClick={markAllRead}
-              className="text-xs font-bold uppercase tracking-wider text-wine-900/60 hover:text-wine-900 transition-colors"
-            >
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '36px 24px 72px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <div>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1d1d1f', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Notifications</h1>
+            <p style={{ fontSize: 13, color: '#86868b', margin: 0 }}>{unread > 0 ? `${unread} unread` : 'All caught up'}</p>
+          </div>
+          {unread > 0 && (
+            <button onClick={markAllRead} style={{ height: 34, padding: '0 16px', borderRadius: 8, border: '1.5px solid #d2d2d7', backgroundColor: '#fff', color: '#6e6e73', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.18s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#0071e3'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#d2d2d7'}>
               Mark All Read
             </button>
           )}
         </div>
 
         {notifications.length === 0 ? (
-          <div className="py-16 text-center border-2 border-dashed border-sand-500/40 rounded-[28px] bg-sand-100/50">
-            <span className="text-4xl block mb-3">🔔</span>
-            <h3 className="text-xl font-serif-aesthetic font-normal text-wine-900">No Notifications Yet</h3>
-            <p className="text-xs text-wine-900/50 mt-1 font-medium">When someone interacts with your listings, you'll see it here.</p>
+          <div style={{ textAlign: 'center', padding: '72px 32px', backgroundColor: '#fff', borderRadius: 20, border: '2px dashed #d2d2d7' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>No notifications yet</h3>
+            <p style={{ fontSize: 13.5, color: '#86868b', margin: 0 }}>When someone interacts with your listings, you'll see it here.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {notifications.map(notif => {
               const action = getNotifAction(notif);
               return (
-                <div
-                  key={notif.id}
-                  className={`bg-sand-100 border rounded-[20px] p-5 transition-all ${
-                    notif.is_read ? 'border-sand-500/15 opacity-70' : 'border-wine-900/15 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <span className="text-2xl shrink-0 mt-0.5">{getIcon(notif.notification_type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="font-bold text-sm text-wine-900">{notif.title}</h4>
-                        <span className="text-[10px] text-wine-900/50 font-semibold shrink-0">{timeAgo(notif.created_at)}</span>
+                <div key={notif.id} style={{ backgroundColor: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: notif.is_read ? 'none' : '0 2px 12px rgba(0,0,0,0.07)', border: notif.is_read ? '1.5px solid #e8e8ed' : '1.5px solid rgba(0,113,227,0.2)', opacity: notif.is_read ? 0.72 : 1, transition: 'all 0.2s' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{ICON_MAP[notif.notification_type] || '🔔'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1d1d1f', margin: 0 }}>{notif.title}</h4>
+                        <span style={{ fontSize: 11, color: '#86868b', fontWeight: 500, flexShrink: 0 }}>{timeAgo(notif.created_at)}</span>
                       </div>
-                      <p className="text-xs text-wine-900/70 font-medium mt-1 leading-relaxed">{notif.message}</p>
-                      <div className="flex items-center gap-3 mt-3">
+                      <p style={{ fontSize: 13, color: '#6e6e73', margin: '0 0 12px', lineHeight: 1.5 }}>{notif.message}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {action && (
-                          <button
-                            onClick={() => handleActionClick(notif, action)}
-                            disabled={actionLoadingId === notif.id}
-                            className="px-4 py-2 rounded-full bg-wine-900 text-sand-100 text-[10px] font-bold uppercase tracking-wider hover:bg-wine-800 transition-colors flex items-center gap-2 disabled:opacity-50"
-                          >
-                            {actionLoadingId === notif.id ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-sand-100"></div>
-                            ) : null}
+                          <button onClick={() => handleActionClick(notif, action)} disabled={actionLoadingId === notif.id}
+                            style={{ height: 32, padding: '0 16px', borderRadius: 8, background: '#0071e3', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, opacity: actionLoadingId === notif.id ? 0.6 : 1 }}>
+                            {actionLoadingId === notif.id && <div style={{ width: 11, height: 11, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />}
                             {action.label}
                           </button>
                         )}
                         {!notif.is_read && (
-                          <button
-                            onClick={() => markAsRead(notif.id)}
-                            className="text-[10px] font-bold text-wine-900/50 uppercase tracking-wider hover:text-wine-900 transition-colors"
-                          >
-                            Dismiss
-                          </button>
+                          <button onClick={() => markAsRead(notif.id)} style={{ fontSize: 12, fontWeight: 500, color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Dismiss</button>
                         )}
                       </div>
                     </div>
-                    {!notif.is_read && (
-                      <div className="h-2.5 w-2.5 rounded-full bg-wine-900 shrink-0 mt-1.5"></div>
-                    )}
+                    {!notif.is_read && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0071e3', flexShrink: 0, marginTop: 6 }} />}
                   </div>
                 </div>
               );
@@ -213,6 +136,7 @@ export default function Notifications() {
           </div>
         )}
       </main>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }

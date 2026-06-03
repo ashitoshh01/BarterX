@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import NavBar from '../components/NavBar';
+
+const f = { fontFamily: "'Inter',-apple-system,sans-serif" };
+const label = { fontSize: 10, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 };
+const value = { fontSize: 14, fontWeight: 600, color: '#1d1d1f' };
 
 export default function Profile() {
   const { logout, tokens } = useAuth();
@@ -16,413 +21,232 @@ export default function Profile() {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch profile from api/profile/ using context tokens
-        const profileRes = await axios.get('http://localhost:8000/api/profile/', {
-          headers: {
-            Authorization: `Bearer ${tokens?.access}`
-          }
-        });
-        setProfile(profileRes.data);
-
-        // Fetch user's listings
-        const listingsRes = await axios.get('http://localhost:8000/api/items/my_items/', {
-          headers: {
-            Authorization: `Bearer ${tokens?.access}`
-          }
-        });
-        setListings(listingsRes.data);
-
-        // Fetch user's reviews
-        const reviewsRes = await axios.get('http://localhost:8000/api/reviews/', {
-          headers: {
-            Authorization: `Bearer ${tokens?.access}`
-          }
-        });
-        const userReviews = reviewsRes.data.filter(
-          review => review.reviewed_user_username === profileRes.data.username
-        );
-        setReviews(userReviews);
+        setLoading(true); setError(null);
+        const [pRes, lRes, rRes] = await Promise.all([
+          axios.get('http://localhost:8000/api/profile/', { headers: { Authorization: `Bearer ${tokens?.access}` } }),
+          axios.get('http://localhost:8000/api/items/my_items/', { headers: { Authorization: `Bearer ${tokens?.access}` } }),
+          axios.get('http://localhost:8000/api/reviews/', { headers: { Authorization: `Bearer ${tokens?.access}` } }),
+        ]);
+        setProfile(pRes.data);
+        setListings(lRes.data);
+        setReviews(rRes.data.filter(r => r.reviewed_user_username === pRes.data.username));
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to load profile. Please try again.');
-        if (err.response?.status === 401) {
-          logout();
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
+        setError(err.response?.data?.detail || 'Failed to load profile.');
+        if (err.response?.status === 401) { logout(); navigate('/login'); }
+      } finally { setLoading(false); }
     };
-
-    if (tokens?.access) {
-      fetchProfileData();
-    } else {
-      setLoading(false);
-      navigate('/login');
-    }
+    if (tokens?.access) fetchProfileData();
+    else { setLoading(false); navigate('/login'); }
   }, [tokens, navigate, logout]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-wine-900 border-r-2"></div>
-          <span className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Loading Profile...</span>
-        </div>
-      </div>
-    );
-  }
+  const Loader = () => (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', ...f }}>
+      <div style={{ width: 36, height: 36, border: '3px solid #e8e8ed', borderTopColor: '#0071e3', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 
-  if (error || !profile) {
-    return (
-      <div className="min-h-screen bg-sand-400 flex items-center justify-center p-4">
-        <div className="bg-sand-100 border border-red-500/20 max-w-md w-full rounded-[28px] p-8 text-center space-y-4 shadow-md">
-          <svg className="w-12 h-12 text-red-500/40 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h3 className="text-xl font-normal font-serif-aesthetic text-wine-900">Failed to Load Profile</h3>
-          <p className="text-xs text-wine-900/60 leading-relaxed font-medium">{error || 'Unauthorized access.'}</p>
-          <div className="pt-2">
-            <Link to="/" className="inline-block px-6 py-3 rounded-full bg-wine-900 hover:bg-wine-800 text-sand-100 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <Loader />;
 
-  // Set default values for empty fields
-  const displayBio = profile.bio || "Bio not added yet";
-  const displayLocation = profile.location || "Location not added yet";
-  const displayPhone = profile.phone_number || "Phone number not added yet";
+  if (error || !profile) return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, ...f }}>
+      <div style={{ backgroundColor: '#fff', borderRadius: 20, padding: 40, maxWidth: 400, textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+        <div style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: '#fff2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <svg width="24" height="24" fill="none" stroke="#cc0000" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        </div>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1d1d1f', margin: '0 0 8px' }}>Failed to load profile</h3>
+        <p style={{ fontSize: 13.5, color: '#6e6e73', margin: '0 0 24px' }}>{error || 'Unauthorized access.'}</p>
+        <Link to="/" style={{ display: 'inline-block', padding: '10px 24px', borderRadius: 9, background: '#0071e3', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>← Back to Home</Link>
+      </div>
+    </div>
+  );
+
+  const trustScore = profile.trust_score ?? 50;
+  const trustColor = trustScore >= 80 ? '#16a34a' : trustScore >= 50 ? '#d97706' : '#dc2626';
+  const trustBg = trustScore >= 80 ? '#f0fdf4' : trustScore >= 50 ? '#fffbeb' : '#fff2f2';
+  const trustLabel = trustScore >= 80 ? 'High Trust' : trustScore >= 50 ? 'Medium Trust' : 'Low Trust';
+  const TABS = ['overview', 'listings', 'reviews', 'settings'];
 
   return (
-    <div className="min-h-screen bg-sand-400 text-wine-900 flex flex-col">
-      {/* Header Banner */}
-      <header className="bg-sand-400/85 backdrop-blur-md border-b border-sand-500/30 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="h-11 w-11 rounded-full bg-wine-900 border-2 border-sand-200 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-300">
-              <svg className="w-6 h-6 text-sand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold tracking-wide font-serif-aesthetic text-wine-900">BarterX</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-xs font-bold uppercase tracking-wider text-wine-900/70 hover:text-wine-900 transition-colors">
-              Registry Ledger
-            </Link>
-            <button 
-              onClick={() => { logout(); navigate('/login'); }} 
-              className="px-4 py-2 rounded-full bg-wine-900 text-sand-100 text-xs font-bold uppercase tracking-wider hover:bg-wine-800 transition-colors shadow-sm"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', color: '#1d1d1f', ...f }}>
+      <NavBar activeLink="profile" />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-12 space-y-10">
-        
-        {/* Profile Header Cards */}
-        <section className="bg-sand-100 border border-sand-500/20 rounded-[32px] p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 sm:gap-8 shadow-sm">
-          {/* Avatar Area */}
-          <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-wine-900/10 border-2 border-wine-900/20 overflow-hidden flex items-center justify-center text-wine-900 shrink-0">
-            {profile.profile_picture_url ? (
-              <img src={profile.profile_picture_url} alt={profile.display_name} className="w-full h-full object-cover" />
-            ) : (
-              <svg className="w-12 h-12 text-wine-900/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            )}
-          </div>
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 24px 72px' }}>
 
-          {/* User Details */}
-          <div className="text-center sm:text-left space-y-1.5 flex-1">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 justify-center sm:justify-start">
-              <h2 className="text-3xl font-serif-aesthetic font-normal leading-tight">{profile.display_name || profile.username}</h2>
+        {/* Profile card */}
+        <section style={{ backgroundColor: '#fff', borderRadius: 20, padding: '32px', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
+          <div style={{ width: 88, height: 88, borderRadius: '50%', background: 'linear-gradient(135deg,#0071e3,#2997ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            {profile.profile_picture_url
+              ? <img src={profile.profile_picture_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 32, fontWeight: 700, color: '#fff' }}>{(profile.display_name || profile.username || '?').charAt(0).toUpperCase()}</span>
+            }
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1d1d1f', margin: 0, letterSpacing: '-0.02em' }}>{profile.display_name || profile.username}</h1>
               {profile.is_verified && (
-                <span className="self-center inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-900/10 text-green-900 border border-green-950/20 uppercase tracking-widest">
-                  Verified Member
-                </span>
+                <span style={{ backgroundColor: '#f0fdf4', color: '#16a34a', fontSize: 10.5, fontWeight: 700, padding: '3px 10px', borderRadius: 20, border: '1px solid #bbf7d0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>✓ Verified</span>
               )}
             </div>
-            
-            <p className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">
-              {profile.account_type === 'business' ? 'Business Account' : 'Individual Account'}
-            </p>
-            
-            <p className="text-sm font-medium text-wine-950/70">{profile.email}</p>
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>{profile.account_type === 'business' ? 'Business Account' : 'Individual Account'}</p>
+            <p style={{ fontSize: 13.5, color: '#6e6e73', margin: 0 }}>{profile.email}</p>
           </div>
+          <button onClick={() => { logout(); navigate('/login'); }} style={{ height: 36, padding: '0 18px', borderRadius: 8, border: '1.5px solid #d2d2d7', backgroundColor: '#fff', color: '#1d1d1f', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.18s' }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f5f5f7'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}>
+            Logout
+          </button>
         </section>
 
-        {/* Tab Selection */}
-        <section className="flex border-b border-sand-500/30 overflow-x-auto pb-px">
-          {['overview', 'listings', 'reviews', 'settings'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 font-bold text-xs uppercase tracking-widest border-b-2 whitespace-nowrap transition-all ${
-                activeTab === tab
-                  ? 'border-wine-900 text-wine-900'
-                  : 'border-transparent text-wine-900/50 hover:text-wine-900'
-              }`}
-            >
-              {tab === 'listings' ? 'My Listings' : tab}
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 2, backgroundColor: '#fff', borderRadius: 12, padding: 6, marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+          {TABS.map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.18s', backgroundColor: activeTab === tab ? '#0071e3' : 'transparent', color: activeTab === tab ? '#fff' : '#6e6e73', minWidth: 80 }}>
+              {tab === 'listings' ? 'My Listings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
-        </section>
-
-        {/* Dynamic Tab Body */}
-        <section className="min-h-[300px]">
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-              
-              {/* Profile details column */}
-              <div className="md:col-span-2 space-y-6">
-                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 sm:p-8 space-y-6 shadow-sm">
-                  <h3 className="text-2xl font-serif-aesthetic font-normal text-wine-900 border-b border-sand-500/20 pb-3">About User</h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Display Name</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">{profile.display_name || 'Not Added'}</span>
-                    </div>
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Account Category</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">
-                        {profile.account_type === 'business' ? (profile.business_category || 'General Business') : 'Individual Swapper'}
-                      </span>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Bio</span>
-                      <p className="text-sm font-medium text-wine-950/70 leading-relaxed">{displayBio}</p>
-                    </div>
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Location</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">{displayLocation}</span>
-                    </div>
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Phone Number</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">{displayPhone}</span>
-                    </div>
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Member Since</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">{profile.member_since || 'June 2026'}</span>
-                    </div>
-                    <div>
-                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px] mb-1">Verification Status</span>
-                      <span className="text-wine-950 font-bold font-serif-aesthetic text-base">
-                        {profile.is_verified ? 'Verified Address & Identity' : 'Basic Member'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Statistics/Completion Sidebar */}
-              <div className="space-y-6">
-                {/* Trust Score Card */}
-                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Trust Score</h4>
-                  <div className="text-center space-y-3">
-                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${
-                      (profile.trust_score || 50) >= 80 ? 'bg-green-900/10 text-green-900 border-green-900/20'
-                        : (profile.trust_score || 50) >= 50 ? 'bg-amber-900/10 text-amber-800 border-amber-800/20'
-                        : 'bg-red-900/10 text-red-800 border-red-800/20'
-                    }`}>
-                      <span className="font-serif-aesthetic text-xl font-bold">{profile.trust_score ?? 50}</span>
-                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">/ 100</span>
-                    </div>
-                    <div className="w-full bg-sand-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-500 ${
-                          (profile.trust_score || 50) >= 80 ? 'bg-green-800'
-                            : (profile.trust_score || 50) >= 50 ? 'bg-amber-700'
-                            : 'bg-red-700'
-                        }`}
-                        style={{ width: `${profile.trust_score ?? 50}%` }}
-                      ></div>
-                    </div>
-                    <span className={`text-[9px] font-bold uppercase tracking-widest ${
-                      (profile.trust_score || 50) >= 80 ? 'text-green-800' : (profile.trust_score || 50) >= 50 ? 'text-amber-700' : 'text-red-700'
-                    }`}>
-                      {(profile.trust_score || 50) >= 80 ? 'High Trust' : (profile.trust_score || 50) >= 50 ? 'Medium Trust' : 'Low Trust'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Reward Points Card */}
-                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-3">
-                  <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Reward Points</h4>
-                  <div className="text-center">
-                    <span className="font-serif-aesthetic text-3xl font-bold text-wine-900">{profile.reward_points ?? 0}</span>
-                    <p className="text-[9px] font-bold text-wine-900/50 uppercase tracking-widest mt-1">Points Earned</p>
-                  </div>
-                </div>
-
-                {/* Stats Summary cards */}
-                <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 shadow-sm space-y-4">
-                  <h4 className="text-xs font-bold text-wine-900/60 uppercase tracking-widest">Account Registry Metrics</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 border-b border-sand-500/10 text-sm">
-                      <span className="text-wine-900/60 font-medium">Total Listings</span>
-                      <span className="font-serif-aesthetic font-bold text-base">{listings.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-sand-500/10 text-sm">
-                      <span className="text-wine-900/60 font-medium">Completed Exchanges</span>
-                      <span className="font-serif-aesthetic font-bold text-base">
-                        {listings.filter(item => item.status === 'traded' || item.status === 'completed').length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-wine-900/60 font-medium">Average Rating</span>
-                      <span className="font-serif-aesthetic font-bold text-base">
-                        {profile.average_rating > 0 ? `${profile.average_rating.toFixed(1)} / 5.0` : '0.0 / 5.0'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'listings' && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-serif-aesthetic font-normal text-wine-900">My Swap Registry Items</h3>
-              
-              {listings.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {listings.map((item) => (
-                    <article key={item.id} className="bg-sand-100 border border-sand-500/20 rounded-[24px] overflow-hidden hover:shadow-md transition-shadow">
-                      <div className="aspect-[16/10] overflow-hidden bg-sand-200 relative p-2">
-                        <div className="w-full h-full rounded-[14px] overflow-hidden relative">
-                          <img 
-                            src={item.image_url || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80"} 
-                            alt={item.title} 
-                            className="w-full h-full object-cover" 
-                          />
-                          <span className={`absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${
-                            item.status === 'active' 
-                              ? 'bg-green-900/90 text-sand-100 border-green-200/20' 
-                              : item.status === 'traded'
-                              ? 'bg-blue-900/90 text-sand-100 border-blue-200/20'
-                              : 'bg-amber-900/90 text-sand-100 border-amber-200/20'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-1">
-                        <span className="text-[9px] font-bold text-wine-900/50 uppercase tracking-wider block">
-                          {item.category_name || "Uncategorized"}
-                        </span>
-                        <h4 className="text-lg font-serif-aesthetic font-normal text-wine-900 leading-snug">{item.title}</h4>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center border-2 border-dashed border-sand-500/40 rounded-[28px] bg-sand-100/50">
-                  <svg className="w-10 h-10 text-wine-900/30 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  <h4 className="text-base font-serif-aesthetic font-normal text-wine-900">No Registry Items Added</h4>
-                  <p className="text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mt-1">Start by adding a listing from the dashboard</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'reviews' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-sand-500/20 pb-4">
-                <h3 className="text-2xl font-serif-aesthetic font-normal text-wine-900">Exchange Reviews</h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-wine-900/60 uppercase tracking-widest">Average Score:</span>
-                  <span className="font-serif-aesthetic font-bold text-xl text-wine-900">
-                    {profile.average_rating > 0 ? `${profile.average_rating.toFixed(1)} / 5.0` : '0.0 / 5.0'}
-                  </span>
-                </div>
-              </div>
-              
-              {reviews.length > 0 ? (
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="bg-sand-100 border border-sand-500/20 rounded-[20px] p-5 space-y-3 shadow-sm">
-                      <div className="flex justify-between items-start gap-4">
-                        <div>
-                          <h4 className="font-serif-aesthetic font-bold text-wine-950 text-base">{review.reviewer_username}</h4>
-                          <span className="text-[10px] text-wine-900/50 font-semibold">
-                            {new Date(review.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 bg-wine-900/5 px-2 py-0.5 rounded-full border border-wine-900/10">
-                          <span className="text-xs font-bold text-wine-900">{review.rating}</span>
-                          <svg className="w-3.5 h-3.5 text-wine-900 fill-wine-900" viewBox="0 0 24 24">
-                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <p className="text-xs text-wine-900/80 font-medium leading-relaxed italic">"{review.comment}"</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center border-2 border-dashed border-sand-500/40 rounded-[28px] bg-sand-100/50">
-                  <svg className="w-10 h-10 text-wine-900/30 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.246.6 1.792l-3.962 2.88a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.962-2.88a1 1 0 00-1.176 0l-3.962 2.88c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.962-2.88c-.76-.546-.362-1.792.6-1.792h4.907a1 1 0 00.95-.69l1.519-4.674z" />
-                  </svg>
-                  <h4 className="text-base font-serif-aesthetic font-normal text-wine-900">No Reviews Received</h4>
-                  <p className="text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mt-1">Feedback from finalized swaps will appear here</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-serif-aesthetic font-normal text-wine-900">Profile Settings</h3>
-              
-              <div className="bg-sand-100 border border-sand-500/20 rounded-[28px] p-6 sm:p-8 space-y-4 shadow-sm max-w-md">
-                <button 
-                  type="button" 
-                  onClick={() => { logout(); navigate('/login'); }}
-                  className="w-full py-3.5 rounded-2xl bg-wine-900 hover:bg-wine-800 text-sand-100 font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
-                >
-                  Logout from Account
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-wine-950 text-sand-100 border-t border-wine-950 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-sand-200 flex items-center justify-center border border-sand-300">
-              <svg className="w-5 h-5 text-wine-950" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-xl font-normal font-serif-aesthetic tracking-wide">BarterX Registry</span>
-          </div>
-          <p className="text-xs text-sand-300/70 font-sans">
-            &copy; {new Date().getFullYear()} BarterX Inc. Curating sustainable, cash-free commerce.
-          </p>
         </div>
-      </footer>
+
+        {/* Tab content */}
+        {activeTab === 'overview' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
+            <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1d1d1f', margin: '0 0 20px', paddingBottom: 16, borderBottom: '1px solid #e8e8ed' }}>About</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                {[
+                  { l: 'Display Name', v: profile.display_name || '—' },
+                  { l: 'Account Type', v: profile.account_type === 'business' ? (profile.business_category || 'Business') : 'Individual' },
+                  { l: 'Location', v: profile.location || '—' },
+                  { l: 'Phone', v: profile.phone_number || '—' },
+                  { l: 'Member Since', v: profile.member_since || 'June 2026' },
+                  { l: 'Verification', v: profile.is_verified ? 'Verified' : 'Basic Member' },
+                ].map(item => (
+                  <div key={item.l}>
+                    <span style={label}>{item.l}</span>
+                    <span style={value}>{item.v}</span>
+                  </div>
+                ))}
+                <div style={{ gridColumn: '1/-1' }}>
+                  <span style={label}>Bio</span>
+                  <p style={{ fontSize: 14, color: '#6e6e73', margin: 0, lineHeight: 1.6 }}>{profile.bio || 'No bio added yet.'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Trust Score */}
+              <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <p style={{ ...label, marginBottom: 14 }}>Trust Score</p>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, backgroundColor: trustBg, color: trustColor, borderRadius: 20, padding: '6px 16px', marginBottom: 12 }}>
+                    <span style={{ fontSize: 28, fontWeight: 700 }}>{trustScore}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>/100</span>
+                  </span>
+                  <div style={{ height: 6, backgroundColor: '#e8e8ed', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+                    <div style={{ height: '100%', width: `${trustScore}%`, backgroundColor: trustColor, borderRadius: 3, transition: 'width 0.6s' }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: trustColor }}>{trustLabel}</span>
+                </div>
+              </div>
+
+              {/* Reward points */}
+              <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+                <p style={{ ...label, marginBottom: 10 }}>Reward Points</p>
+                <span style={{ fontSize: 36, fontWeight: 700, color: '#0071e3' }}>{profile.reward_points ?? 0}</span>
+                <p style={{ fontSize: 11, color: '#86868b', margin: '4px 0 0' }}>Points earned</p>
+              </div>
+
+              {/* Stats */}
+              <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <p style={{ ...label, marginBottom: 12 }}>Account Stats</p>
+                {[
+                  { l: 'Total Listings', v: listings.length },
+                  { l: 'Completed Trades', v: listings.filter(i => ['traded','completed'].includes(i.status)).length },
+                  { l: 'Avg. Rating', v: profile.average_rating > 0 ? `${profile.average_rating.toFixed(1)} / 5.0` : '0.0 / 5.0' },
+                ].map((s, i, arr) => (
+                  <div key={s.l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid #f5f5f7' : 'none' }}>
+                    <span style={{ fontSize: 13, color: '#6e6e73' }}>{s.l}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#1d1d1f' }}>{s.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'listings' && (
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1d1d1f', margin: '0 0 20px', letterSpacing: '-0.02em' }}>My Listings</h2>
+            {listings.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 18 }}>
+                {listings.map(item => (
+                  <article key={item.id} style={{ backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', transition: 'box-shadow 0.2s, transform 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+                    <div style={{ aspectRatio: '16/10', overflow: 'hidden', backgroundColor: '#f5f5f7', position: 'relative' }}>
+                      <img src={item.image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80'} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <span style={{ position: 'absolute', top: 8, left: 8, backgroundColor: item.status === 'active' ? '#16a34a' : item.status === 'traded' ? '#0071e3' : '#d97706', color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.status}</span>
+                    </div>
+                    <div style={{ padding: '14px 16px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>{item.category_name || 'Uncategorized'}</p>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1d1d1f', margin: 0 }}>{item.title}</h3>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '60px 32px', backgroundColor: '#fff', borderRadius: 16, border: '2px dashed #d2d2d7' }}>
+                <p style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>No listings yet</p>
+                <p style={{ fontSize: 13.5, color: '#86868b', margin: '0 0 20px' }}>Start by adding a listing from the home page.</p>
+                <Link to="/" style={{ display: 'inline-block', padding: '10px 24px', borderRadius: 9, background: '#0071e3', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>+ Add Listing</Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'reviews' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1d1d1f', margin: 0 }}>Reviews</h2>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1d1d1f' }}>{profile.average_rating > 0 ? `${profile.average_rating.toFixed(1)} / 5.0` : '0.0 / 5.0'} avg.</span>
+            </div>
+            {reviews.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {reviews.map(rev => (
+                  <div key={rev.id} style={{ backgroundColor: '#fff', borderRadius: 14, padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: '#1d1d1f', margin: '0 0 2px' }}>{rev.reviewer_username}</p>
+                        <p style={{ fontSize: 11.5, color: '#86868b', margin: 0 }}>{new Date(rev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                      <span style={{ backgroundColor: '#e8f4fd', color: '#0071e3', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20 }}>⭐ {rev.rating}</span>
+                    </div>
+                    <p style={{ fontSize: 13.5, color: '#424245', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>"{rev.comment}"</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '60px 32px', backgroundColor: '#fff', borderRadius: 16, border: '2px dashed #d2d2d7' }}>
+                <p style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>No reviews yet</p>
+                <p style={{ fontSize: 13.5, color: '#86868b', margin: 0 }}>Feedback from completed swaps will appear here.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div style={{ maxWidth: 480 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1d1d1f', margin: '0 0 20px' }}>Settings</h2>
+            <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <button type="button" onClick={() => { logout(); navigate('/login'); }} style={{ width: '100%', height: 46, borderRadius: 10, border: '1.5px solid #d2d2d7', background: '#fff', color: '#cc0000', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.18s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fff2f2'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                Logout from Account
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
