@@ -5,6 +5,13 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import HowItWorks from './pages/HowItWorks';
 import Dashboard from './pages/Dashboard';
+import MyListings from './pages/MyListings';
+import Offers from './pages/Offers';
+import SwapHistory from './pages/SwapHistory';
+import Messages from './pages/Messages';
+import Trust from './pages/Trust';
+import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
 import Sidebar from './components/Sidebar';
 import DashboardHeader from './components/DashboardHeader';
 import axios from 'axios';
@@ -300,7 +307,7 @@ function PlaceholderPage({ title, emoji }) {
 }
 
 // ─── Sidebar Shell layout wrapper ────────────────────────────────────────────
-function SidebarShell({ children }) {
+function SidebarShell({ children, fullHeight = false }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const location = useLocation();
@@ -317,7 +324,7 @@ function SidebarShell({ children }) {
       <Sidebar stats={stats} />
       <div className="flex-1 flex flex-col overflow-hidden min-h-screen">
         <DashboardHeader stats={stats} onListItem={() => setIsModalOpen(true)} />
-        <div className="flex-1 overflow-y-auto">
+        <div className={fullHeight ? 'flex-1 flex overflow-hidden' : 'flex-1 overflow-y-auto'}>
           {children}
         </div>
       </div>
@@ -658,31 +665,31 @@ export default function App() {
         </ProtectedRoute>
       } />
       <Route path="/messages" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Messages" emoji="💬" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell fullHeight><Messages /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/offers" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Offers" emoji="🔄" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><Offers /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/my-listings" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="My Listings" emoji="📋" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><MyListings /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/saved" element={
         <ProtectedRoute><SidebarShell><PlaceholderPage title="Saved Items" emoji="❤️" /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/swap-history" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Swap History" emoji="📜" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><SwapHistory /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/trust" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Trust & Reviews" emoji="🛡️" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><Trust /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/notifications" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Notifications" emoji="🔔" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><Notifications /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/wallet" element={
         <ProtectedRoute><SidebarShell><PlaceholderPage title="Wallet" emoji="💰" /></SidebarShell></ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute><SidebarShell><PlaceholderPage title="Settings" emoji="⚙️" /></SidebarShell></ProtectedRoute>
+        <ProtectedRoute><SidebarShell><Settings /></SidebarShell></ProtectedRoute>
       } />
 
       {/* Fallback */}
