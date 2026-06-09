@@ -5,7 +5,14 @@ from rest_framework.decorators import action
 # pyrefly: ignore [missing-import]
 from rest_framework.response import Response
 # pyrefly: ignore [missing-import]
+from rest_framework.views import APIView
+# pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
+# pyrefly: ignore [missing-import]
+from django.utils import timezone
+# pyrefly: ignore [missing-import]
+from django.db.models import Count
+from datetime import timedelta
 from .models import BarterItem, Category, BarterOffer, ChatMessage, UserReview, UserProfile, TradeTransaction
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
@@ -136,3 +143,117 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data)
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
+
+
+class UserStatsView(APIView):
+    """Return dashboard stats for the authenticated user."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        # Count successful (accepted) trades
+        successful_trades = TradeTransaction.objects.filter(
+            user_1=user
+        ).count() + TradeTransaction.objects.filter(
+            user_2=user
+        ).count()
+
+        # Pending offers count (received)
+        pending_offers = BarterOffer.objects.filter(
+            receiver=user, status='pending'
+        ).count()
+
+        # Unread messages count
+        unread_messages = ChatMessage.objects.filter(
+            receiver=user, is_read=False
+        ).count()
+
+        # Active listings count
+        active_listings = BarterItem.objects.filter(
+            owner=user, status='active'
+        ).count()
+
+        # Saved/wishlist count (items the user has saved — placeholder, 0 for now)
+        saved_count = 0
+
+        # Member since date
+        member_since = user.date_joined
+
+        # Estimated value saved: assume avg item value of Rs 5000 per trade
+        value_saved = successful_trades * 5000
+
+        # Trust score calculation (max 100)
+        trust_score = 0
+        if user.username:           trust_score += 20   # Profile exists
+        if user.email:              trust_score += 20   # Email present (treated as verified)
+        if profile.phone_number:    trust_score += 15   # Phone verified
+        if profile.is_verified:     trust_score += 20   # ID verified
+        trust_score += min(successful_trades * 5, 25)   # Up to 25 pts from trades
+
+        # Trust label
+        if trust_score >= 80:   trust_label = 'Excellent'
+        elif trust_score >= 60: trust_label = 'Good'
+        elif trust_score >= 40: trust_label = 'Fair'
+        else:                   trust_label = 'New'
+
+        # Checklist for trust panel
+        trust_checklist = [
+            {'label': 'Profile Complete', 'done': bool(user.username)},
+            {'label': 'Phone Verified',   'done': bool(profile.phone_number)},
+            {'label': 'Email Verified',   'done': bool(user.email)},
+            {'label': 'ID Verified',      'done': profile.is_verified},
+            {'label': f'{successful_trades} Successful Trades', 'done': successful_trades > 0},
+        ]
+
+        return Response({
+            'trust_score': trust_score,
+            'trust_label': trust_label,
+            'trust_checklist': trust_checklist,
+            'successful_swaps': successful_trades,
+            'value_saved': value_saved,
+            'member_since': member_since,
+            'pending_offers': pending_offers,
+            'unread_messages': unread_messages,
+            'active_listings': active_listings,
+            'saved_count': saved_count,
+            'average_rating': profile.average_rating,
+            'location': profile.location,
+        })
+
+
+class TrendingSwapsView(APIView):
+    """Return the top trending swap pairs from the past 7 days."""
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        since = timezone.now() - timedelta(days=7)
+
+        # Get the most common offering/wanting pair combinations from offers
+        trending = (
+            BarterOffer.objects
+            .filter(created_at__gte=since)
+            .values(
+                'offered_item__category__name',
+                'requested_item__category__name',
+                'offered_item__image_url',
+                'requested_item__image_url',
+            )
+            .annotate(offer_count=Count('id'))
+            .order_by('-offer_count')[:6]
+        )
+
+        # Also get top categories by item count as a fallback
+        top_categories = (
+            BarterItem.objects
+            .filter(status='active')
+            .values('category__name')
+            .annotate(item_count=Count('id'))
+            .order_by('-item_count')[:6]
+        )
+
+        return Response({
+            'trending_pairs': list(trending),
+            'top_categories': list(top_categories),
+        })

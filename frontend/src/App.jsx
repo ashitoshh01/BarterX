@@ -1,9 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import HowItWorks from './pages/HowItWorks';
+import Dashboard from './pages/Dashboard';
+import Sidebar from './components/Sidebar';
+import DashboardHeader from './components/DashboardHeader';
+import axios from 'axios';
+
+// ─── Route guard: redirects to /login if not authenticated ───────────────────
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+const API_URL = 'http://localhost:8000/api/';
 
 // Sample initial data for the Barter Marketplace
 const INITIAL_ITEMS = [
@@ -83,7 +97,6 @@ const INITIAL_ITEMS = [
 
 const CATEGORIES = [
   "All",
-  // Physical Products (Consumer Goods)
   "Fashion & Apparel",
   "Lifestyle & Home",
   "Media & Entertainment",
@@ -96,7 +109,6 @@ const CATEGORIES = [
   "Healthcare & Wellness",
   "Entertainment & Gaming",
   "Events & Celebrations",
-  // Services
   "Marketing & Advertising",
   "Finance & Accounting",
   "Operations & Supply Chain",
@@ -110,63 +122,22 @@ const CATEGORIES = [
   "Household & Craftsman Services"
 ];
 
-function Marketplace() {
+// ─── Marketplace (Browse) Page ───────────────────────────────────────────────
+function Marketplace({ onOpenModal }) {
   const [items, setItems] = useState(INITIAL_ITEMS);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
-  
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  // Create listing modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Pick up ?category= query param from CategoryGrid
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('create') === 'true') {
-      setIsModalOpen(true);
-      // Clean query parameter from address bar
-      navigate('/', { replace: true });
-    }
-  }, [location, navigate]);
-
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newOffering, setNewOffering] = useState("");
-  const [newWanting, setNewWanting] = useState("");
-  const [newCategory, setNewCategory] = useState("Electronics & Gadgets");
-  const [newLocation, setNewLocation] = useState("");
-
-  const handleCreateListing = (e) => {
-    e.preventDefault();
-    if (!newTitle || !newOffering || !newWanting) return;
-
-    const newItem = {
-      id: Date.now(),
-      title: newTitle,
-      description: newDescription,
-      offering: newOffering,
-      wanting: newWanting,
-      category: newCategory,
-      image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80", // Default placeholder image
-      owner: user?.username || "You",
-      location: newLocation || "Local",
-      date: "Just now"
-    };
-
-    setItems([newItem, ...items]);
-    setIsModalOpen(false);
-
-    // Reset Form
-    setNewTitle("");
-    setNewDescription("");
-    setNewOffering("");
-    setNewWanting("");
-    setNewCategory("Electronics & Gadgets");
-    setNewLocation("");
-  };
+    const cat = params.get('category');
+    if (cat) setSelectedCategory(cat);
+  }, [location.search]);
 
   const filteredItems = items.filter(item => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
@@ -178,14 +149,215 @@ function Marketplace() {
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
-    if (sortBy === "alphabetical") {
-      return a.title.localeCompare(b.title);
-    } else if (sortBy === "oldest") {
-      return a.id - b.id;
-    } else {
-      // Default: "latest"
-      return b.id - a.id;
+    if (sortBy === "alphabetical") return a.title.localeCompare(b.title);
+    if (sortBy === "oldest") return a.id - b.id;
+    return b.id - a.id;
+  });
+
+  return (
+    <div className="flex-1 bg-gray-50 min-h-screen overflow-y-auto p-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Browse Listings</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Showing {sortedItems.length} active trades</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search offers or wants..."
+              className="pl-10 pr-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 w-64 transition-all"
+            />
+            <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="pl-4 pr-8 py-2.5 rounded-xl bg-white border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-wine-900/20 appearance-none cursor-pointer"
+          >
+            <option value="latest">Latest</option>
+            <option value="oldest">Oldest</option>
+            <option value="alphabetical">A–Z</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Category Chips */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-thin scrollbar-thumb-gray-200">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border ${
+              selectedCategory === cat
+                ? 'bg-wine-900 text-white border-wine-900 shadow-sm'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-wine-900/30 hover:text-wine-900'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Listings Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {sortedItems.length > 0 ? sortedItems.map((item) => (
+          <article key={item.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group">
+            <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+              <img
+                src={item.image}
+                alt={item.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <span className="absolute top-3 left-3 bg-wine-900/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[9px] font-bold text-white uppercase tracking-widest">
+                {item.category}
+              </span>
+              <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:text-red-500 transition-colors shadow-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-5 flex-1 flex flex-col gap-4">
+              <div>
+                <div className="flex items-center justify-between text-xs text-gray-400 font-medium mb-1.5">
+                  <span>{item.owner}</span>
+                  <span>{item.date}</span>
+                </div>
+                <h3 className="text-base font-bold text-gray-800 group-hover:text-wine-900 transition-colors leading-snug">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 uppercase tracking-widest text-[8px] font-bold block">Offering</span>
+                    <span className="text-gray-800 font-semibold">{item.offering}</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100"/>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 uppercase tracking-widest text-[8px] font-bold block">Seeking</span>
+                    <span className="text-gray-800 font-semibold">{item.wanting}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-auto">
+                <button className="flex-1 py-2.5 rounded-xl bg-wine-900 hover:bg-wine-800 text-white font-semibold text-xs uppercase tracking-wide transition-colors shadow-sm">
+                  Propose Swap
+                </button>
+                <span className="text-xs text-gray-400 flex items-center gap-1 shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  {item.location}
+                </span>
+              </div>
+            </div>
+          </article>
+        )) : (
+          <div className="col-span-full py-20 text-center">
+            <div className="text-4xl mb-3">🔍</div>
+            <h3 className="text-base font-bold text-gray-600">No listings found</h3>
+            <p className="text-sm text-gray-400 mt-1">Try a different category or search term</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Placeholder pages for sidebar nav items ─────────────────────────────────
+function PlaceholderPage({ title, emoji }) {
+  return (
+    <div className="flex-1 bg-gray-50 min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="text-6xl">{emoji}</div>
+      <h1 className="text-2xl font-bold text-gray-700">{title}</h1>
+      <p className="text-sm text-gray-400">This page is coming soon.</p>
+    </div>
+  );
+}
+
+// ─── Sidebar Shell layout wrapper ────────────────────────────────────────────
+function SidebarShell({ children }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [stats, setStats] = useState(null);
+  const location = useLocation();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      axios.get(`${API_URL}user/stats/`).then(r => setStats(r.data)).catch(() => {});
     }
+  }, [user, location.pathname]);
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar stats={stats} />
+      <div className="flex-1 flex flex-col overflow-hidden min-h-screen">
+        <DashboardHeader stats={stats} onListItem={() => setIsModalOpen(true)} />
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
+      </div>
+      {isModalOpen && <CreateListingModal onClose={() => setIsModalOpen(false)} />}
+    </div>
+  );
+}
+
+// ─── Legacy Marketplace (public home page) ────────────────────────────────────
+function LegacyMarketplace() {
+  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("latest");
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('create') === 'true') {
+      setIsModalOpen(true);
+      navigate('/', { replace: true });
+    }
+  }, [location, navigate]);
+
+  const filteredItems = items.filter(item => {
+    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.offering.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.wanting.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === "alphabetical") return a.title.localeCompare(b.title);
+    if (sortBy === "oldest") return a.id - b.id;
+    return b.id - a.id;
   });
 
   return (
@@ -204,33 +376,23 @@ function Marketplace() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
               </svg>
             </div>
-            <div>
-              <span className="text-2xl font-bold tracking-wide font-serif-aesthetic text-wine-900">BarterX</span>
-            </div>
+            <span className="text-2xl font-bold tracking-wide font-serif text-wine-900">BarterX</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold tracking-wide text-wine-900/80">
             <Link to="/how-it-works" className="hover:text-wine-900 hover:underline transition-all">How it Works</Link>
-            <a href="#" className="hover:text-wine-900 hover:underline transition-all">Exchange Ledger</a>
           </nav>
 
           <div className="flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-4">
                 <button
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={() => navigate('/dashboard')}
                   className="rounded-full bg-wine-900 border-2 border-wine-900 text-sand-100 hover:bg-wine-800 px-5 py-2.5 font-semibold text-xs tracking-wider uppercase transition-all duration-200 shadow-md"
                 >
-                  + Create Listing
+                  My Dashboard
                 </button>
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-full bg-wine-900 border border-sand-300 flex items-center justify-center text-sand-100 cursor-pointer shadow-sm">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <button onClick={logout} className="text-xs font-bold text-wine-900/70 hover:text-wine-900 transition-colors uppercase tracking-wider">Logout</button>
-                </div>
+                <button onClick={logout} className="text-xs font-bold text-wine-900/70 hover:text-wine-900 transition-colors uppercase tracking-wider">Logout</button>
               </div>
             ) : (
               <div className="flex items-center gap-4">
@@ -254,22 +416,28 @@ function Marketplace() {
             A cashless, resource-rich collaborative society
           </span>
 
-          <h1 className="text-5xl sm:text-7xl font-normal tracking-wide text-wine-900 mb-6 leading-tight font-serif-aesthetic">
+          <h1 className="text-5xl sm:text-7xl font-normal tracking-wide text-wine-900 mb-6 leading-tight font-serif">
             Trade what you <span className="italic font-medium">have</span> <br className="hidden sm:inline" />
             for what you <span className="italic font-medium">need</span>.
           </h1>
 
           <p className="max-w-2xl mx-auto text-lg text-wine-950/70 mb-10 leading-relaxed font-sans font-medium">
-            An elegant peer-to-peer digital bartering registry. Seamlessly list products or professional talents and receive tailored swap proposals from your local community.
+            An elegant peer-to-peer digital bartering registry. List products or professional talents and receive tailored swap proposals from your local community.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="#browse" className="w-full sm:w-auto px-8 py-4 rounded-full bg-wine-900 hover:bg-wine-800 text-sand-100 font-bold transition-all duration-200 shadow-lg tracking-wider text-center uppercase text-xs">
-              Explore Active Ledger
+              Explore Listings
             </a>
-            <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto px-8 py-4 rounded-full bg-sand-200 text-wine-900 font-bold border-2 border-wine-900/10 hover:bg-sand-300 transition-colors uppercase text-xs tracking-wider">
-              Register a Swap Item
-            </button>
+            {user ? (
+              <button onClick={() => navigate('/dashboard')} className="w-full sm:w-auto px-8 py-4 rounded-full bg-sand-200 text-wine-900 font-bold border-2 border-wine-900/10 hover:bg-sand-300 transition-colors uppercase text-xs tracking-wider">
+                Go to Dashboard
+              </button>
+            ) : (
+              <Link to="/signup" className="w-full sm:w-auto px-8 py-4 rounded-full bg-sand-200 text-wine-900 font-bold border-2 border-wine-900/10 hover:bg-sand-300 transition-colors uppercase text-xs tracking-wider">
+                Join BarterX
+              </Link>
+            )}
           </div>
         </section>
 
@@ -277,12 +445,10 @@ function Marketplace() {
         <section id="browse" className="flex flex-col gap-6 scroll-mt-24">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-              <h2 className="text-3xl font-normal font-serif-aesthetic tracking-wide text-wine-900">Current Gallery Collections</h2>
-              <p className="text-sm text-wine-900/60 mt-1 font-medium">Showing {sortedItems.length} curated trades waiting to be finalized</p>
+              <h2 className="text-3xl font-normal font-serif tracking-wide text-wine-900">Current Listings</h2>
+              <p className="text-sm text-wine-900/60 mt-1 font-medium">Showing {sortedItems.length} trades</p>
             </div>
-
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-              {/* Search Input */}
               <div className="w-full sm:w-80 relative">
                 <input
                   type="text"
@@ -295,29 +461,22 @@ function Marketplace() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-
-              {/* Sort Dropdown */}
               <div className="w-full sm:w-48 relative">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 rounded-full bg-sand-100 border border-sand-500/30 text-wine-950 focus:outline-none focus:border-wine-800 focus:ring-1 focus:ring-wine-800 text-sm appearance-none cursor-pointer transition-all"
+                  className="w-full pl-4 pr-10 py-3 rounded-full bg-sand-100 border border-sand-500/30 text-wine-950 focus:outline-none focus:border-wine-800 text-sm appearance-none cursor-pointer"
                 >
                   <option value="latest">Latest</option>
                   <option value="oldest">Oldest</option>
                   <option value="alphabetical">Alphabetical</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-wine-900/50">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
               </div>
             </div>
           </div>
 
           {/* Category Chips */}
-          <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-sand-500">
+          <div className="flex gap-2.5 overflow-x-auto pb-2">
             {CATEGORIES.map((category) => (
               <button
                 key={category}
@@ -325,7 +484,7 @@ function Marketplace() {
                 className={`px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
                   selectedCategory === category
                     ? "bg-wine-900 text-sand-100 shadow-md border border-wine-900"
-                    : "bg-sand-200 text-wine-900 border border-sand-500/20 hover:bg-sand-300 hover:text-wine-950"
+                    : "bg-sand-200 text-wine-900 border border-sand-500/20 hover:bg-sand-300"
                 }`}
               >
                 {category}
@@ -336,239 +495,198 @@ function Marketplace() {
 
         {/* Listings Grid */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {sortedItems.length > 0 ? (
-            sortedItems.map((item) => (
-              <article key={item.id} className="bg-sand-100 border border-sand-500/20 rounded-[28px] overflow-hidden hover:border-wine-900/20 hover:shadow-xl hover:shadow-wine-900/5 transition-all duration-300 flex flex-col group relative">
-                {/* Image & Category Overlay */}
-                <div className="relative aspect-[16/10] overflow-hidden bg-sand-200 p-2.5">
-                  <div className="w-full h-full rounded-[18px] overflow-hidden relative">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                    />
-                    <span className="absolute top-3 left-3 bg-wine-900/90 backdrop-blur-sm border border-sand-200/20 px-3 py-1 rounded-full text-[9px] font-bold text-sand-100 uppercase tracking-widest">
-                      {item.category}
-                    </span>
+          {sortedItems.length > 0 ? sortedItems.map((item) => (
+            <article key={item.id} className="bg-sand-100 border border-sand-500/20 rounded-[28px] overflow-hidden hover:border-wine-900/20 hover:shadow-xl transition-all duration-300 flex flex-col group relative">
+              <div className="relative aspect-[16/10] overflow-hidden bg-sand-200 p-2.5">
+                <div className="w-full h-full rounded-[18px] overflow-hidden relative">
+                  <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"/>
+                  <span className="absolute top-3 left-3 bg-wine-900/90 backdrop-blur-sm border border-sand-200/20 px-3 py-1 rounded-full text-[9px] font-bold text-sand-100 uppercase tracking-widest">
+                    {item.category}
+                  </span>
+                </div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col justify-between gap-5 text-wine-900">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-wine-900/60 font-semibold uppercase tracking-wider">
+                    <span>Owner: {item.owner}</span>
+                    <span>• {item.date}</span>
+                  </div>
+                  <h3 className="text-2xl font-normal font-serif leading-snug group-hover:text-wine-800 transition-colors">{item.title}</h3>
+                  <p className="text-xs text-wine-900/70 font-medium line-clamp-2">{item.description}</p>
+                </div>
+                <div className="bg-sand-200/50 border border-sand-500/20 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded-full bg-wine-900/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px]">Offering</span>
+                      <span className="text-wine-950 font-bold font-serif text-sm">{item.offering}</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-sand-500/15"></div>
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded-full bg-wine-900/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px]">Seeking</span>
+                      <span className="text-wine-950 font-bold font-serif text-sm">{item.wanting}</span>
+                    </div>
                   </div>
                 </div>
-
-                {/* Card Info */}
-                <div className="p-6 flex-1 flex flex-col justify-between gap-5 text-wine-900">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-wine-900/60 font-semibold uppercase tracking-wider">
-                      <span>Owner: {item.owner}</span>
-                      <span>• {item.date}</span>
-                    </div>
-                    <h3 className="text-2xl font-normal font-serif-aesthetic leading-snug group-hover:text-wine-800 transition-colors">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-wine-900/70 font-medium line-clamp-2">
-                      {item.description}
-                    </p>
-                  </div>
-
-                  {/* Swap Exchange Info */}
-                  <div className="bg-sand-200/50 border border-sand-500/20 rounded-2xl p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-wine-900/10 flex items-center justify-center text-wine-900 shrink-0 mt-0.5">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                        </svg>
-                      </div>
-                      <div className="text-xs">
-                        <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px]">Offering value</span>
-                        <span className="text-wine-950 font-bold font-serif-aesthetic text-sm">{item.offering}</span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-sand-500/15"></div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-wine-900/10 flex items-center justify-center text-wine-900 shrink-0 mt-0.5">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                        </svg>
-                      </div>
-                      <div className="text-xs">
-                        <span className="text-wine-900/50 block font-bold uppercase tracking-widest text-[8px]">Seeking in exchange</span>
-                        <span className="text-wine-950 font-bold font-serif-aesthetic text-sm">{item.wanting}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-3 pt-2">
-                    <button className="flex-1 py-3 rounded-2xl bg-sand-200 hover:bg-wine-900 hover:text-sand-100 font-bold text-xs uppercase tracking-wider text-wine-900 transition-all border border-sand-500/20 hover:border-wine-900 flex items-center justify-center gap-1.5">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Propose Swap
-                    </button>
-                    <span className="text-xs text-wine-900/60 font-semibold tracking-wider uppercase shrink-0 flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5 text-wine-900/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {item.location}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <button className="flex-1 py-3 rounded-2xl bg-sand-200 hover:bg-wine-900 hover:text-sand-100 font-bold text-xs uppercase tracking-wider text-wine-900 transition-all border border-sand-500/20 hover:border-wine-900">
+                    Propose Swap
+                  </button>
+                  <span className="text-xs text-wine-900/60 font-semibold shrink-0 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5 text-wine-900/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {item.location}
+                  </span>
                 </div>
-              </article>
-            ))
-          ) : (
-            <div className="col-span-full py-16 text-center border-2 border-dashed border-sand-500/40 rounded-[28px] bg-sand-100/50">
-              <svg className="w-12 h-12 text-wine-900/30 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-xl font-normal text-wine-900 font-serif-aesthetic">No Swaps Uncovered</h3>
-              <p className="text-xs text-wine-900/50 mt-1 font-medium">Try refining your search keyword or selecting a different collection category.</p>
+              </div>
+            </article>
+          )) : (
+            <div className="col-span-full py-16 text-center border-2 border-dashed border-sand-500/40 rounded-[28px]">
+              <h3 className="text-xl font-normal text-wine-900 font-serif">No Swaps Found</h3>
+              <p className="text-xs text-wine-900/50 mt-1">Try a different category or search term.</p>
             </div>
           )}
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="bg-wine-950 text-sand-100 border-t border-wine-950 mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-sand-200 flex items-center justify-center border border-sand-300">
-              <svg className="w-5 h-5 text-wine-950" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-              </svg>
-            </div>
-            <span className="text-xl font-normal font-serif-aesthetic tracking-wide">BarterX Registry</span>
-          </div>
-          <p className="text-xs text-sand-300/70 font-sans">
-            &copy; {new Date().getFullYear()} BarterX Inc. Curating sustainable, cash-free commerce.
-          </p>
-          <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-sand-300/80">
-            <a href="#" className="hover:text-white hover:underline transition-colors">Privacy Ledger</a>
-            <a href="#" className="hover:text-white hover:underline transition-colors">Registry Terms</a>
-            <a href="#" className="hover:text-white hover:underline transition-colors">Security</a>
-          </div>
+          <span className="text-xl font-normal font-serif tracking-wide">BarterX Registry</span>
+          <p className="text-xs text-sand-300/70">© {new Date().getFullYear()} BarterX Inc.</p>
         </div>
       </footer>
 
-      {/* Modal - Create Listing */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-wine-950/80 backdrop-blur-sm">
-          <div className="bg-sand-100 border-2 border-wine-900/20 rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-5 border-b border-sand-500/20 flex items-center justify-between">
-              <h3 className="text-2xl font-normal font-serif-aesthetic text-wine-900">Register a New Swap Item</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-wine-900/50 hover:text-wine-900 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateListing} className="p-6 space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">Item / Service Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Vintage Leather Jacket"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 placeholder-sand-400 focus:outline-none focus:border-wine-800 text-sm transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">Collection Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 focus:outline-none focus:border-wine-800 text-sm transition-colors cursor-pointer"
-                  >
-                    {CATEGORIES.slice(1).map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mumbai, MH"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 placeholder-sand-400 focus:outline-none focus:border-wine-800 text-sm transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">What are you offering? *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Leather Jacket (Size L)"
-                  value={newOffering}
-                  onChange={(e) => setNewOffering(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 placeholder-sand-400 focus:outline-none focus:border-wine-800 text-sm transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">What are you seeking? *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Doc Martens Boots (Size 10)"
-                  value={newWanting}
-                  onChange={(e) => setNewWanting(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 placeholder-sand-400 focus:outline-none focus:border-wine-800 text-sm transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-wine-900/60 uppercase tracking-widest mb-1.5">Description details</label>
-                <textarea
-                  rows="3"
-                  placeholder="Tell potential traders more details about the item..."
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-sand-50 border border-sand-300 text-wine-950 placeholder-sand-400 focus:outline-none focus:border-wine-800 text-sm transition-colors resize-none"
-                />
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3.5 rounded-2xl bg-sand-200 hover:bg-sand-300 text-wine-900 font-bold text-xs uppercase tracking-wider transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3.5 rounded-2xl bg-wine-900 hover:bg-wine-800 text-sand-100 font-bold text-xs uppercase tracking-wider hover:scale-[1.01] transition-transform shadow-md"
-                >
-                  Publish Listing
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {isModalOpen && <CreateListingModal onClose={() => setIsModalOpen(false)} items={items} setItems={setItems} />}
     </div>
   );
 }
 
+// ─── Create Listing Modal ─────────────────────────────────────────────────────
+function CreateListingModal({ onClose, items, setItems }) {
+  const { user } = useAuth();
+  const [form, setForm] = useState({ title: '', description: '', offering: '', wanting: '', category: 'Electronics & Gadgets', location: '' });
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.title || !form.offering || !form.wanting) return;
+    if (setItems) {
+      setItems(prev => [{
+        id: Date.now(), ...form,
+        image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80",
+        owner: user?.username || "You", date: "Just now"
+      }, ...prev]);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-800">List a New Item</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Item / Service Title *</label>
+            <input required value={form.title} onChange={set('title')} placeholder="e.g. Vintage Leather Jacket" className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 transition-all"/>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category</label>
+              <select value={form.category} onChange={set('category')} className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-wine-900/20 cursor-pointer">
+                {CATEGORIES.slice(1).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Location</label>
+              <input value={form.location} onChange={set('location')} placeholder="e.g. Mumbai, MH" className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 transition-all"/>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">What are you offering? *</label>
+            <input required value={form.offering} onChange={set('offering')} placeholder="e.g. Leather Jacket (Size L)" className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 transition-all"/>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">What are you seeking? *</label>
+            <input required value={form.wanting} onChange={set('wanting')} placeholder="e.g. Doc Martens Boots (Size 10)" className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 transition-all"/>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+            <textarea rows="3" value={form.description} onChange={set('description')} placeholder="Tell potential traders more details..." className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wine-900/20 transition-all resize-none"/>
+          </div>
+          <div className="pt-2 flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors">Cancel</button>
+            <button type="submit" className="flex-1 py-3 rounded-xl bg-wine-900 hover:bg-wine-800 text-white font-semibold text-sm shadow-md transition-colors">Publish Listing</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const { user } = useAuth();
+
   return (
     <Routes>
-      <Route path="/" element={<Marketplace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      {/* Public routes */}
+      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LegacyMarketplace />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
+
+      {/* Authenticated sidebar routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <SidebarShell><Dashboard /></SidebarShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/browse" element={
+        <ProtectedRoute>
+          <SidebarShell><Marketplace /></SidebarShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/messages" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Messages" emoji="💬" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/offers" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Offers" emoji="🔄" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/my-listings" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="My Listings" emoji="📋" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/saved" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Saved Items" emoji="❤️" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/swap-history" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Swap History" emoji="📜" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/trust" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Trust & Reviews" emoji="🛡️" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/notifications" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Notifications" emoji="🔔" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/wallet" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Wallet" emoji="💰" /></SidebarShell></ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute><SidebarShell><PlaceholderPage title="Settings" emoji="⚙️" /></SidebarShell></ProtectedRoute>
+      } />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

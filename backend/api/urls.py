@@ -13,6 +13,8 @@ from .views import (
     UserReviewViewSet,
     UserProfileViewSet,
     TradeTransactionViewSet,
+    UserStatsView,
+    TrendingSwapsView,
 )
 
 router = DefaultRouter()
@@ -29,4 +31,7 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('user/stats/', UserStatsView.as_view(), name='user-stats'),
+    path('trending/', TrendingSwapsView.as_view(), name='trending-swaps'),
 ]
+
