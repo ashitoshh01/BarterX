@@ -10,7 +10,8 @@ interface CreateListingModalProps {
 }
 
 export default function CreateListingModal({ onClose, onSuccess }: CreateListingModalProps) {
-  const { token } = useAuth();
+  const { tokens } = useAuth();
+  const token = tokens?.access;
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

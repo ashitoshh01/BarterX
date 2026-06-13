@@ -8,7 +8,8 @@ import ItemDetailModal from '../components/ItemDetailModal';
 import type { BarterItem } from '../types';
 
 export default function Search() {
-  const { token } = useAuth();
+  const { tokens } = useAuth();
+  const token = tokens?.access;
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
 

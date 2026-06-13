@@ -6,7 +6,8 @@ import Layout from '../components/Layout';
 import type { UserProfile } from '../types';
 
 export default function Profile() {
-  const { token, user } = useAuth();
+  const { tokens, user } = useAuth();
+  const token = tokens?.access;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,7 +22,10 @@ export default function Profile() {
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchProfile(token)
       .then((data) => {
