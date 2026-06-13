@@ -31,7 +31,7 @@ router.register(r'chatrooms', ChatRoomViewSet, basename='chat-room')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('profile/', UserProfileViewSet.as_view({'get': 'me'}), name='profile-me'),
+    path('profile/', UserProfileViewSet.as_view({'get': 'me', 'put': 'update_me', 'patch': 'update_me'}), name='profile-me'),
     path('register/send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

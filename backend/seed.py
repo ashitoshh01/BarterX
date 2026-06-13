@@ -53,14 +53,14 @@ for cat in categories_data:
 
 # ─── Seed Users ───────────────────────────────────────────────────────────────
 users_data = {
-    "Alex M.":   {"username": "alex_m",   "email": "alex@example.com"},
-    "Sarah K.":  {"username": "sarah_k",  "email": "sarah@example.com"},
-    "Marcus T.": {"username": "marcus_t", "email": "marcus@example.com"},
-    "Elena R.":  {"username": "elena_r",  "email": "elena@example.com"},
-    "David L.":  {"username": "david_l",  "email": "david@example.com"},
-    "Chloe W.":  {"username": "chloe_w",  "email": "chloe@example.com"},
-    "Riya S.":   {"username": "riya_s",   "email": "riya@example.com"},
-    "Arjun P.":  {"username": "arjun_p",  "email": "arjun@example.com"},
+    "Alex M.":   {"username": "alex_m",   "email": "alex@example.com", "location": "Mumbai, MH"},
+    "Sarah K.":  {"username": "sarah_k",  "email": "sarah@example.com", "location": "Bengaluru, KA"},
+    "Marcus T.": {"username": "marcus_t", "email": "marcus@example.com", "location": "New Delhi, DL"},
+    "Elena R.":  {"username": "elena_r",  "email": "elena@example.com", "location": "Pune, MH"},
+    "David L.":  {"username": "david_l",  "email": "david@example.com", "location": "Hyderabad, TS"},
+    "Chloe W.":  {"username": "chloe_w",  "email": "chloe@example.com", "location": "Bengaluru, KA"},
+    "Riya S.":   {"username": "riya_s",   "email": "riya@example.com", "location": "Jaipur, RJ"},
+    "Arjun P.":  {"username": "arjun_p",  "email": "arjun@example.com", "location": "Mumbai, MH"},
 }
 
 print("\nSeeding users...")
@@ -77,8 +77,14 @@ for display_name, udata in users_data.items():
     if created:
         user.set_password("password123")
         user.save()
-    UserProfile.objects.get_or_create(user=user)
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    if not profile.display_name:
+        profile.display_name = display_name
+        profile.location = udata.get("location", "Mumbai, MH")
+        profile.bio = f"Active trader on BarterX"
+        profile.save()
     user_map[display_name] = user
+
 
 # ─── Seed Items (2 per category, covering all 23) ────────────────────────────
 items = [

@@ -98,11 +98,25 @@ class BarterItem(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
     location = models.CharField(max_length=150, default="Remote")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    
+    # New listing calculator & detail fields
+    age_months = models.IntegerField(default=0)
+    purchase_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    item_score = models.FloatField(default=5.0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.title} (Owner: {self.owner.username})"
+
+class BarterItemImage(models.Model):
+    item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='additional_images')
+    image = models.ImageField(upload_to='item_images/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.item.title}"
 
 # 4. Barter Offer Model (Legacy — kept for backward compatibility)
 class BarterOffer(models.Model):

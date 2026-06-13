@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 
 from .models import (
-    UserProfile, Category, BarterItem, BarterOffer, ChatMessage,
+    UserProfile, Category, BarterItem, BarterItemImage, BarterOffer, ChatMessage,
     UserReview, TradeTransaction, OTPVerification,
     BarterInterest, Notification, ChatRoom, DealConfirmation
 )
@@ -178,14 +178,20 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+class BarterItemImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BarterItemImage
+        fields = ('id', 'image')
+
 class BarterItemSerializer(serializers.ModelSerializer):
     owner_username = serializers.ReadOnlyField(source='owner.username')
     category_name = serializers.ReadOnlyField(source='category.name')
+    additional_images = BarterItemImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = BarterItem
         fields = '__all__'
-        read_only_fields = ('owner',)
+        read_only_fields = ('owner', 'item_score')
 
 class BarterOfferSerializer(serializers.ModelSerializer):
     sender_username = serializers.ReadOnlyField(source='sender.username')

@@ -9,7 +9,7 @@ import random
 import re
 
 from .models import (
-    BarterItem, Category, BarterOffer, ChatMessage, UserReview,
+    BarterItem, BarterItemImage, Category, BarterOffer, ChatMessage, UserReview,
     UserProfile, OTPVerification, TradeTransaction,
     BarterInterest, Notification, ChatRoom, DealConfirmation
 )
@@ -89,8 +89,72 @@ class BarterItemViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+    def create(self, request, *args, **kwargs):
+        # We need minimum 3 images. They can be passed as a list under 'images' or individually as files.
+        images = request.FILES.getlist('images')
+        
+        # If frontend sends them as individual inputs like image1, image2, image3, collect them:
+        if len(images) < 3:
+            collected_images = []
+            for key in sorted(request.FILES.keys()):
+                if key.startswith('image'):
+                    collected_images.extend(request.FILES.getlist(key))
+            if len(collected_images) >= 3:
+                images = collected_images
+
+        if len(images) < 3:
+            return Response(
+                {"detail": "You must upload a minimum of 3 images of the product."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Calculate the item score from 1 to 10
+        try:
+            age_months = int(request.data.get('age_months', 0))
+        except ValueError:
+            age_months = 0
+            
+        try:
+            purchase_price = float(request.data.get('purchase_price', 0.0))
+        except ValueError:
+            purchase_price = 0.0
+        
+        # Base score starts at 7.0
+        # Age deduction: 0.1 per month (max 4.0 deduction)
+        age_deduction = min(4.0, age_months * 0.1)
+        # Price addition: purchase_price / 10000 (max 3.0 addition)
+        price_addition = min(3.0, purchase_price / 10000.0)
+        
+        category_id = request.data.get('category')
+        category_bonus = 0.0
+        if category_id:
+            try:
+                cat = Category.objects.get(id=category_id)
+                if cat.is_service:
+                    category_bonus = 0.5
+                elif 'electronic' in cat.name.lower() or 'gadget' in cat.name.lower() or 'tech' in cat.name.lower():
+                    category_bonus = 1.0
+            except Exception:
+                pass
+                
+        item_score = round(max(1.0, min(10.0, 7.0 - age_deduction + price_addition + category_bonus)), 1)
+        
+        # Build and validate serializer
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Save the item with computed values and the first image as main image
+        item = serializer.save(
+            owner=request.user,
+            item_score=item_score,
+            image=images[0]
+        )
+        
+        # Save all uploaded images to BarterItemImage model
+        for img in images:
+            BarterItemImage.objects.create(item=item, image=img)
+            
+        return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_items(self, request):
@@ -165,6 +229,112 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['put', 'patch'], permission_classes=[permissions.IsAuthenticated])
+    def update_me(self, request):
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        
+        display_name = request.data.get('display_name', profile.display_name)
+        bio = request.data.get('bio', profile.bio)
+        location = request.data.get('location', profile.location)
+        phone_number = request.data.get('phone_number', profile.phone_number)
+        
+        is_verified = request.data.get('is_verified', profile.is_verified)
+        if isinstance(is_verified, str):
+            is_verified = is_verified.lower() == 'true'
+            
+        profile.display_name = display_name
+        profile.bio = bio
+        profile.location = location
+        profile.phone_number = phone_number
+        profile.is_verified = is_verified
+        
+        # Calculate updated trust score dynamically
+        completed_interests = BarterInterest.objects.filter(
+            Q(requester=request.user) | Q(receiver=request.user),
+            status='completed'
+        ).count()
+        
+        profile_complete = bool(display_name and bio and location)
+        email_verified = bool(request.user.email)
+        phone_verified = bool(phone_number)
+        
+        score = 30
+        if profile_complete: score += 10
+        if email_verified: score += 5
+        if phone_verified: score += 10
+        if is_verified: score += 20
+        score += min(25, completed_interests * 5)
+        score += min(20, int(profile.average_rating * 4))
+        
+        profile.trust_score = score
+        profile.save()
+        
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def dashboard_stats(self, request):
+        """Centralized dashboard statistics endpoint.
+        Ensures all metrics are calculated server-side for consistency."""
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        # Successful swaps (completed interests)
+        completed_interests = BarterInterest.objects.filter(
+            Q(requester=user) | Q(receiver=user),
+            status='completed'
+        )
+        successful_swaps = completed_interests.count()
+
+        # Recent swaps this month
+        from datetime import datetime
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        recent_swaps = completed_interests.filter(updated_at__gte=month_start).count()
+
+        # Value saved (₹3,500 avg per swap)
+        value_saved = successful_swaps * 3500
+
+        # Member months
+        date_joined = user.date_joined
+        member_months = max(1, (now.year - date_joined.year) * 12 + (now.month - date_joined.month))
+
+        # Verification status
+        verification = {
+            'profile_complete': bool(profile.display_name and profile.bio and profile.location),
+            'phone_verified': bool(profile.phone_number),
+            'email_verified': bool(user.email),
+            'id_verified': profile.is_verified,
+            'successful_trades': successful_swaps,
+        }
+
+        # Pending offers
+        pending_offers = BarterInterest.objects.filter(
+            Q(requester=user) | Q(receiver=user),
+            status__in=['pending', 'accepted']
+        ).count()
+
+        # Unread messages
+        unread_messages = ChatMessage.objects.filter(
+            room__in=ChatRoom.objects.filter(Q(user1=user) | Q(user2=user)),
+            is_read=False
+        ).exclude(sender=user).count()
+
+        return Response({
+            'trust_score': profile.trust_score,
+            'trust_level': profile.trust_level,
+            'successful_swaps': successful_swaps,
+            'recent_swaps': recent_swaps,
+            'value_saved': value_saved,
+            'member_since': profile.user.date_joined.strftime('%B %Y'),
+            'member_months': member_months,
+            'verification': verification,
+            'pending_offers': pending_offers,
+            'unread_messages': unread_messages,
+            'reward_points': profile.reward_points,
+            'average_rating': profile.average_rating,
+        })
 
 
 # ============================================================
