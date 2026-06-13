@@ -162,6 +162,20 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({"detail": "You do not have permission to modify this listing."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({"detail": "You do not have permission to delete this listing."}, status=status.HTTP_403_FORBIDDEN)
+        # Delete related images from disk / database first
+        instance.additional_images.all().delete()
+        return super().destroy(request, *args, **kwargs)
+
 
 class BarterOfferViewSet(viewsets.ModelViewSet):
     serializer_class = BarterOfferSerializer

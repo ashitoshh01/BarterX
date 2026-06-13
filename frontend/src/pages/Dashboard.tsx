@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, List as ListIcon } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDashboard } from '../hooks/useDashboard';
@@ -87,13 +87,22 @@ export default function Dashboard() {
                       Ready to make your next great swap?
                     </p>
                   </div>
-                  <Link
-                    to="/profile"
-                    className="hidden sm:flex items-center gap-2 h-10 px-5 rounded-xl border border-border bg-white hover:bg-bg text-sm font-medium text-text-primary no-underline transition-colors"
-                  >
-                    <UserIcon size={16} className="text-text-secondary" />
-                    View your profile
-                  </Link>
+                  <div className="hidden sm:flex items-center gap-3">
+                    <Link
+                      to="/my-listings"
+                      className="flex items-center gap-2 h-10 px-5 rounded-xl border border-border bg-white hover:bg-bg text-sm font-medium text-text-primary no-underline transition-colors"
+                    >
+                      <ListIcon size={16} className="text-text-secondary" />
+                      My Listings
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-2 h-10 px-5 rounded-xl border border-border bg-white hover:bg-bg text-sm font-medium text-text-primary no-underline transition-colors"
+                    >
+                      <UserIcon size={16} className="text-text-secondary" />
+                      View your profile
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Stats Cards */}

@@ -116,6 +116,15 @@ export async function createItem(token: string, formData: FormData): Promise<Bar
   return res.data;
 }
 
+export async function deleteItem(token: string, itemId: number): Promise<void> {
+  await axios.delete(`${API_URL}items/${itemId}/`, authHeaders(token));
+}
+
+export async function updateItem(token: string, itemId: number, data: Partial<BarterItem>): Promise<BarterItem> {
+  const res = await axios.patch(`${API_URL}items/${itemId}/`, data, authHeaders(token));
+  return res.data;
+}
+
 // ─── Categories Service ────────────────────────────────────────────────────
 
 export async function fetchCategories(): Promise<Category[]> {
