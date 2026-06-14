@@ -318,6 +318,15 @@ export async function fetchPendingOffersCount(token: string): Promise<number> {
   return interests.filter(i => i.status === 'pending' || i.status === 'accepted').length;
 }
 
+export async function createInterest(token: string, requestedItemId: number, offeredItemId?: number): Promise<any> {
+  const data = {
+    requested_item: requestedItemId,
+    ...(offeredItemId && { offered_item: offeredItemId })
+  };
+  const res = await axios.post(`${API_URL}interests/`, data, authHeaders(token));
+  return res.data;
+}
+
 // ─── Chat Rooms Service ────────────────────────────────────────────────────
 
 export async function fetchUnreadMessagesCount(token: string): Promise<number> {
@@ -332,6 +341,41 @@ export async function fetchUnreadMessagesCount(token: string): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+export async function fetchChatRooms(token: string): Promise<any[]> {
+  const res = await axios.get(`${API_URL}chatrooms/`, authHeaders(token));
+  return res.data;
+}
+
+export async function fetchChatRoomMessages(token: string, roomId: number): Promise<any[]> {
+  const res = await axios.get(`${API_URL}chatrooms/${roomId}/messages/`, authHeaders(token));
+  return res.data;
+}
+
+export async function sendChatMessage(token: string, roomId: number, data: FormData): Promise<any> {
+  const res = await axios.post(`${API_URL}chatrooms/${roomId}/send_message/`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+}
+
+export async function requestDealConfirmation(token: string, roomId: number): Promise<any> {
+  const res = await axios.post(`${API_URL}chatrooms/${roomId}/request_confirmation/`, {}, authHeaders(token));
+  return res.data;
+}
+
+export async function respondDealConfirmation(token: string, roomId: number, action: 'accept' | 'decline'): Promise<any> {
+  const res = await axios.post(`${API_URL}chatrooms/${roomId}/respond_confirmation/`, { action }, authHeaders(token));
+  return res.data;
+}
+
+export async function fetchDealConfirmationStatus(token: string, roomId: number): Promise<any> {
+  const res = await axios.get(`${API_URL}chatrooms/${roomId}/confirmation_status/`, authHeaders(token));
+  return res.data;
 }
 
 // ─── Verification Status Service ───────────────────────────────────────────

@@ -124,3 +124,16 @@ body {
   stroke-linecap: round;
   transition: stroke-dashoffset 1s ease-out;
 }
+
+/* Custom Messages Sidebar Width */
+.messages-sidebar {
+  width: 100%;
+}
+@media (min-width: 1024px) {
+  .messages-sidebar {
+    width: 350px !important;
+    min-width: 350px !important;
+    max-width: 350px !important;
+    flex-shrink: 0 !important;
+  }
+}

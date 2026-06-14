@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { X, Calendar, MapPin, Tag, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Calendar, MapPin, Tag, ShieldCheck, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { createInterest } from '../services/api';
 import type { BarterItem } from '../types';
 
 interface ItemDetailModalProps {
@@ -9,6 +12,31 @@ interface ItemDetailModalProps {
 
 export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { tokens, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleProposeSwap = async () => {
+    if (!tokens?.access) {
+      alert("Please login to propose a swap!");
+      return;
+    }
+    if (user?.username === item.owner_username) {
+      alert("You cannot propose a swap for your own item.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await createInterest(tokens.access, item.id);
+      onClose();
+      navigate('/messages');
+    } catch (error: any) {
+      console.error(error);
+      alert(error.response?.data?.detail || "Failed to propose swap. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Fallback images - if no additional images, use the main image.
   const images = (item.additional_images && item.additional_images.length > 0)
@@ -170,10 +198,18 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             </div>
 
             <button 
-              onClick={() => alert('Proposal feature coming soon!')}
-              className="flex-1 max-w-[200px] h-11 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-semibold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+              onClick={handleProposeSwap}
+              disabled={isSubmitting}
+              className="flex-1 max-w-[200px] h-11 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-semibold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Propose Swap
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Proposing...</span>
+                </>
+              ) : (
+                <span>Propose Swap</span>
+              )}
             </button>
           </div>
         </div>
