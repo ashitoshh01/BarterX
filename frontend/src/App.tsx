@@ -8,6 +8,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import MyListings from './pages/MyListings';
 import Messages from './pages/Messages';
+import Offers from './pages/Offers';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -36,7 +37,7 @@ export default function App() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/offers" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/offers" element={<ProtectedRoute><Offers /></ProtectedRoute>} />
       <Route path="/saved" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/swap-history" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/trust-reviews" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

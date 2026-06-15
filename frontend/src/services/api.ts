@@ -262,11 +262,22 @@ export async function fetchNearbyTraders(token: string): Promise<NearbyTrader[]>
   return Array.from(traderMap.values()).slice(0, 5);
 }
 
+function getUserIdFromToken(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded.user_id;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Recent Offers Service ─────────────────────────────────────────────────
 
 export async function fetchRecentOffers(token: string): Promise<RecentOffer[]> {
   const res = await axios.get(`${API_URL}interests/`, authHeaders(token));
   const interests: BarterInterest[] = res.data;
+  const currentUserId = getUserIdFromToken(token);
 
   return interests.slice(0, 5).map(interest => {
     let offerStatus: 'New' | 'Viewed' | 'Replied' = 'New';
@@ -274,11 +285,13 @@ export async function fetchRecentOffers(token: string): Promise<RecentOffer[]> {
     else if (interest.status === 'completed') offerStatus = 'Replied';
     else if (interest.status === 'rejected') offerStatus = 'Viewed';
 
-    const isReceived = true; // From the user's perspective
+    const isReceived = currentUserId !== interest.requester;
     const title = interest.requested_item_detail?.title || 'Item';
+    const requesterName = interest.requester_display_name || interest.requester_username || 'Someone';
+    
     const desc = isReceived
-      ? `Offer received for ${title}`
-      : `Offer sent for ${title}`;
+      ? `${requesterName} proposed a swap for ${title}`
+      : `You proposed a swap for ${title}`;
 
     return {
       id: interest.id,
@@ -316,6 +329,21 @@ export async function fetchPendingOffersCount(token: string): Promise<number> {
   const res = await axios.get(`${API_URL}interests/`, authHeaders(token));
   const interests: BarterInterest[] = res.data;
   return interests.filter(i => i.status === 'pending' || i.status === 'accepted').length;
+}
+
+export async function fetchInterests(token: string): Promise<BarterInterest[]> {
+  const res = await axios.get(`${API_URL}interests/`, authHeaders(token));
+  return res.data;
+}
+
+export async function acceptInterest(token: string, interestId: number): Promise<any> {
+  const res = await axios.post(`${API_URL}interests/${interestId}/accept/`, {}, authHeaders(token));
+  return res.data;
+}
+
+export async function rejectInterest(token: string, interestId: number): Promise<any> {
+  const res = await axios.post(`${API_URL}interests/${interestId}/reject/`, {}, authHeaders(token));
+  return res.data;
 }
 
 export async function createInterest(token: string, requestedItemId: number, offeredItemId?: number): Promise<any> {
