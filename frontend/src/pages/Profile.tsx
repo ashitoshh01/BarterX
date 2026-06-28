@@ -219,6 +219,76 @@ export default function Profile() {
 
           {/* Right Sidebar: Trust Score & Verification Ticks */}
           <div className="flex flex-col gap-6">
+            {/* BarterX Wallet */}
+            <div className="bg-white border border-border rounded-[24px] p-6">
+              <h3 className="text-sm font-bold text-text-primary mb-4">My BarterX Wallet</h3>
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-bg border border-border">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl">
+                  🪙
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-text-primary">{profile?.coin_balance || 0}</div>
+                  <div className="text-xs text-text-secondary font-medium">BarterX Coins</div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    const amount = prompt("Enter amount of coins to purchase:");
+                    if (amount && !isNaN(parseInt(amount))) {
+                      fetch('http://127.0.0.1:8000/api/wallet/purchase-coins/', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ amount: parseInt(amount) }),
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                          alert(data.message || 'Purchase successful');
+                          fetchProfile(token!).then(setProfile);
+                      })
+                      .catch(console.error);
+                    }
+                  }}
+                  className="flex-1 h-10 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-all"
+                >
+                  Buy Coins
+                </button>
+                <button
+                  onClick={() => {
+                    const amount = prompt("Enter amount of coins to redeem/spend:");
+                    if (amount && !isNaN(parseInt(amount))) {
+                      const description = prompt("Enter description for redemption (e.g. Promoted item, Premium service):") || "Redeemed coins";
+                      fetch('http://127.0.0.1:8000/api/wallet/redeem-coins/', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ amount: parseInt(amount), description }),
+                      })
+                      .then(res => {
+                        if (!res.ok) {
+                          return res.json().then(err => { throw new Error(err.detail || 'Insufficient balance') });
+                        }
+                        return res.json();
+                      })
+                      .then(data => {
+                          alert(data.message || 'Redemption successful');
+                          fetchProfile(token!).then(setProfile);
+                      })
+                      .catch(err => alert(err.message));
+                    }
+                  }}
+                  className="flex-1 h-10 rounded-xl bg-slate-100 text-text-primary border border-border text-xs font-bold hover:bg-slate-200 transition-all"
+                >
+                  Spend Coins
+                </button>
+              </div>
+            </div>
+
             {/* Trust Meter Card */}
             <div className="bg-white border border-border rounded-[24px] p-6 flex flex-col items-center text-center">
               <div className="relative w-32 h-32 flex items-center justify-center mb-4">

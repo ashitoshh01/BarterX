@@ -14,6 +14,8 @@ from .views import (
     BarterInterestViewSet,
     NotificationViewSet,
     ChatRoomViewSet,
+    PurchaseCoinsView,
+    RedeemCoinsView,
 )
 
 router = DefaultRouter()
@@ -36,4 +38,6 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('wallet/purchase-coins/', PurchaseCoinsView.as_view(), name='purchase-coins'),
+    path('wallet/redeem-coins/', RedeemCoinsView.as_view(), name='redeem-coins'),
 ]
