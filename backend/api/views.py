@@ -10,7 +10,7 @@ import re
 
 from .models import (
     BarterItem, BarterItemImage, Category, BarterOffer, ChatMessage, UserReview,
-    UserProfile, OTPVerification, TradeTransaction,
+    UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
     BarterInterest, Notification, ChatRoom, DealConfirmation
 )
 from .serializers import (
@@ -351,9 +351,54 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-# ============================================================
-# NEW VIEWS: BARTER INTEREST → CHAT → DEAL FLOW
-# ============================================================
+class PurchaseCoinsView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        amount = int(request.data.get('amount', 0))
+        if amount <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Simulate payment gateway success
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        profile.add_coins(amount)
+        
+        CoinTransaction.objects.create(
+            user=request.user,
+            amount=amount,
+            transaction_type='purchased',
+            description=f"Purchased {amount} coins"
+        )
+        
+        return Response({"message": f"Successfully purchased {amount} coins.", "new_balance": profile.coin_balance})
+
+class RedeemCoinsView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        amount = int(request.data.get('amount', 0))
+        description = request.data.get('description', 'Redeemed coins')
+        
+        if amount <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        
+        if profile.coin_balance < amount:
+            return Response({"detail": "Insufficient coin balance."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Deduct coins
+        profile.coin_balance -= amount
+        profile.save()
+        
+        CoinTransaction.objects.create(
+            user=request.user,
+            amount=amount,
+            transaction_type='spent',
+            description=description
+        )
+        
+        return Response({"message": f"Successfully redeemed {amount} coins.", "new_balance": profile.coin_balance})
 
 def _create_notification(user, ntype, title, message, interest=None):
     """Helper to create notifications."""
@@ -706,6 +751,29 @@ class ChatRoomViewSet(viewsets.ReadOnlyModelViewSet):
                 if interest.offered_item:
                     interest.offered_item.status = 'traded'
                     interest.offered_item.save()
+
+                # Coin System Logic (1 coin = 100 rupees)
+                price1 = interest.requested_item.purchase_price
+                price2 = interest.offered_item.purchase_price if interest.offered_item else 0
+                
+                diff = abs(price1 - price2)
+                coins_to_credit = int(diff / 100)
+                
+                if coins_to_credit > 0:
+                    # User receiving the lower value item gets the coins
+                    if price1 < price2:
+                        recipient = interest.requester
+                    else:
+                        recipient = interest.receiver
+                        
+                    profile, _ = UserProfile.objects.get_or_create(user=recipient)
+                    profile.add_coins(coins_to_credit)
+                    CoinTransaction.objects.create(
+                        user=recipient,
+                        amount=coins_to_credit,
+                        transaction_type='earned',
+                        description=f"Coin credit for barter value gap (Items: {interest.requested_item.title} vs {interest.offered_item.title if interest.offered_item else 'N/A'})"
+                    )
 
                 # Award trust & points to both users (Steps 7 & 8)
                 for u in [interest.requester, interest.receiver]:

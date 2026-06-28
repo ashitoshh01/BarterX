@@ -152,5 +152,5 @@ SIMPLE_JWT = {
 # CORS Settings - Allow all origins for dev API access
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Email Configuration for Local Development (Console Output)
+# Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

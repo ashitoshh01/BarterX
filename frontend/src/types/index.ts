@@ -23,6 +23,7 @@ export interface UserProfile {
   trust_score: number;
   trust_level: 'high' | 'medium' | 'low';
   reward_points: number;
+  coin_balance: number;
 }
 
 export interface Category {
