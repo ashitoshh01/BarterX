@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 
 from .models import (
-    UserProfile, Category, BarterItem, BarterOffer, ChatMessage,
+    UserProfile, Category, BarterItem, BarterItemImage, BarterOffer, ChatMessage,
     UserReview, TradeTransaction, OTPVerification,
     BarterInterest, Notification, ChatRoom, DealConfirmation
 )
@@ -25,8 +25,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ('bio', 'location', 'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
                   'account_type', 'display_name', 'business_category', 'username', 'email', 'member_since',
-                  'trust_score', 'trust_level', 'reward_points')
-        read_only_fields = ('is_verified', 'average_rating', 'account_type', 'trust_score', 'reward_points')
+                  'trust_score', 'trust_level', 'reward_points', 'coin_balance')
+        read_only_fields = ('is_verified', 'average_rating', 'account_type', 'trust_score', 'reward_points', 'coin_balance')
 
     def get_member_since(self, obj):
         return obj.user.date_joined.strftime('%B %Y') if obj.user.date_joined else ""
@@ -178,14 +178,20 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+class BarterItemImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BarterItemImage
+        fields = ('id', 'image')
+
 class BarterItemSerializer(serializers.ModelSerializer):
     owner_username = serializers.ReadOnlyField(source='owner.username')
     category_name = serializers.ReadOnlyField(source='category.name')
+    additional_images = BarterItemImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = BarterItem
         fields = '__all__'
-        read_only_fields = ('owner',)
+        read_only_fields = ('owner', 'item_score')
 
 class BarterOfferSerializer(serializers.ModelSerializer):
     sender_username = serializers.ReadOnlyField(source='sender.username')

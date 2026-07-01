@@ -34,6 +34,9 @@ class UserProfile(models.Model):
 
     # Reward Points System (Step 8)
     reward_points = models.IntegerField(default=0)
+    
+    # BarterX Coin System
+    coin_balance = models.IntegerField(default=10)
 
     def adjust_trust(self, delta):
         """Safely adjust trust score within 0-100 bounds."""
@@ -44,6 +47,11 @@ class UserProfile(models.Model):
         """Add reward points (never subtract below 0)."""
         self.reward_points = max(0, self.reward_points + amount)
         self.save(update_fields=['reward_points'])
+        
+    def add_coins(self, amount):
+        """Add coins to the user's wallet."""
+        self.coin_balance += amount
+        self.save(update_fields=['coin_balance'])
 
     @property
     def trust_level(self):
@@ -98,11 +106,25 @@ class BarterItem(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
     location = models.CharField(max_length=150, default="Remote")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    
+    # New listing calculator & detail fields
+    age_months = models.IntegerField(default=0)
+    purchase_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    item_score = models.FloatField(default=5.0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.title} (Owner: {self.owner.username})"
+
+class BarterItemImage(models.Model):
+    item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='additional_images')
+    image = models.ImageField(upload_to='item_images/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.item.title}"
 
 # 4. Barter Offer Model (Legacy — kept for backward compatibility)
 class BarterOffer(models.Model):
@@ -269,6 +291,22 @@ class OTPVerification(models.Model):
 
     def __str__(self):
         return f"OTP for {self.email} (Attempts: {self.attempts})"
+
+
+class CoinTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ('earned', 'Earned'),
+        ('spent', 'Spent'),
+        ('purchased', 'Purchased'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='coin_transactions')
+    amount = models.IntegerField()
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES)
+    description = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.transaction_type.capitalize()} {self.amount} coins for {self.user.username}"
 
 
 class TradeTransaction(models.Model):
