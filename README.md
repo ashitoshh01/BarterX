@@ -1,330 +1,141 @@
-# Barter Marketplace
+# 🔄 Barter — Frontend
 
-A modern multi-platform digital bartering marketplace that enables users to exchange products and services through a secure, scalable, and trust-driven ecosystem.
-
----
-
-# 🚀 Overview
-
-BarterHub is an enterprise-grade barter marketplace platform designed to support:
-
-- Product ↔ Product exchanges
-- Product ↔ Service exchanges
-- Service ↔ Product exchanges
-- Service ↔ Service exchanges
-
-The platform enables users, freelancers, startups, and businesses to exchange value without traditional monetary transactions while maintaining trust, communication, and transparency.
+A React-based marketplace for bartering goods and services.
 
 ---
 
-# ✨ Features
+## ⚡ Quick Start (for team members)
 
-## 🔐 Authentication & User Management
-- JWT Authentication
-- User Registration & Login
-- Role-Based Accounts
-- User Profiles
-- Profile Image Uploads
-- Email Verification
+### Prerequisites
+Make sure you have these installed:
+- **Node.js** ≥ 20 (v24 recommended) — [nodejs.org](https://nodejs.org)
+- **npm** — comes with Node.js (no extra install needed)
 
----
-
-## 📦 Product Marketplace
-- Product Listings
-- Product Categories
-- Product Images
-- Product Search & Filters
-- Listing Management
-
----
-
-## 🛠️ Service Marketplace
-- Service Listings
-- Skills & Portfolio
-- Availability Management
-- Service Categories
-
----
-
-## 🔄 Barter Exchange System
-- Create Exchange Requests
-- Accept / Reject Offers
-- Negotiation Workflow
-- Transaction Status Tracking
-
----
-
-## 💬 Realtime Communication
-- In-App Chat
-- Notifications
-- Realtime Messaging
-
----
-
-## ⭐ Trust & Safety
-- Ratings & Reviews
-- Verified Users
-- Exchange History
-- Admin Moderation
-
----
-
-## 📊 Admin Dashboard
-- User Management
-- Listing Moderation
-- Reports & Disputes
-- Platform Monitoring
-
----
-
-# 🛠️ Tech Stack
-
-## 🌐 Web Frontend
-- React
-- Tailwind CSS
-- Axios
-- React Router
-
----
-
-## 📱 Mobile Application
-- React Native
-
----
-
-## ⚙️ Backend
-- Django
-- Django REST Framework
-- FastAPI
-
----
-
-## 🗄️ Database
-- PostgreSQL
-
----
-
-## ⚡ Realtime & Async
-- WebSockets
-- Redis
-
----
-
-## ☁️ Deployment
-- Render
-
----
-
-# 🏗️ System Architecture
-
-```text
-Frontend (React)
-        │
-        ▼
-Django REST APIs
-        │
-        ├── Authentication
-        ├── Product Services
-        ├── User Services
-        ├── Exchange Management
-        └── Reviews & Ratings
-        │
-        ▼
-FastAPI Services
-        ├── Async Tasks
-        ├── Recommendation Engine
-        ├── Search Optimization
-        └── Notification Services
-        │
-        ▼
-PostgreSQL Database
-```
-
----
-
-# 📁 Project Structure
-
+### 1. Clone & install
 ```bash
-barterhub/
-│
-├── backend/
-│   ├── apps/
-│   │   ├── users/
-│   │   ├── products/
-│   │   ├── services/
-│   │   ├── barter/
-│   │   ├── reviews/
-│   │   ├── chat/
-│   │   └── notifications/
-│   │
-│   ├── config/
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── layouts/
-│
-├── mobile/
-│   ├── src/
-│   └── assets/
-│
-├── docs/
-│
-├── README.md
-└── docker-compose.yml
-```
-
----
-
-# ⚡ Getting Started
-
-## Clone Repository
-
-```bash
-git clone https://github.com/ashitoshh01/barter-marketplace.git
-```
-
----
-
-# 🖥️ Backend Setup
-
-```bash
-cd backend
-
-python -m venv venv
-```
-
-### Activate Virtual Environment
-
-#### Linux / MacOS
-```bash
-source venv/bin/activate
-```
-
-#### Windows
-```bash
-venv\Scripts\activate
-```
-
----
-
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-### Run Migrations
-
-```bash
-python manage.py migrate
-```
-
----
-
-### Start Django Server
-
-```bash
-python manage.py runserver
-```
-
----
-
-# 🌐 Frontend Setup
-
-```bash
-cd frontend
-
+git clone <repo-url>
+cd uiui/frontend
 npm install
-
-npm run dev
 ```
 
----
+> ✅ An `.npmrc` is already included that handles peer dependency conflicts automatically — no extra flags needed.
 
-# 📱 Mobile App Setup
-
+### 2. Configure environment
 ```bash
-cd mobile
-
-npm install
-
-npx react-native run-android
+# Copy the example env file
+cp .env.example .env
 ```
 
----
-
-# 🗄️ Environment Variables
-
-Create a `.env` file inside backend:
-
+Open `.env` and set `REACT_APP_BACKEND_URL` to your backend's address:
 ```env
-DEBUG=True
+REACT_APP_BACKEND_URL=http://localhost:8001   # local backend
+# or
+REACT_APP_BACKEND_URL=https://api.your-team-server.com  # shared/deployed backend
+```
 
-SECRET_KEY=your-secret-key
+### 3. Run the frontend
+```bash
+npm start
+```
 
-DATABASE_URL=postgresql://username:password@localhost:5432/barterhub
+Opens at → **http://localhost:3000**
 
-ALLOWED_HOSTS=*
+---
 
-CLOUDINARY_CLOUD_NAME=
+## 🌐 Share with teammates on the same network
 
-CLOUDINARY_API_KEY=
+If your teammates are on the **same Wi-Fi or LAN**, they can open the app directly from your machine — no deployment needed.
 
-CLOUDINARY_API_SECRET=
+**Windows** (PowerShell or CMD):
+```bash
+npm run start:network
+# or manually:
+set HOST=0.0.0.0 && npx craco start
+```
+
+**Mac / Linux**:
+```bash
+HOST=0.0.0.0 npm start
+```
+
+Then find your local IP and share with teammates:
+- **Windows**: run `ipconfig` → look for "IPv4 Address"
+- **Mac/Linux**: run `ifconfig | grep inet`
+
+```
+http://<YOUR_IP>:3000
+```
+e.g. `http://192.168.1.42:3000`
+
+> **Note**: Both machines must be on the same Wi-Fi/network. Make sure Windows Firewall allows port 3000 (or temporarily disable it for the Local Network profile).
+
+---
+
+## 📁 Project Structure
+
+```
+frontend/
+├── src/
+│   ├── App.js            # Router & page layout
+│   ├── lib/
+│   │   └── api.js        # ← Axios client (use this for all backend calls)
+│   ├── context/
+│   │   └── AppContext.jsx # Global state
+│   ├── pages/            # One file per route
+│   ├── components/       # Shared UI components
+│   ├── mock/             # Mock data (used while backend is not connected)
+│   └── constants/        # Test IDs, enums
+├── .env                  # Your local config (git-ignored)
+├── .env.example          # Template to copy ↑
+└── package.json
 ```
 
 ---
 
-# 📌 Development Roadmap
+## 🔌 Connecting to the Backend
 
-## Phase 1
-- [x] Project Setup
-- [ ] Authentication System
-- [ ] User Profiles
+All API calls should go through the centralized client:
 
-## Phase 2
-- [ ] Product Listings
-- [ ] Service Listings
-- [ ] Categories & Search
+```js
+import api from "@/lib/api";
 
-## Phase 3
-- [ ] Exchange Workflow
-- [ ] Offer Negotiation
-- [ ] Transaction Tracking
+// GET  /api/status
+const { data } = await api.get("/status");
 
-## Phase 4
-- [ ] Realtime Chat
-- [ ] Notifications
-- [ ] Reviews & Ratings
+// POST /api/status
+const { data } = await api.post("/status", { client_name: "web" });
+```
 
-## Phase 5
-- [ ] Mobile Application
-- [ ] Admin Dashboard
-- [ ] Deployment
+The client automatically:
+- Points to `REACT_APP_BACKEND_URL` from your `.env`
+- Attaches the auth token (`barter_token` from localStorage) to every request
+- Redirects to `/auth` on 401 Unauthorized
 
 ---
 
-# 👨‍💻 Team Members
+## 🛠️ Available Scripts
 
-## Full Stack Developers
-- Ashitosh Ashok Lavhate
-- Suveer Kartik Upasani
-- Khushi Pandurang Kakade
-- Neha Rahuldev Chavan
-
-## Frontend Developers
-- Suyash Santosh Markandiwar
-- Chaitanya Ajay Bhujbal
+| Command | What it does |
+|---|---|
+| `npm start` | Dev server on `localhost:3000` |
+| `npm run start:network` | Dev server visible on local network |
+| `npm run build` | Production build in `build/` |
+| `npm test` | Run tests |
 
 ---
 
-# 🌟 Vision
+## 🗺️ Routes
 
-To build a scalable and sustainable barter ecosystem that empowers individuals and businesses to exchange products and services efficiently through technology-driven trust and communication systems.
+| Path | Page |
+|---|---|
+| `/` | Landing |
+| `/auth` | Login / Register |
+| `/onboarding` | New user onboarding |
+| `/app/feed` | Main feed |
+| `/app/explore` | Explore listings |
+| `/app/create` | Create a listing |
+| `/app/matches` | AI-matched trades |
+| `/app/proposals` | Trade proposals |
+| `/app/chat` | Conversations |
+| `/app/wallet` | Wallet & history |
+| `/app/profile` | User profile |

@@ -88,13 +88,15 @@ const Auth = () => {
             {mode === "signup" && (
               <div>
                 <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Name</label>
-                <div className="relative">
-                  <User size={16} strokeWidth={2} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+                <div className="flex items-center nb-input gap-3 p-0 overflow-hidden">
+                  <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                    <User size={15} strokeWidth={2} />
+                  </span>
                   <input
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="nb-input pl-10"
+                    className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                     placeholder="Your name"
                     data-testid="auth-name"
                   />
@@ -103,13 +105,15 @@ const Auth = () => {
             )}
             <div>
               <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Email</label>
-              <div className="relative">
-                <Mail size={16} strokeWidth={2} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+              <div className="flex items-center nb-input gap-3 p-0 overflow-hidden">
+                <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                  <Mail size={15} strokeWidth={2} />
+                </span>
                 <input
                   required type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="nb-input pl-10"
+                  className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                   placeholder="you@baarter.app"
                   data-testid="auth-email"
                 />
@@ -117,13 +121,15 @@ const Auth = () => {
             </div>
             <div>
               <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Password</label>
-              <div className="relative">
-                <Lock size={16} strokeWidth={2} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+              <div className="flex items-center nb-input gap-3 p-0 overflow-hidden">
+                <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                  <Lock size={15} strokeWidth={2} />
+                </span>
                 <input
                   required type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="nb-input pl-10"
+                  className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                   placeholder="••••••••"
                   data-testid="auth-password"
                 />
