@@ -12,7 +12,7 @@ const Feed = () => {
 
   const forYou = listings.slice(0, 4);
   const trending = listings.slice(4, 8);
-  const local = listings.filter((l) => l.owner !== "u_me").slice(0, 4);
+  const local = listings.filter((l) => l.owner !== user.id).slice(0, 4);
   const topMatch = aiMatches[0];
   const topMatchListing = listings.find((l) => l.id === topMatch?.theirItem);
 

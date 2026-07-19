@@ -6,30 +6,29 @@ from .views import (
     CategoryViewSet,
     BarterItemViewSet,
     BarterOfferViewSet,
-    ChatMessageViewSet,
     UserReviewViewSet,
     UserProfileViewSet,
     SendOTPView,
     TradeTransactionViewSet,
     BarterInterestViewSet,
     NotificationViewSet,
-    ChatRoomViewSet,
     PurchaseCoinsView,
     RedeemCoinsView,
 )
+
+from chat.views import ConversationViewSet
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'items', BarterItemViewSet, basename='barter-item')
 router.register(r'offers', BarterOfferViewSet, basename='barter-offer')
-router.register(r'messages', ChatMessageViewSet, basename='chat-message')
 router.register(r'reviews', UserReviewViewSet, basename='user-review')
 router.register(r'profiles', UserProfileViewSet, basename='user-profile')
 router.register(r'transactions', TradeTransactionViewSet, basename='trade-transaction')
 # New endpoints for barter interest flow
 router.register(r'interests', BarterInterestViewSet, basename='barter-interest')
 router.register(r'notifications', NotificationViewSet, basename='notification')
-router.register(r'chatrooms', ChatRoomViewSet, basename='chat-room')
+router.register(r'chatrooms', ConversationViewSet, basename='chat-room')
 
 urlpatterns = [
     path('', include(router.urls)),

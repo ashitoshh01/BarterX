@@ -1,9 +1,10 @@
 # pyrefly: ignore [missing-import]
 from django.contrib import admin
 from .models import (
-    UserProfile, Category, BarterItem, BarterOffer, ChatMessage, UserReview,
-    BarterInterest, Notification, ChatRoom, DealConfirmation
+    UserProfile, Category, BarterItem, BarterOffer, UserReview,
+    BarterInterest, Notification, DealConfirmation
 )
+from chat.models import Conversation, Message
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -27,11 +28,11 @@ class BarterOfferAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     search_fields = ('sender__username', 'receiver__username')
 
-@admin.register(ChatMessage)
-class ChatMessageAdmin(admin.ModelAdmin):
-    list_display = ('sender', 'room', 'is_read', 'created_at')
-    list_filter = ('is_read',)
-    search_fields = ('sender__username', 'message')
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'conversation', 'message_type', 'created_at')
+    list_filter = ('message_type',)
+    search_fields = ('sender__username', 'text')
 
 @admin.register(UserReview)
 class UserReviewAdmin(admin.ModelAdmin):
@@ -51,10 +52,10 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ('notification_type', 'is_read')
     search_fields = ('user__username', 'title')
 
-@admin.register(ChatRoom)
-class ChatRoomAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user1', 'user2', 'barter_interest', 'created_at')
-    search_fields = ('user1__username', 'user2__username')
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'listing', 'barter_interest', 'created_at')
+    search_fields = ('participants__username', 'listing__title')
 
 @admin.register(DealConfirmation)
 class DealConfirmationAdmin(admin.ModelAdmin):

@@ -54,6 +54,7 @@ function App() {
           <Route path="/app/explore" element={<Shell><Explore /></Shell>} />
           <Route path="/app/listing/:id" element={<Shell><ListingDetail /></Shell>} />
           <Route path="/app/create" element={<Shell><CreateListing /></Shell>} />
+          <Route path="/app/edit/:id" element={<Shell><CreateListing /></Shell>} />
           <Route path="/app/matches" element={<Shell><AIMatches /></Shell>} />
           <Route path="/app/proposals" element={<Shell><Proposals /></Shell>} />
           <Route path="/app/chat" element={<Shell><Chat /></Shell>} />

@@ -6,12 +6,11 @@ import { SectionTitle, NbButton } from "@/components/UI";
 import { toast } from "sonner";
 
 const Wallet = () => {
-  const { user, wallet, setUser } = useApp();
+  const { user, wallet, boostListing } = useApp();
 
   const boost = () => {
     if (user.coins < 100) { toast.error("Not enough coins"); return; }
-    setUser({ ...user, coins: user.coins - 100 });
-    toast.success("Listing boosted for 24h 🚀");
+    boostListing();
   };
 
   return (
