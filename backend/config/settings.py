@@ -31,6 +31,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'api',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -75,6 +78,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database — Supabase PostgreSQL (production-ready, handles many concurrent users)
@@ -154,3 +158,38 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Boost configuration settings
+BOOST_COST = 100
+BOOST_DURATION_DAYS = 7
+
+# Django Channels Channel Layers
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.5)
+    s.connect(("127.0.0.1", 6379))
+    s.close()
+    
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [("127.0.0.1", 6379)],
+            },
+        },
+    }
+except Exception:
+    logger.warning("Redis is not running on localhost:6379. Falling back to InMemoryChannelLayer.")
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+
+# File Upload limit for chat attachments (25MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400 # 25MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 26214400 # 25MB

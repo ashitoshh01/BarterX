@@ -7,17 +7,31 @@ import { NbButton } from "@/components/UI";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
 
+
 const Auth = () => {
-  const [mode, setMode] = useState("signup");
+  const [mode, setMode] = useState("login"); // Default to login mode
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const { login } = useApp();
   const nav = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    login();
-    toast.success(mode === "signup" ? "Welcome to baarter" : "Welcome back");
-    nav(mode === "signup" ? "/onboarding" : "/app/feed");
+    if (mode === "signup") {
+      toast.error("Signup is not enabled in Milestone 1. Please log in using a seed account (e.g., alex_m or sarah_k).");
+      return;
+    }
+    
+    setLoading(true);
+    const result = await login(form.email, form.password);
+    setLoading(false);
+    
+    if (result.success) {
+      toast.success("Welcome back!");
+      nav("/app/feed");
+    } else {
+      toast.error(result.error || "Login failed");
+    }
   };
 
   return (
@@ -104,17 +118,17 @@ const Auth = () => {
               </div>
             )}
             <div>
-              <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Email</label>
+              <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Username</label>
               <div className="flex items-center nb-input gap-3 p-0 overflow-hidden">
                 <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
-                  <Mail size={15} strokeWidth={2} />
+                  <User size={15} strokeWidth={2} />
                 </span>
                 <input
-                  required type="email"
+                  required type="text"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
-                  placeholder="you@baarter.app"
+                  placeholder="Enter your username (e.g. alex_m)"
                   data-testid="auth-email"
                 />
               </div>
@@ -135,8 +149,8 @@ const Auth = () => {
                 />
               </div>
             </div>
-            <NbButton type="submit" className="w-full py-4 text-base" data-testid="auth-submit">
-              {mode === "signup" ? "Create account" : "Log in"} <ArrowRight size={18} strokeWidth={2.5} />
+            <NbButton type="submit" disabled={loading} className="w-full py-4 text-base" data-testid="auth-submit">
+              {loading ? "Please wait..." : mode === "signup" ? "Create account" : "Log in"} <ArrowRight size={18} strokeWidth={2.5} />
             </NbButton>
           </form>
 

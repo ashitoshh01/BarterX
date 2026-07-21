@@ -230,38 +230,7 @@ export const PROPOSALS = [
   },
 ];
 
-export const CHATS = [
-  {
-    id: "c_1", with: "u_kai", swap: "p_1", unread: 2,
-    lastMessage: "Cool — where do you wanna meet?",
-    lastTime: "2m ago",
-    messages: [
-      { from: "u_kai", text: "Hey! Would love the monstera for my skateboard.", time: "3h ago" },
-      { from: "u_me", text: "Yesss let's do it. You in NYC?", time: "3h ago" },
-      { from: "u_kai", text: "LA actually — I can ship the deck.", time: "2h ago" },
-      { from: "u_me", text: "Ok cool, we can arrange logistics.", time: "1h ago" },
-      { from: "u_kai", text: "Cool — where do you wanna meet?", time: "2m ago" },
-    ],
-  },
-  {
-    id: "c_2", with: "u_mira", swap: "p_2", unread: 0,
-    lastMessage: "Logo drafts coming Friday!",
-    lastTime: "1h ago",
-    messages: [
-      { from: "u_me", text: "Excited to see the drafts!", time: "3h ago" },
-      { from: "u_mira", text: "Logo drafts coming Friday!", time: "1h ago" },
-    ],
-  },
-  {
-    id: "c_3", with: "u_zoe", swap: "p_3", unread: 1,
-    lastMessage: "Let me think about the coins.",
-    lastTime: "5h ago",
-    messages: [
-      { from: "u_zoe", text: "Would you add 100 coins with the plant?", time: "5h ago" },
-      { from: "u_me", text: "Let me think about the coins.", time: "5h ago" },
-    ],
-  },
-];
+export const CHATS = [];
 
 export const NOTIFICATIONS = [
   { id: "n_1", type: "match", text: "New AI match: Zoe's Vintage Levi's 🔥", time: "10m", read: false },

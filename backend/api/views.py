@@ -9,18 +9,18 @@ import random
 import re
 
 from .models import (
-    BarterItem, BarterItemImage, Category, BarterOffer, ChatMessage, UserReview,
+    BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
     UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
-    BarterInterest, Notification, ChatRoom, DealConfirmation
+    BarterInterest, Notification, DealConfirmation, Trade
 )
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
-    ChatMessageSerializer, UserReviewSerializer, UserSerializer, UserProfileSerializer,
+    UserReviewSerializer, UserSerializer, UserProfileSerializer,
     TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
-    ChatRoomSerializer, RoomChatMessageSerializer, DealConfirmationSerializer,
-    BarterItemCompactSerializer
+    DealConfirmationSerializer, BarterItemCompactSerializer
 )
 from .email_services import send_otp_email
+from chat.services import broadcast_to_group
 
 
 # ============================================================
@@ -78,35 +78,71 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class BarterItemViewSet(viewsets.ModelViewSet):
-    queryset = BarterItem.objects.all().order_by('-created_at')
     serializer_class = BarterItemSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'description', 'offering', 'wanting', 'location']
     ordering_fields = ['created_at', 'title']
+
+    def get_queryset(self):
+        from django.utils import timezone
+        from django.db import models
+        # Deactivate expired boosts
+        BarterItem.objects.filter(is_boosted=True, boost_expires_at__lt=timezone.now()).update(is_boosted=False)
+        
+        queryset = BarterItem.objects.all()
+        # Exclude archived items from general public feed, but let owners see their own archived listings.
+        if self.request.user.is_authenticated:
+            queryset = queryset.filter(
+                models.Q(owner=self.request.user) | ~models.Q(status='archived')
+            )
+        else:
+            queryset = queryset.exclude(status='archived')
+            
+        return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.views_count += 1
+        instance.save(update_fields=['views_count'])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
-        # We need minimum 3 images. They can be passed as a list under 'images' or individually as files.
+        # We need minimum 1 image. They can be passed as a list under 'images' or individually as files.
         images = request.FILES.getlist('images')
         
         # If frontend sends them as individual inputs like image1, image2, image3, collect them:
-        if len(images) < 3:
+        if len(images) < 1:
             collected_images = []
             for key in sorted(request.FILES.keys()):
                 if key.startswith('image'):
                     collected_images.extend(request.FILES.getlist(key))
-            if len(collected_images) >= 3:
+            if len(collected_images) >= 1:
                 images = collected_images
 
-        if len(images) < 3:
+        if len(images) < 1:
             return Response(
-                {"detail": "You must upload a minimum of 3 images of the product."},
+                {"detail": "You must upload at least one image of the product."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        max_size = 10 * 1024 * 1024 # 10MB
+        for img in images:
+            if not img.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return Response(
+                    {"images": ["Unsupported image format. Only JPG, PNG, and WEBP are supported."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if img.size > max_size:
+                return Response(
+                    {"images": ["File too large. Maximum size is 10MB per image."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Calculate the item score from 1 to 10
         try:
@@ -154,6 +190,15 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         for img in images:
             BarterItemImage.objects.create(item=item, image=img)
             
+        # Log CREATED history
+        from .models import ListingHistory
+        ListingHistory.objects.create(
+            listing=item,
+            performed_by=request.user,
+            action='CREATED',
+            metadata={"title": item.title}
+        )
+            
         return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
@@ -163,18 +208,229 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
+        import json
+        from django.utils import timezone
+        from .models import BarterItemImage, ListingHistory
+        from django.conf import settings
+        
         instance = self.get_object()
         if instance.owner != request.user:
             return Response({"detail": "You do not have permission to modify this listing."}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+            
+        old_status = instance.status
+        if old_status == 'traded':
+            return Response({"detail": "Completed listings are read-only and cannot be modified."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Get old images set to track additions and removals
+        old_images = list(instance.additional_images.all())
+        old_image_urls = [request.build_absolute_uri(img.image.url) for img in old_images]
+        if instance.image:
+            old_image_urls.insert(0, request.build_absolute_uri(instance.image.url))
+            
+        # Parse image order
+        image_order = request.data.get('image_order', '[]')
+        if isinstance(image_order, str):
+            try:
+                image_order = json.loads(image_order)
+            except ValueError:
+                image_order = []
+                
+        new_files = request.FILES.getlist('new_images')
+        
+        # Enforce image size/format checks on new uploads
+        max_size = 10 * 1024 * 1024 # 10MB
+        for img in new_files:
+            if not img.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return Response(
+                    {"images": ["Unsupported image format. Only JPG, PNG, and WEBP are supported."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if img.size > max_size:
+                return Response(
+                    {"images": ["File too large. Maximum size is 10MB per image."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Build ordered list of new and retained images
+        ordered_images = []
+        for key in image_order:
+            if key.startswith('retained:'):
+                url = key.split('retained:', 1)[1]
+                ordered_images.append({'type': 'retained', 'value': url})
+            elif key.startswith('new:'):
+                try:
+                    idx = int(key.split('new:', 1)[1])
+                    if idx < len(new_files):
+                        ordered_images.append({'type': 'new', 'value': new_files[idx]})
+                except ValueError:
+                    pass
+                    
+        # Helper to convert absolute URL back to relative path for ImageField
+        def get_relative_media_path(url):
+            if not url:
+                return ""
+            media_url = settings.MEDIA_URL
+            if media_url in url:
+                return url.split(media_url, 1)[1]
+            return url
+            
+        # Update listing fields
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Save primary listing details
+        updated_item = serializer.save()
+        
+        # Handle images if image_order is provided
+        if ordered_images:
+            # Enforce 1-5 image limit
+            if len(ordered_images) < 1 or len(ordered_images) > 5:
+                return Response({"images": ["Listing must have between 1 and 5 images."]}, status=status.HTTP_400_BAD_REQUEST)
+                
+            # Set the cover image (the first one in ordered_images)
+            cover = ordered_images[0]
+            if cover['type'] == 'retained':
+                updated_item.image = get_relative_media_path(cover['value'])
+            elif cover['type'] == 'new':
+                updated_item.image = cover['value']
+            updated_item.save(update_fields=['image'])
+            
+            # Identify which existing additional images to retain
+            retained_rel_paths = []
+            for img in ordered_images[1:]:
+                if img['type'] == 'retained':
+                    retained_rel_paths.append(get_relative_media_path(img['value']))
+                    
+            # Delete any existing additional image not in the retained list
+            for img_obj in instance.additional_images.all():
+                if img_obj.image.name not in retained_rel_paths:
+                    img_obj.delete()
+                    
+            # Re-create/save other additional images in order
+            for img in ordered_images[1:]:
+                if img['type'] == 'retained':
+                    # If it already exists, keep it. If not, recreate it
+                    rel_path = get_relative_media_path(img['value'])
+                    if not instance.additional_images.filter(image=rel_path).exists():
+                        BarterItemImage.objects.create(item=updated_item, image=rel_path)
+                elif img['type'] == 'new':
+                    BarterItemImage.objects.create(item=updated_item, image=img['value'])
+                    
+        # History Action determination
+        new_status = updated_item.status
+        action = 'UPDATED'
+        if old_status != new_status:
+            if new_status == 'reserved':
+                action = 'RESERVED'
+            elif new_status == 'traded':
+                action = 'COMPLETED'
+            elif new_status == 'archived':
+                action = 'ARCHIVED'
+            elif old_status == 'archived' and new_status == 'active':
+                action = 'RESTORED'
+                
+        # Write history logs
+        ListingHistory.objects.create(
+            listing=updated_item,
+            performed_by=request.user,
+            action=action,
+            metadata={"old_status": old_status, "new_status": new_status}
+        )
+        
+        # Track image additions/removals
+        new_images = list(updated_item.additional_images.all())
+        new_image_urls = [request.build_absolute_uri(img.image.url) for img in new_images]
+        if updated_item.image:
+            new_image_urls.insert(0, request.build_absolute_uri(updated_item.image.url))
+            
+        added_count = 0
+        removed_count = 0
+        for url in new_image_urls:
+            if url not in old_image_urls:
+                added_count += 1
+        for url in old_image_urls:
+            if url not in new_image_urls:
+                removed_count += 1
+                
+        if added_count > 0:
+            ListingHistory.objects.create(
+                listing=updated_item, performed_by=request.user, action='IMAGE_ADDED',
+                metadata={"count": added_count}
+            )
+        if removed_count > 0:
+            ListingHistory.objects.create(
+                listing=updated_item, performed_by=request.user, action='IMAGE_REMOVED',
+                metadata={"count": removed_count}
+            )
+            
+        return Response(self.get_serializer(updated_item).data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.owner != request.user:
             return Response({"detail": "You do not have permission to delete this listing."}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Log DELETE history log before deleting the object
+        from .models import ListingHistory
+        ListingHistory.objects.create(
+            listing=instance,
+            performed_by=request.user,
+            action='DELETE',
+            metadata={"title": instance.title}
+        )
+        
         # Delete related images from disk / database first
         instance.additional_images.all().delete()
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def boost(self, request, pk=None):
+        from django.conf import settings
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        instance = self.get_object()
+        
+        # Check permissions
+        if instance.owner != request.user:
+            return Response({"detail": "You do not have permission to boost this listing."}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Get profile of user
+        profile = getattr(request.user, 'profile', None)
+        if not profile:
+            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        cost = getattr(settings, 'BOOST_COST', 100)
+        duration = getattr(settings, 'BOOST_DURATION_DAYS', 7)
+        
+        if profile.coin_balance < cost:
+            return Response({"detail": f"Insufficient coins. Boosting costs {cost} coins."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Deduct coins
+        profile.coin_balance -= cost
+        profile.save(update_fields=['coin_balance'])
+        
+        # Boost listing
+        instance.is_boosted = True
+        instance.boosted_at = timezone.now()
+        instance.boost_expires_at = timezone.now() + timedelta(days=duration)
+        instance.save(update_fields=['is_boosted', 'boosted_at', 'boost_expires_at'])
+        
+        # Create history log
+        from .models import ListingHistory
+        ListingHistory.objects.create(
+            listing=instance,
+            performed_by=request.user,
+            action='BOOSTED',
+            metadata={"cost": cost, "duration_days": duration}
+        )
+        
+        return Response({
+            "message": "Listing boosted successfully!",
+            "new_balance": profile.coin_balance,
+            "boost_expires_at": instance.boost_expires_at
+        }, status=status.HTTP_200_OK)
 
 
 class BarterOfferViewSet(viewsets.ModelViewSet):
@@ -210,16 +466,7 @@ class TradeTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
 
 
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    serializer_class = ChatMessageSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def get_queryset(self):
-        user = self.request.user
-        return ChatMessage.objects.filter(Q(sender=user) | Q(receiver=user))
-
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+# ChatMessageViewSet is replaced by ConversationViewSet actions.
 
 
 class UserReviewViewSet(viewsets.ModelViewSet):
@@ -249,18 +496,77 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         
         display_name = request.data.get('display_name', profile.display_name)
-        bio = request.data.get('bio', profile.bio)
-        location = request.data.get('location', profile.location)
-        phone_number = request.data.get('phone_number', profile.phone_number)
+        if display_name and len(display_name) > 50:
+            return Response({"display_name": ["Display name cannot exceed 50 characters."]}, status=status.HTTP_400_BAD_REQUEST)
+            
+        max_size = 10 * 1024 * 1024 # 10MB
+        if 'profile_picture' in request.FILES:
+            profile_pic = request.FILES['profile_picture']
+            if not profile_pic.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return Response({"avatar": ["Avatar must be JPG or PNG."]}, status=status.HTTP_400_BAD_REQUEST)
+            if profile_pic.size > max_size:
+                return Response({"avatar": ["File too large. Maximum size is 10MB."]}, status=status.HTTP_400_BAD_REQUEST)
+                
+        if 'cover_picture' in request.FILES:
+            cover_pic = request.FILES['cover_picture']
+            if not cover_pic.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return Response({"cover_picture": ["Cover image must be JPG or PNG."]}, status=status.HTTP_400_BAD_REQUEST)
+            if cover_pic.size > max_size:
+                return Response({"cover_picture": ["File too large. Maximum size is 10MB."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'resume' in request.FILES:
+            resume_file = request.FILES['resume']
+            if not resume_file.name.lower().endswith('.pdf'):
+                return Response({"resume": ["Resume must be a PDF file."]}, status=status.HTTP_400_BAD_REQUEST)
+            if resume_file.size > max_size:
+                return Response({"resume": ["File too large. Maximum size is 10MB."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.display_name = display_name
+        profile.bio = request.data.get('bio', profile.bio)
+        profile.location = request.data.get('location', profile.location)
+        profile.phone_number = request.data.get('phone_number', profile.phone_number)
+        profile.profile_picture_url = request.data.get('profile_picture_url', profile.profile_picture_url)
+        profile.cover_picture_url = request.data.get('cover_picture_url', profile.cover_picture_url)
         
+        if 'profile_picture' in request.FILES:
+            from django.core.files.storage import default_storage
+            profile_pic = request.FILES['profile_picture']
+            file_name = default_storage.save(f'profile_pics/{request.user.id}_{profile_pic.name}', profile_pic)
+            profile.profile_picture_url = request.build_absolute_uri(default_storage.url(file_name))
+            
+        if 'cover_picture' in request.FILES:
+            from django.core.files.storage import default_storage
+            cover_pic = request.FILES['cover_picture']
+            file_name = default_storage.save(f'cover_pics/{request.user.id}_{cover_pic.name}', cover_pic)
+            profile.cover_picture_url = request.build_absolute_uri(default_storage.url(file_name))
+        
+        profile.college_organization = request.data.get('college_organization', profile.college_organization)
+        profile.department_branch = request.data.get('department_branch', profile.department_branch)
+        profile.year_of_study = request.data.get('year_of_study', profile.year_of_study)
+        
+        profile.github_profile = request.data.get('github_profile', profile.github_profile)
+        profile.linkedin_profile = request.data.get('linkedin_profile', profile.linkedin_profile)
+        profile.portfolio_website = request.data.get('portfolio_website', profile.portfolio_website)
+        profile.resume_url = request.data.get('resume_url', profile.resume_url)
+        
+        if 'resume' in request.FILES:
+            from django.core.files.storage import default_storage
+            resume_file = request.FILES['resume']
+            file_name = default_storage.save(f'resumes/{request.user.id}_{resume_file.name}', resume_file)
+            profile.resume_url = request.build_absolute_uri(default_storage.url(file_name))
+        
+        proof_of_work = request.data.get('proof_of_work', profile.proof_of_work)
+        if isinstance(proof_of_work, str):
+            import json
+            try:
+                proof_of_work = json.loads(proof_of_work)
+            except ValueError:
+                pass
+        profile.proof_of_work = proof_of_work
+
         is_verified = request.data.get('is_verified', profile.is_verified)
         if isinstance(is_verified, str):
             is_verified = is_verified.lower() == 'true'
-            
-        profile.display_name = display_name
-        profile.bio = bio
-        profile.location = location
-        profile.phone_number = phone_number
         profile.is_verified = is_verified
         
         # Calculate updated trust score dynamically
@@ -269,15 +575,15 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             status='completed'
         ).count()
         
-        profile_complete = bool(display_name and bio and location)
+        profile_complete = bool(profile.display_name and profile.bio and profile.location)
         email_verified = bool(request.user.email)
-        phone_verified = bool(phone_number)
+        phone_verified = bool(profile.phone_number)
         
         score = 30
         if profile_complete: score += 10
         if email_verified: score += 5
         if phone_verified: score += 10
-        if is_verified: score += 20
+        if profile.is_verified: score += 20
         score += min(25, completed_interests * 5)
         score += min(20, int(profile.average_rating * 4))
         
@@ -330,9 +636,10 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         ).count()
 
         # Unread messages
-        unread_messages = ChatMessage.objects.filter(
-            room__in=ChatRoom.objects.filter(Q(user1=user) | Q(user2=user)),
-            is_read=False
+        from chat.models import Message, Conversation
+        unread_messages = Message.objects.filter(
+            conversation__in=Conversation.objects.filter(participants=user),
+            read_at__isnull=True
         ).exclude(sender=user).count()
 
         return Response({
@@ -418,9 +725,11 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         return BarterInterest.objects.filter(Q(requester=user) | Q(receiver=user))
 
     def create(self, request, *args, **kwargs):
-        """Raise a new barter interest (swap proposal)."""
+        """Create a proposal in pending state and leave listings active until accepted."""
         requested_item_id = request.data.get('requested_item')
         offered_item_id = request.data.get('offered_item')
+        proposal_message = (request.data.get('proposal_message') or '').strip()
+        coins_offered = request.data.get('coins_offered', 0)
 
         if not requested_item_id:
             return Response({"detail": "requested_item is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -432,7 +741,7 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
 
         if requested_item.owner == request.user:
             return Response({"detail": "Cannot request your own item."}, status=status.HTTP_400_BAD_REQUEST)
-        if requested_item.status != 'active':
+        if requested_item.status not in {'active', 'reserved'}:
             return Response({"detail": "Requested item is not available."}, status=status.HTTP_400_BAD_REQUEST)
 
         offered_item = None
@@ -446,130 +755,206 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
                 return Response({"detail": "Cannot offer the same product."}, status=status.HTTP_400_BAD_REQUEST)
             if offered_item.owner != request.user:
                 return Response({"detail": "You can only offer your own items."}, status=status.HTTP_400_BAD_REQUEST)
-            if offered_item.status != 'active':
+            if offered_item.status not in {'active', 'reserved'}:
                 return Response({"detail": "Offered item is not available."}, status=status.HTTP_400_BAD_REQUEST)
-            if BarterInterest.objects.filter(offered_item=offered_item, status='completed').exists():
-                return Response({"detail": "This item is already involved in a finalized barter."},
-                                status=status.HTTP_400_BAD_REQUEST)
 
-        # Check duplicate pending/accepted interest
         duplicate_query = BarterInterest.objects.filter(
-            requester=request.user, requested_item=requested_item,
-            status__in=['pending', 'accepted']
+            requester=request.user,
+            requested_item=requested_item,
+            offered_item=offered_item,
+            status__in=['pending', 'negotiating', 'countered', 'accepted']
         )
-        if offered_item:
-            duplicate_query = duplicate_query.filter(offered_item=offered_item)
-        else:
-            duplicate_query = duplicate_query.filter(offered_item__isnull=True)
-
         if duplicate_query.exists():
-            return Response({"detail": "You already have a pending or active interest for this swap."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "You already have an active proposal for this swap."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Auto-accept and create chat room immediately
         interest = BarterInterest.objects.create(
-            requester=request.user, receiver=requested_item.owner,
-            requested_item=requested_item, offered_item=offered_item,
-            status='accepted'
+            requester=request.user,
+            receiver=requested_item.owner,
+            requested_item=requested_item,
+            offered_item=offered_item,
+            status='pending',
+            proposal_message=proposal_message,
+            coins_offered=int(coins_offered or 0),
         )
 
-        # Reserve requested item
-        requested_item.status = 'reserved'
-        requested_item.save()
-        if offered_item:
-            offered_item.status = 'reserved'
-            offered_item.save()
-
-        # Create chat room
-        room, _ = ChatRoom.objects.get_or_create(
+        from chat.models import Conversation
+        room, room_created = Conversation.objects.get_or_create(
             barter_interest=interest,
-            defaults={'user1': interest.requester, 'user2': interest.receiver}
+            defaults={'listing': requested_item}
         )
+        if room_created:
+            room.participants.add(request.user, requested_item.owner)
 
-        # Create DealConfirmation record
         DealConfirmation.objects.get_or_create(barter_interest=interest)
 
-        # Create notification for the item owner
         requester_name = request.user.profile.display_name if (hasattr(request.user, 'profile') and request.user.profile.display_name) else request.user.username
-        notification_message = f"{requester_name} is interested in your product: {requested_item.title}. Chat with him"
-        
         _create_notification(
-            user=requested_item.owner, ntype='interest_received',
-            title='New Swap Interest',
-            message=notification_message,
+            user=requested_item.owner,
+            ntype='interest_received',
+            title='New Swap Proposal',
+            message=f"{requester_name} sent you a new swap proposal for {requested_item.title}.",
             interest=interest
         )
+
+        broadcast_to_group(f"user_{requested_item.owner.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
 
         serializer = self.get_serializer(interest)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
-        """Accept a barter interest → creates chat room."""
+        """Accept a proposal and reserve both listings."""
         interest = self.get_object()
         if interest.receiver != request.user:
             return Response({"detail": "Only the receiver can accept."}, status=status.HTTP_403_FORBIDDEN)
-        
-        if interest.status != 'pending':
-            if interest.status in ['accepted', 'completed']:
-                room = ChatRoom.objects.filter(barter_interest=interest).first()
-                if room:
-                    return Response({"detail": "Already accepted.", "chat_room_id": room.id})
-            return Response({"detail": f"Cannot accept an interest with status '{interest.status}'."},
-                            status=status.HTTP_400_BAD_REQUEST)
 
-        interest.status = 'accepted'
-        interest.save()
+        try:
+            interest.transition_to('accepted')
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Reserve requested item
-        interest.requested_item.status = 'reserved'
-        interest.requested_item.save()
-        if interest.offered_item:
-            interest.offered_item.status = 'reserved'
-            interest.offered_item.save()
-
-        # Create chat room
-        room, _ = ChatRoom.objects.get_or_create(
+        from chat.models import Conversation
+        room, room_created = Conversation.objects.get_or_create(
             barter_interest=interest,
-            defaults={'user1': interest.requester, 'user2': interest.receiver}
+            defaults={'listing': interest.requested_item}
         )
+        if room_created:
+            room.participants.add(interest.requester, interest.receiver)
 
-        # Create DealConfirmation record
         DealConfirmation.objects.get_or_create(barter_interest=interest)
 
-        # Notify requester
         receiver_name = request.user.profile.display_name if (hasattr(request.user, 'profile') and request.user.profile.display_name) else request.user.username
         _create_notification(
-            user=interest.requester, ntype='interest_accepted',
-            title='Interest Accepted!',
-            message=f"{receiver_name} accepted your swap interest for {interest.requested_item.title}. Chat is now open!",
+            user=interest.requester,
+            ntype='interest_accepted',
+            title='Proposal Accepted',
+            message=f"{receiver_name} accepted your swap proposal for {interest.requested_item.title}.",
             interest=interest
         )
+        broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
+        broadcast_to_group(f"user_{interest.receiver.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
 
-        return Response({"detail": "Interest accepted. Chat room created.", "chat_room_id": room.id})
+        return Response({"detail": "Proposal accepted.", "chat_room_id": room.id, "status": interest.status})
 
     @action(detail=True, methods=['post'])
-    def reject(self, request, pk=None):
-        """Reject a barter interest."""
+    def decline(self, request, pk=None):
+        """Decline a proposal."""
         interest = self.get_object()
         if interest.receiver != request.user:
-            return Response({"detail": "Only the receiver can reject."}, status=status.HTTP_403_FORBIDDEN)
-        if interest.status != 'pending':
-            return Response({"detail": f"Cannot reject an interest with status '{interest.status}'."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Only the receiver can decline."}, status=status.HTTP_403_FORBIDDEN)
 
-        interest.status = 'rejected'
-        interest.save()
+        try:
+            interest.transition_to('declined')
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         receiver_name = request.user.profile.display_name if hasattr(request.user, 'profile') else request.user.username
         _create_notification(
-            user=interest.requester, ntype='interest_rejected',
-            title='Interest Declined',
-            message=f"{receiver_name} declined your swap interest for {interest.requested_item.title}.",
+            user=interest.requester,
+            ntype='interest_rejected',
+            title='Proposal Declined',
+            message=f"{receiver_name} declined your swap proposal for {interest.requested_item.title}.",
             interest=interest
         )
+        broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
 
-        return Response({"detail": "Interest rejected."})
+        return Response({"detail": "Proposal declined.", "status": interest.status})
+
+    @action(detail=True, methods=['post'])
+    def negotiate(self, request, pk=None):
+        """Mark a proposal as negotiating so it can be revised."""
+        interest = self.get_object()
+        if interest.receiver != request.user:
+            return Response({"detail": "Only the receiver can negotiate."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            interest.transition_to('negotiating')
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "Proposal is now negotiating.", "status": interest.status})
+
+    @action(detail=True, methods=['post'])
+    def counter(self, request, pk=None):
+        """Create a counter proposal from an existing proposal."""
+        interest = self.get_object()
+        if interest.receiver != request.user:
+            return Response({"detail": "Only the receiver can counter."}, status=status.HTTP_403_FORBIDDEN)
+
+        proposal_message = (request.data.get('proposal_message') or '').strip()
+        coins_offered = request.data.get('coins_offered', 0)
+        offered_item_id = request.data.get('offered_item')
+
+        offered_item = None
+        if offered_item_id:
+            try:
+                offered_item = BarterItem.objects.get(id=offered_item_id)
+            except BarterItem.DoesNotExist:
+                return Response({"detail": "Offered item not found."}, status=status.HTTP_404_NOT_FOUND)
+            if offered_item.owner != request.user:
+                return Response({"detail": "You can only offer your own items."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            interest.transition_to('countered')
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        interest.proposal_message = proposal_message or interest.proposal_message
+        interest.coins_offered = int(coins_offered or 0)
+        if offered_item:
+            interest.offered_item = offered_item
+        interest.save(update_fields=['proposal_message', 'coins_offered', 'offered_item', 'status', 'updated_at'])
+
+        broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
+
+        return Response({"detail": "Counter proposal sent.", "status": interest.status})
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a proposal."""
+        interest = self.get_object()
+        if request.user not in [interest.requester, interest.receiver]:
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+        if interest.status in {'declined', 'cancelled'}:
+            return Response({"detail": "Proposal already closed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            interest.transition_to('cancelled')
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        _create_notification(
+            user=interest.receiver if request.user == interest.requester else interest.requester,
+            ntype='interest_rejected',
+            title='Proposal Cancelled',
+            message='A proposal was cancelled.',
+            interest=interest
+        )
+        broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
+        broadcast_to_group(f"user_{interest.receiver.id}", "proposal.updated", {
+            "id": interest.id,
+            "status": interest.status,
+        })
+
+        return Response({"detail": "Proposal cancelled.", "status": interest.status})
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -598,215 +983,4 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({"detail": "All notifications marked as read."})
 
 
-class ChatRoomViewSet(viewsets.ReadOnlyModelViewSet):
-    """Step 4: Chat rooms list."""
-    serializer_class = ChatRoomSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def get_queryset(self):
-        user = self.request.user
-        return ChatRoom.objects.filter(Q(user1=user) | Q(user2=user)).order_by('-created_at')
-
-    @action(detail=True, methods=['get'])
-    def messages(self, request, pk=None):
-        """Get all messages for a chat room (polling endpoint)."""
-        room = self.get_object()
-        if not room.is_participant(request.user):
-            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
-
-        # Mark messages from other user as read
-        room.messages.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
-
-        msgs = room.messages.all().order_by('created_at')
-        serializer = RoomChatMessageSerializer(msgs, many=True, context={'request': request})
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['post'])
-    def send_message(self, request, pk=None):
-        """Send a message in a chat room (supports text + image)."""
-        room = self.get_object()
-        if not room.is_participant(request.user):
-            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
-
-        message_text = request.data.get('message', '').strip()
-        media_file = request.FILES.get('media', None)
-
-        if not message_text and not media_file:
-            return Response({"detail": "Message or media is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        msg = ChatMessage.objects.create(
-            room=room, sender=request.user,
-            message=message_text, media=media_file
-        )
-
-        serializer = RoomChatMessageSerializer(msg, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['get'])
-    def confirmation_status(self, request, pk=None):
-        """Get deal confirmation status for a chat room."""
-        room = self.get_object()
-        if not room.is_participant(request.user):
-            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
-
-        try:
-            dc = room.barter_interest.deal_confirmation
-            serializer = DealConfirmationSerializer(dc)
-            return Response(serializer.data)
-        except DealConfirmation.DoesNotExist:
-            return Response({"detail": "No deal confirmation exists."}, status=status.HTTP_404_NOT_FOUND)
-
-    @action(detail=True, methods=['post'])
-    def request_confirmation(self, request, pk=None):
-        """Step 5: Request deal confirmation (rate-limited per user)."""
-        room = self.get_object()
-        if not room.is_participant(request.user):
-            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
-
-        interest = room.barter_interest
-        if interest.status != 'accepted':
-            return Response({"detail": "Interest must be accepted first."}, status=status.HTTP_400_BAD_REQUEST)
-
-        dc, _ = DealConfirmation.objects.get_or_create(barter_interest=interest)
-
-        # Determine which user field to use
-        is_user1 = (request.user == interest.requester)
-        count_field = 'user1_request_count' if is_user1 else 'user2_request_count'
-        cooldown_field = 'user1_cooldown_until' if is_user1 else 'user2_cooldown_until'
-
-        # Check cooldown
-        cooldown_until = getattr(dc, cooldown_field)
-        if cooldown_until and timezone.now() < cooldown_until:
-            remaining = (cooldown_until - timezone.now()).seconds
-            return Response({"detail": f"Cooldown active. Wait {remaining}s.", "cooldown_remaining": remaining},
-                            status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-        # Reset count if cooldown has expired
-        if cooldown_until and timezone.now() >= cooldown_until:
-            setattr(dc, count_field, 0)
-            setattr(dc, cooldown_field, None)
-
-        current_count = getattr(dc, count_field)
-        if current_count >= 3:
-            # Set 60 second cooldown
-            from datetime import timedelta
-            setattr(dc, cooldown_field, timezone.now() + timedelta(seconds=60))
-            dc.save()
-            return Response({"detail": "Rate limit reached. 60s cooldown activated.", "cooldown_remaining": 60},
-                            status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-        # Increment count
-        setattr(dc, count_field, current_count + 1)
-        dc.save()
-
-        # Notify the other participant
-        other_user = interest.receiver if is_user1 else interest.requester
-        requester_name = request.user.profile.display_name if hasattr(request.user, 'profile') else request.user.username
-        _create_notification(
-            user=other_user, ntype='deal_requested',
-            title='Deal Confirmation Requested',
-            message=f"{requester_name} has requested to finalize the barter deal.",
-            interest=interest
-        )
-
-        return Response({"detail": "Confirmation request sent.", "request_count": current_count + 1})
-
-    @action(detail=True, methods=['post'])
-    def respond_confirmation(self, request, pk=None):
-        """Step 5: Respond to deal confirmation (accept/decline)."""
-        room = self.get_object()
-        if not room.is_participant(request.user):
-            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
-
-        action_type = request.data.get('action')  # 'accept' or 'decline'
-        if action_type not in ('accept', 'decline'):
-            return Response({"detail": "Action must be 'accept' or 'decline'."}, status=status.HTTP_400_BAD_REQUEST)
-
-        interest = room.barter_interest
-        try:
-            dc = interest.deal_confirmation
-        except DealConfirmation.DoesNotExist:
-            return Response({"detail": "No deal confirmation exists."}, status=status.HTTP_404_NOT_FOUND)
-
-        is_user1 = (request.user == interest.requester)
-
-        if action_type == 'accept':
-            if is_user1:
-                dc.user1_confirmed = True
-            else:
-                dc.user2_confirmed = True
-            dc.save()
-
-            # Check if both confirmed → complete the deal
-            if dc.user1_confirmed and dc.user2_confirmed:
-                dc.completed_at = timezone.now()
-                dc.save()
-
-                interest.status = 'completed'
-                interest.save()
-
-                # Mark items as traded
-                interest.requested_item.status = 'traded'
-                interest.requested_item.save()
-                if interest.offered_item:
-                    interest.offered_item.status = 'traded'
-                    interest.offered_item.save()
-
-                # Coin System Logic (1 coin = 100 rupees)
-                price1 = interest.requested_item.purchase_price
-                price2 = interest.offered_item.purchase_price if interest.offered_item else 0
-                
-                diff = abs(price1 - price2)
-                coins_to_credit = int(diff / 100)
-                
-                if coins_to_credit > 0:
-                    # User receiving the lower value item gets the coins
-                    if price1 < price2:
-                        recipient = interest.requester
-                    else:
-                        recipient = interest.receiver
-                        
-                    profile, _ = UserProfile.objects.get_or_create(user=recipient)
-                    profile.add_coins(coins_to_credit)
-                    CoinTransaction.objects.create(
-                        user=recipient,
-                        amount=coins_to_credit,
-                        transaction_type='earned',
-                        description=f"Coin credit for barter value gap (Items: {interest.requested_item.title} vs {interest.offered_item.title if interest.offered_item else 'N/A'})"
-                    )
-
-                # Award trust & points to both users (Steps 7 & 8)
-                for u in [interest.requester, interest.receiver]:
-                    profile, _ = UserProfile.objects.get_or_create(user=u)
-                    profile.adjust_trust(5)   # +5 trust for completed barter
-                    profile.add_points(50)    # +50 reward points
-
-                # Notify both users
-                for u in [interest.requester, interest.receiver]:
-                    _create_notification(
-                        user=u, ntype='deal_completed',
-                        title='Barter Completed! 🎉',
-                        message=f"Your barter deal has been finalized. +5 Trust, +50 Points awarded!",
-                        interest=interest
-                    )
-
-                return Response({"detail": "Deal completed! Both parties confirmed.", "status": "completed"})
-
-            return Response({"detail": "Your confirmation recorded. Waiting for the other party."})
-
-        else:  # decline
-            # Penalize trust for spam rejection
-            requester_profile, _ = UserProfile.objects.get_or_create(user=request.user)
-            # Don't penalize the decliner, just reset the request
-            other_user = interest.requester if not is_user1 else interest.receiver
-            other_profile, _ = UserProfile.objects.get_or_create(user=other_user)
-            other_profile.adjust_trust(-1)  # -1 trust for rejected confirmation spam
-
-            # Reset confirmation for the requester
-            if is_user1:
-                dc.user2_confirmed = False  # Reset other's state if they re-request
-            else:
-                dc.user1_confirmed = False
-            dc.save()
-
-            return Response({"detail": "Confirmation declined."})
+# ChatRoomViewSet has been removed and replaced by ConversationViewSet in the chat app.

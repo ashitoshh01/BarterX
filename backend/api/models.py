@@ -2,6 +2,8 @@
 from django.db import models
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 # 1. User Profile Model
 class UserProfile(models.Model):
@@ -27,6 +29,15 @@ class UserProfile(models.Model):
         blank=True,
         null=True
     )
+    cover_picture_url = models.URLField(max_length=500, blank=True, null=True)
+    college_organization = models.CharField(max_length=255, blank=True, null=True)
+    department_branch = models.CharField(max_length=255, blank=True, null=True)
+    year_of_study = models.CharField(max_length=50, blank=True, null=True)
+    github_profile = models.URLField(max_length=500, blank=True, null=True)
+    linkedin_profile = models.URLField(max_length=500, blank=True, null=True)
+    portfolio_website = models.URLField(max_length=500, blank=True, null=True)
+    resume_url = models.URLField(max_length=500, blank=True, null=True)
+    proof_of_work = models.JSONField(default=list, blank=True)
 
     # Trust Score System (Step 7)
     # New users start at 50, range 0-100
@@ -37,6 +48,18 @@ class UserProfile(models.Model):
     
     # BarterX Coin System
     coin_balance = models.IntegerField(default=10)
+
+    # Real-Time Chat Presence fields
+    online_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('online', 'Online'),
+            ('away', 'Away'),
+            ('offline', 'Offline')
+        ],
+        default='offline'
+    )
+    last_seen = models.DateTimeField(null=True, blank=True)
 
     def adjust_trust(self, delta):
         """Safely adjust trust score within 0-100 bounds."""
@@ -112,6 +135,12 @@ class BarterItem(models.Model):
     purchase_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     item_score = models.FloatField(default=5.0)
 
+    # Boost system & views analytics
+    is_boosted = models.BooleanField(default=False)
+    boosted_at = models.DateTimeField(null=True, blank=True)
+    boost_expires_at = models.DateTimeField(null=True, blank=True)
+    views_count = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -125,6 +154,18 @@ class BarterItemImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.item.title}"
+
+# Listing History model
+class ListingHistory(models.Model):
+    listing = models.ForeignKey(BarterItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='history_logs')
+    performed_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listing_actions')
+    action = models.CharField(max_length=50) # CREATED, UPDATED, BOOSTED, ARCHIVED, RESTORED, COMPLETED, RESERVED, etc.
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        listing_title = self.listing.title if self.listing else "Deleted Listing"
+        return f"{self.action} on {listing_title} by {self.performed_by.username}"
 
 # 4. Barter Offer Model (Legacy — kept for backward compatibility)
 class BarterOffer(models.Model):
@@ -157,9 +198,10 @@ class BarterOffer(models.Model):
 class BarterInterest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('negotiating', 'Negotiating'),
+        ('countered', 'Countered'),
         ('accepted', 'Accepted'),
-        ('rejected', 'Rejected'),
-        ('completed', 'Completed'),
+        ('declined', 'Declined'),
         ('cancelled', 'Cancelled'),
     ]
 
@@ -168,6 +210,9 @@ class BarterInterest(models.Model):
     requested_item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='interest_requests')
     offered_item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='interest_offers', null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    proposal_message = models.TextField(blank=True, default='')
+    coins_offered = models.IntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -181,6 +226,84 @@ class BarterInterest(models.Model):
     def __str__(self):
         offered_title = self.offered_item.title if self.offered_item else "Nothing (Show Interest)"
         return f"Interest: {self.requester.username} offers {offered_title} for {self.requested_item.title}"
+
+    def get_allowed_transitions(self):
+        transitions = {
+            'pending': {'negotiating', 'accepted', 'declined', 'cancelled'},
+            'negotiating': {'countered', 'accepted', 'declined', 'cancelled'},
+            'countered': {'accepted', 'declined', 'cancelled'},
+            'accepted': {'cancelled'},
+            'declined': set(),
+            'cancelled': set(),
+        }
+        return transitions.get(self.status, set())
+
+    def transition_to(self, new_status):
+        if new_status not in self.get_allowed_transitions():
+            raise ValidationError(f"Invalid transition from '{self.status}' to '{new_status}'.")
+
+        previous_status = self.status
+        self.status = new_status
+        self.updated_at = timezone.now()
+        self.save(update_fields=['status', 'updated_at'])
+
+        if previous_status == 'accepted' and new_status in {'cancelled', 'declined'}:
+            self._unlock_listings()
+        elif new_status == 'accepted' and previous_status != 'accepted':
+            self._reserve_listings()
+            self._ensure_trade_exists()
+
+        return self
+
+    def _reserve_listings(self):
+        self.requested_item.status = 'reserved'
+        self.requested_item.save(update_fields=['status'])
+        if self.offered_item:
+            self.offered_item.status = 'reserved'
+            self.offered_item.save(update_fields=['status'])
+
+    def _unlock_listings(self):
+        self.requested_item.status = 'active'
+        self.requested_item.save(update_fields=['status'])
+        if self.offered_item:
+            self.offered_item.status = 'active'
+            self.offered_item.save(update_fields=['status'])
+
+    def _ensure_trade_exists(self):
+        if hasattr(self, 'trade'):
+            return self.trade
+        return Trade.objects.create(
+            proposal=self,
+            requested_listing=self.requested_item,
+            offered_listing=self.offered_item,
+            requester=self.requester,
+            receiver=self.receiver,
+            status='pending',
+        )
+
+
+class Trade(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    proposal = models.OneToOneField(BarterInterest, on_delete=models.CASCADE, related_name='trade')
+    requested_listing = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='trades_as_requested')
+    offered_listing = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='trades_as_offered', null=True, blank=True)
+    requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_requester')
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_receiver')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Trade for proposal #{self.proposal_id}"
 
 
 # 6. Notification Model (Step 2)
@@ -211,39 +334,7 @@ class Notification(models.Model):
         return f"Notification for {self.user.username}: {self.title}"
 
 
-# 7. Chat Room Model (Step 4 — room-based chat)
-class ChatRoom(models.Model):
-    barter_interest = models.OneToOneField(BarterInterest, on_delete=models.CASCADE, related_name='chat_room')
-    user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_rooms_as_user1')
-    user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_rooms_as_user2')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"ChatRoom: {self.user1.username} & {self.user2.username}"
-
-    def is_participant(self, user):
-        return user == self.user1 or user == self.user2
-
-
-# 8. Chat Message Model (Refactored for room-based architecture)
-class ChatMessage(models.Model):
-    # New room-based FK (required for new flow)
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages', null=True, blank=True)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    # Legacy fields kept for backward compatibility with old chat messages
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)
-    offer = models.ForeignKey(BarterOffer, on_delete=models.SET_NULL, null=True, blank=True, related_name='messages')
-    message = models.TextField(blank=True, default='')
-    media = models.ImageField(upload_to='chat_media/', blank=True, null=True)
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['created_at']
-
-    def __str__(self):
-        return f"Msg from {self.sender.username} at {self.created_at}"
-
+# ChatRoom and ChatMessage are replaced by Conversation and Message in the chat app.
 
 # 9. Deal Confirmation Model (Step 5 — dual-confirm system)
 class DealConfirmation(models.Model):
