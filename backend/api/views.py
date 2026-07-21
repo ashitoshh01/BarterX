@@ -1,26 +1,191 @@
 from rest_framework import viewsets, generics, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 import random
 import re
+import requests as http_requests
 
 from .models import (
     BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
     UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
-    BarterInterest, Notification, DealConfirmation, Trade
+    BarterInterest, Notification, DealConfirmation, Trade, Contract
 )
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
     UserReviewSerializer, UserSerializer, UserProfileSerializer,
     TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
-    DealConfirmationSerializer, BarterItemCompactSerializer
+    DealConfirmationSerializer, BarterItemCompactSerializer, CoinTransactionSerializer,
+    ContractSerializer, TradeSerializer, DisputeSerializer
 )
 from .email_services import send_otp_email
 from chat.services import broadcast_to_group
+from .pdf_service import generate_contract_pdf
+from .ai_service import get_ai_matches
+
+# ============================================================
+# NEW AUTH VIEWS
+# ============================================================
+
+class EmailOrUsernameTokenSerializer(TokenObtainPairSerializer):
+    """
+    Allows login with EITHER email OR username in the 'username' field.
+    """
+    def validate(self, attrs):
+        identifier = attrs.get(self.username_field, '').strip()
+        # If it looks like an email, resolve to the Django username
+        if '@' in identifier:
+            try:
+                user_obj = User.objects.get(email=identifier)
+                attrs[self.username_field] = user_obj.username
+            except User.DoesNotExist:
+                pass  # Let the default validator raise the error
+        return super().validate(attrs)
+
+class FlexLoginView(TokenObtainPairView):
+    """Endpoint: POST /api/login/  — accepts username or email."""
+    serializer_class = EmailOrUsernameTokenSerializer
+
+
+class SimpleRegisterView(generics.CreateAPIView):
+    """
+    POST /api/register/simple/
+    Body: { name, username, email, password }
+    Creates User + UserProfile in one shot, returns JWT tokens.
+    No OTP required — straightforward signup.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        name = data.get('name', '').strip()
+        username = data.get('username', '').strip().lower()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+
+        # Validation
+        errors = {}
+        if not name:
+            errors['name'] = 'Full name is required.'
+        if not username:
+            errors['username'] = 'Username is required.'
+        elif not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
+            errors['username'] = 'Username must be 3-30 characters (letters, numbers, underscores only).'
+        elif User.objects.filter(username=username).exists():
+            errors['username'] = 'This username is already taken.'
+        if not email or not re.match(r'[^@]+@[^@]+\.[^@]+', email):
+            errors['email'] = 'A valid email address is required.'
+        elif User.objects.filter(email=email).exists():
+            errors['email'] = 'An account with this email already exists.'
+        if len(password) < 8:
+            errors['password'] = 'Password must be at least 8 characters.'
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=name,
+            )
+            UserProfile.objects.filter(user=user).update(
+                display_name=name,
+                account_type='individual',
+                coin_balance=10,
+            )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'username': user.username,
+        }, status=status.HTTP_201_CREATED)
+
+
+class GoogleOAuthView(generics.GenericAPIView):
+    """
+    POST /api/auth/google/
+    Body: { credential: '<Google id_token>' }
+    Verifies the token with Google, creates user if new, returns JWT.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        credential = request.data.get('credential', '')
+        if not credential:
+            return Response({'detail': 'Google credential is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify with Google tokeninfo endpoint
+        try:
+            google_resp = http_requests.get(
+                'https://oauth2.googleapis.com/tokeninfo',
+                params={'id_token': credential},
+                timeout=5
+            )
+            google_data = google_resp.json()
+        except Exception:
+            return Response({'detail': 'Failed to verify Google token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if google_resp.status_code != 200 or 'email' not in google_data:
+            return Response({'detail': 'Invalid Google token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = google_data['email'].lower()
+        name = google_data.get('name', email.split('@')[0])
+        google_id = google_data.get('sub', '')
+        picture = google_data.get('picture', '')
+
+        with transaction.atomic():
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': self._make_username(email, name),
+                    'first_name': name.split(' ')[0],
+                    'last_name': ' '.join(name.split(' ')[1:]),
+                }
+            )
+            if created:
+                user.set_unusable_password()
+                user.save()
+                UserProfile.objects.filter(user=user).update(
+                    display_name=name,
+                    account_type='individual',
+                    profile_picture_url=picture,
+                    coin_balance=10,
+                )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'username': user.username,
+            'created': created,
+        }, status=status.HTTP_200_OK)
+
+    def _make_username(self, email, name):
+        """Generate a unique username from name or email."""
+        base = re.sub(r'[^a-zA-Z0-9_]', '_', name.lower().split(' ')[0])
+        if not User.objects.filter(username=base).exists():
+            return base
+        # Try email prefix
+        base2 = re.sub(r'[^a-zA-Z0-9_]', '_', email.split('@')[0])
+        if not User.objects.filter(username=base2).exists():
+            return base2
+        # Add random suffix
+        for _ in range(10):
+            candidate = f"{base2}_{random.randint(10, 9999)}"
+            if not User.objects.filter(username=candidate).exists():
+                return candidate
+        return f"user_{random.randint(10000, 99999)}"
 
 
 # ============================================================
@@ -76,6 +241,50 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = (permissions.AllowAny,)
 
+
+    @action(detail=False, methods=['get'])
+    def nearby_traders(self, request):
+        user_profile = request.user.profile
+        my_location = user_profile.location or ""
+        my_city = my_location.split(',')[0].strip().lower() if my_location else ""
+        
+        # Get active items from other users
+        active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
+        
+        trader_map = {}
+        for item in active_items:
+            owner = item.owner
+            if owner.id not in trader_map:
+                owner_loc = item.location or owner.profile.location or ""
+                owner_city = owner_loc.split(',')[0].strip().lower() if owner_loc else ""
+                
+                # Deterministic pseudo-distance
+                if not my_city or not owner_city:
+                    distance_km = hash(owner.username) % 20 + 10 # 10-29 km
+                elif my_city == owner_city:
+                    distance_km = hash(owner.username) % 5 + 1 # 1-5 km
+                else:
+                    distance_km = hash(owner.username) % 15 + 5 # 5-19 km
+                    
+                trader_map[owner.id] = {
+                    "id": owner.id,
+                    "name": owner.profile.display_name or owner.username,
+                    "username": owner.username,
+                    "avatar": owner.profile.profile_picture_url,
+                    "distance": f"{distance_km} km away",
+                    "mutual_friends": hash(owner.username) % 5,
+                    "items": []
+                }
+                
+            trader_map[owner.id]["items"].append({
+                "id": item.id,
+                "image": item.image_url or (item.image.url if item.image else None)
+            })
+            
+        # Return only traders that have at least 1 item, sorted by distance
+        traders_list = list(trader_map.values())
+        traders_list.sort(key=lambda x: int(x["distance"].split(' ')[0]))
+        return Response(traders_list[:10])
 
 class BarterItemViewSet(viewsets.ModelViewSet):
     serializer_class = BarterItemSerializer
@@ -984,3 +1193,92 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # ChatRoomViewSet has been removed and replaced by ConversationViewSet in the chat app.
+
+class CoinTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = CoinTransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return CoinTransaction.objects.filter(user=self.request.user).order_by('-created_at')
+
+class ContractViewSet(viewsets.ModelViewSet):
+    serializer_class = ContractSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Contract.objects.filter(Q(party_a=self.request.user) | Q(party_b=self.request.user)).order_by('-created_at')
+        
+    @action(detail=True, methods=['post'])
+    def sign(self, request, pk=None):
+        contract = self.get_object()
+        if request.user == contract.party_a:
+            contract.signed_a = True
+        elif request.user == contract.party_b:
+            contract.signed_b = True
+        else:
+            return Response({"detail": "Not authorized to sign this contract."}, status=status.HTTP_403_FORBIDDEN)
+            
+        if contract.signed_a and contract.signed_b:
+            contract.status = 'signed'
+            
+        contract.save()
+        return Response(self.get_serializer(contract).data)
+        
+    @action(detail=True, methods=['get'])
+    def download_pdf(self, request, pk=None):
+        contract = self.get_object()
+        if request.user not in [contract.party_a, contract.party_b]:
+            return Response({"detail": "Not authorized to view this contract."}, status=status.HTTP_403_FORBIDDEN)
+            
+        pdf_buffer = generate_contract_pdf(contract)
+        
+        response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Contract_{contract.id}.pdf"'
+        return response
+
+class TradeViewSet(viewsets.ModelViewSet):
+    serializer_class = TradeSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Trade.objects.filter(Q(requester=self.request.user) | Q(receiver=self.request.user)).order_by('-created_at')
+
+    @action(detail=True, methods=['post'])
+    def update_logistics(self, request, pk=None):
+        trade = self.get_object()
+        logistics_status = request.data.get('logistics_status')
+        tracking_number = request.data.get('tracking_number')
+        shipping_provider = request.data.get('shipping_provider')
+
+        if logistics_status:
+            trade.logistics_status = logistics_status
+        if tracking_number is not None:
+            trade.tracking_number = tracking_number
+        if shipping_provider is not None:
+            trade.shipping_provider = shipping_provider
+            
+        if logistics_status == 'delivered':
+            trade.status = 'completed'
+            trade.completed_at = timezone.now()
+
+        trade.save()
+        return Response(self.get_serializer(trade).data)
+
+class DisputeViewSet(viewsets.ModelViewSet):
+    serializer_class = DisputeSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Dispute.objects.filter(Q(raised_by=self.request.user) | Q(against=self.request.user)).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(raised_by=self.request.user)
+
+class AIRecommendationViewSet(viewsets.ViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @action(detail=False, methods=['get'])
+    def matches(self, request):
+        matches = get_ai_matches(request.user)
+        return Response(matches)
+

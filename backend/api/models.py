@@ -295,6 +295,12 @@ class Trade(models.Model):
     requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_requester')
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades_as_receiver')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Logistics tracking
+    tracking_number = models.CharField(max_length=100, blank=True)
+    shipping_provider = models.CharField(max_length=50, blank=True)
+    logistics_status = models.CharField(max_length=50, default='preparing') # preparing, shipped, out_for_delivery, delivered
+    
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
@@ -432,3 +438,38 @@ class TradeTransaction(models.Model):
 
     def __str__(self):
         return f"Trade Transaction: {self.user_1.username} & {self.user_2.username} at {self.completed_at}"
+
+class Contract(models.Model):
+    barter_interest = models.OneToOneField('BarterInterest', on_delete=models.CASCADE, related_name='contract')
+    party_a = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts_as_party_a')
+    party_b = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts_as_party_b')
+    status = models.CharField(max_length=20, default='pending') # pending, signed, completed
+    terms = models.JSONField(default=list)
+    signed_a = models.BooleanField(default=False)
+    signed_b = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Contract {self.id} between {self.party_a.username} and {self.party_b.username}"
+
+class Dispute(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('investigating', 'Investigating'),
+        ('resolved', 'Resolved'),
+    ]
+
+    trade = models.ForeignKey(Trade, on_delete=models.SET_NULL, null=True, blank=True, related_name='disputes')
+    raised_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_raised')
+    against = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_against')
+    reason = models.CharField(max_length=100)
+    detail = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolution = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Dispute {self.id} by {self.raised_by.username} against {self.against.username}"
+
+

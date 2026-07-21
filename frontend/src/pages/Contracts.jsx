@@ -4,13 +4,35 @@ import { Check, FileText } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, NbButton } from "@/components/UI";
 import { toast } from "sonner";
+import api from "@/lib/api";
 
 const Contracts = () => {
-  const { contracts, users, setContracts } = useApp();
+  const { contracts, setContracts } = useApp();
 
-  const sign = (id) => {
-    setContracts((prev) => prev.map((c) => c.id === id ? { ...c, signedB: true, status: "signed" } : c));
-    toast.success("Contract signed 🖋️");
+  const sign = async (id) => {
+    try {
+      const res = await api.post(`/contracts/${id}/sign/`);
+      setContracts((prev) => prev.map((c) => {
+        if (c.id === id) {
+          return {
+            ...c,
+            signedA: res.data.signed_a,
+            signedB: res.data.signed_b,
+            status: res.data.status
+          };
+        }
+        return c;
+      }));
+      toast.success("Contract signed 🖋️");
+    } catch (err) {
+      toast.error("Failed to sign contract.");
+    }
+  };
+
+  const downloadPdf = (id) => {
+    const token = localStorage.getItem("barter_token");
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000";
+    window.open(`${backendUrl}/api/contracts/${id}/download_pdf/?token=${token}`, '_blank');
   };
 
   return (
@@ -19,7 +41,7 @@ const Contracts = () => {
 
       <div className="space-y-4">
         {contracts.map((c) => {
-          const other = users[c.partyB === "u_me" ? c.partyA : c.partyB];
+          const otherName = c.direction === 'A' ? c.partyBDisplay : c.partyADisplay;
           return (
             <div key={c.id} className="nb-card p-6 bg-[var(--surface)]" data-testid={`contract-${c.id}`}>
               <div className="flex items-start justify-between mb-4">
@@ -29,7 +51,7 @@ const Contracts = () => {
                   </div>
                   <div>
                     <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">Contract {c.id}</div>
-                    <div className="font-display text-2xl">Swap with {other?.name}</div>
+                    <div className="font-display text-2xl">Swap with {otherName}</div>
                   </div>
                 </div>
                 <span className={`nb-tag ${c.status === "signed" ? "tint-lime" : "tint-amber"}`}>
@@ -69,11 +91,22 @@ const Contracts = () => {
                     <div className="font-bold">{c.signedB ? "✓ Signed" : "Pending"}</div>
                   </div>
                 </div>
-                {!c.signedB && (
-                  <NbButton onClick={() => sign(c.id)} data-testid={`contract-sign-${c.id}`}>
-                    Sign contract
-                  </NbButton>
-                )}
+                
+                <div className="flex items-center gap-2">
+                  {((c.direction === 'A' && !c.signedA) || (c.direction === 'B' && !c.signedB)) && (
+                    <NbButton onClick={() => sign(c.id)} data-testid={`contract-sign-${c.id}`}>
+                      Sign contract
+                    </NbButton>
+                  )}
+                  {c.status === 'signed' && (
+                    <button 
+                      onClick={() => downloadPdf(c.id)} 
+                      className="nb-btn px-4 py-2 rounded-lg text-sm font-bold bg-white text-black"
+                    >
+                      Download PDF
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

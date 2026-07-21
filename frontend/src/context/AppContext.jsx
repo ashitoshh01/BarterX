@@ -242,6 +242,53 @@ const mapMessage = (msg) => ({
   isRead: msg.read_at !== null
 });
 
+const mapWalletTransaction = (t) => ({
+  id: String(t.id),
+  type: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? 'earn' : 'spend',
+  amount: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? Math.abs(t.amount) : -Math.abs(t.amount),
+  reason: t.description || (t.transaction_type === 'purchased' ? 'Coins purchased' : 'Coins spent'),
+  time: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'recently',
+});
+
+const mapReview = (r) => ({
+  id: String(r.id),
+  from: r.reviewer_display_name || r.reviewer_username || 'Anonymous',
+  to: r.reviewed_user_username,
+  rating: r.rating || 5,
+  text: r.comment || '',
+  time: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'recently',
+});
+
+const mapContract = (c, username) => {
+  const isPartyA = c.party_a_username === username;
+  return {
+    id: String(c.id),
+    partyA: c.party_a_username,
+    partyB: c.party_b_username,
+    partyADisplay: c.party_a_display_name,
+    partyBDisplay: c.party_b_display_name,
+    status: c.status, // pending, signed
+    items: [
+      c.barter_interest?.requested_item?.title || "Item",
+      c.barter_interest?.offered_item?.title || "Item"
+    ].filter(Boolean),
+    terms: c.terms || [],
+    signedA: c.signed_a,
+    signedB: c.signed_b,
+    direction: isPartyA ? 'A' : 'B'
+  };
+};
+
+const mapDispute = (d) => ({
+  id: String(d.id),
+  against: d.against_username,
+  againstDisplay: d.against_name,
+  reason: d.reason,
+  detail: d.detail,
+  status: d.status,
+  opened: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'recently',
+});
+
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(CURRENT_USER);
   const [isAuthed, setIsAuthed] = useState(false);
@@ -251,9 +298,12 @@ export const AppProvider = ({ children }) => {
   const [chats, setChats] = useState([]);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const [saved, setSaved] = useState(new Set(["l_3", "l_5"]));
-  const [contracts, setContracts] = useState(CONTRACTS);
-  const [disputes, setDisputes] = useState(DISPUTES);
-  const [wallet, setWallet] = useState(WALLET_HISTORY);
+  const [contracts, setContracts] = useState([]);
+  const [trades, setTrades] = useState([]);
+  const [disputes, setDisputes] = useState([]);
+  const [wallet, setWallet] = useState([]);
+  const [reviewsList, setReviewsList] = useState([]);
+  const [aiMatches, setAiMatches] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -486,6 +536,57 @@ export const AppProvider = ({ children }) => {
       const mappedChats = chatsRes.data.map(c => mapConversation(c, profileRes.data));
       setChats(mappedChats);
 
+      // Fetch wallet transactions
+      try {
+        const walletRes = await api.get("/wallet/transactions/");
+        setWallet(walletRes.data.map(mapWalletTransaction));
+      } catch (err) {
+        console.warn("Failed to fetch wallet transactions", err);
+        setWallet(WALLET_HISTORY); // Fallback to mock for now
+      }
+
+      // Fetch reviews
+      try {
+        const reviewsRes = await api.get("/reviews/");
+        setReviewsList(reviewsRes.data.map(mapReview));
+      } catch (err) {
+        console.warn("Failed to fetch reviews", err);
+        setReviewsList(REVIEWS); // Fallback to mock for now
+      }
+
+      // Fetch contracts
+      try {
+        const contractsRes = await api.get("/contracts/");
+        setContracts(contractsRes.data.map(c => mapContract(c, profileRes.data.username)));
+      } catch (err) {
+        console.warn("Failed to fetch contracts", err);
+      }
+
+      // Fetch trades (Logistics)
+      try {
+        const tradesRes = await api.get("/trades/");
+        setTrades(tradesRes.data);
+      } catch (err) {
+        console.warn("Failed to fetch trades", err);
+      }
+
+      // Fetch disputes
+      try {
+        const disputesRes = await api.get("/disputes/");
+        setDisputes(disputesRes.data.map(mapDispute));
+      } catch (err) {
+        console.warn("Failed to fetch disputes", err);
+      }
+      
+      // Fetch AI Matches
+      try {
+        const matchesRes = await api.get("/recommendations/matches/");
+        setAiMatches(matchesRes.data);
+      } catch (err) {
+        console.warn("Failed to fetch AI matches", err);
+        setAiMatches(AI_MATCHES); // fallback to mock
+      }
+
       // Connect WebSocket
       connectWebSocket(token);
     } catch (err) {
@@ -506,21 +607,36 @@ export const AppProvider = ({ children }) => {
     }
   }, [initializeApp]);
 
-  const login = useCallback(async (username, password) => {
+  // login(identifier, password) — accepts email OR username
+  // login("__google__", "__google__", existingToken) — Google OAuth bypass
+  const login = useCallback(async (identifier, password, existingToken = null) => {
     try {
       setError(null);
-      const res = await api.post("/login/", { username, password });
+
+      // Google OAuth flow — token already obtained externally
+      if (existingToken) {
+        await initializeApp(existingToken);
+        return { success: true };
+      }
+
+      // Normal email/username + password flow
+      const res = await api.post("/login/", { username: identifier, password });
       localStorage.setItem("barter_token", res.data.access);
       localStorage.setItem("barter_refresh_token", res.data.refresh);
-      
+
       await initializeApp(res.data.access);
       return { success: true };
     } catch (err) {
       console.error("Login failed:", err);
-      const msg = err.response?.data?.detail || (err.request ? "Server is unreachable. Please make sure the backend is running." : "Login failed. Please check credentials.");
+      const msg =
+        err.response?.data?.detail ||
+        (err.request
+          ? "Server is unreachable. Make sure the backend is running."
+          : "Login failed. Please check your credentials.");
       return { success: false, error: msg };
     }
   }, [initializeApp]);
+
 
   const toggleSave = useCallback((id) => {
     setSaved((prev) => {
@@ -979,12 +1095,13 @@ export const AppProvider = ({ children }) => {
     notifications, markAllRead,
     saved, toggleSave,
     contracts, setContracts,
+    trades, setTrades,
     disputes, setDisputes,
     wallet, setWallet,
     users: dynamicUsers, categories: categoriesList,
-    aiMatches: AI_MATCHES, tracker: SWAP_TRACKER, reviews: REVIEWS,
+    aiMatches: aiMatches.length > 0 ? aiMatches : AI_MATCHES, tracker: SWAP_TRACKER, reviews: reviewsList,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, disputes, wallet, categoriesList, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers]);
 
   if (loading) {
     return (

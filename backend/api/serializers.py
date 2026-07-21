@@ -13,7 +13,7 @@ from django.db.models import Q
 from .models import (
     UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
     UserReview, TradeTransaction, OTPVerification,
-    BarterInterest, Notification, DealConfirmation, ListingHistory
+    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute
 )
 
 
@@ -403,3 +403,58 @@ class DealConfirmationSerializer(serializers.ModelSerializer):
                   'user1_cooldown_until', 'user2_cooldown_until',
                   'is_completed', 'completed_at', 'created_at')
         read_only_fields = '__all__'
+
+class CoinTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CoinTransaction
+        fields = ('id', 'user', 'amount', 'transaction_type', 'description', 'created_at')
+        read_only_fields = ('user', 'amount', 'transaction_type', 'description', 'created_at')
+
+class ContractSerializer(serializers.ModelSerializer):
+    party_a_username = serializers.ReadOnlyField(source='party_a.username')
+    party_b_username = serializers.ReadOnlyField(source='party_b.username')
+    party_a_display_name = serializers.SerializerMethodField()
+    party_b_display_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Contract
+        fields = (
+            'id', 'barter_interest', 'party_a', 'party_b', 
+            'party_a_username', 'party_b_username', 'party_a_display_name', 'party_b_display_name',
+            'status', 'terms', 'signed_a', 'signed_b', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('barter_interest', 'party_a', 'party_b', 'status', 'created_at', 'updated_at')
+
+    def get_party_a_display_name(self, obj):
+        try:
+            return obj.party_a.profile.display_name or obj.party_a.username
+        except:
+            return obj.party_a.username
+
+    def get_party_b_display_name(self, obj):
+        try:
+            return obj.party_b.profile.display_name or obj.party_b.username
+        except:
+            return obj.party_b.username
+
+class TradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trade
+        fields = '__all__'
+        read_only_fields = ('proposal', 'requested_listing', 'offered_listing', 'requester', 'receiver', 'created_at')
+
+class DisputeSerializer(serializers.ModelSerializer):
+    against_username = serializers.ReadOnlyField(source='against.username')
+    against_name = serializers.SerializerMethodField()
+    raised_by_username = serializers.ReadOnlyField(source='raised_by.username')
+    
+    class Meta:
+        model = Dispute
+        fields = '__all__'
+        read_only_fields = ('raised_by', 'status', 'created_at', 'resolution')
+        
+    def get_against_name(self, obj):
+        try:
+            return obj.against.profile.display_name or obj.against.username
+        except:
+            return obj.against.username
