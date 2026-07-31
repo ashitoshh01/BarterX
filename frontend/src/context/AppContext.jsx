@@ -1,11 +1,24 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import {
-  CURRENT_USER, USERS, LISTINGS, CATEGORIES, AI_MATCHES,
-  PROPOSALS, CHATS, NOTIFICATIONS, SWAP_TRACKER, CONTRACTS,
-  DISPUTES, WALLET_HISTORY, REVIEWS,
-} from "@/mock/data";
+import { USERS, SWAP_TRACKER } from "@/mock/data";
+
+// Default user shape for pre-auth state
+const DEFAULT_USER = {
+  id: "",
+  handle: "",
+  name: "",
+  bio: "",
+  avatar: "",
+  location: "",
+  coins: 0,
+  trustScore: 0,
+  swapsCompleted: 0,
+  rating: 0,
+  verified: false,
+  joined: "",
+  badges: [],
+};
 
 const AppContext = createContext(null);
 
@@ -200,14 +213,28 @@ const mapInterestToProposal = (interest, currentUserUsername) => {
   };
 };
 
+// Map backend notification_type to frontend icon type
+const NOTIF_TYPE_MAP = {
+  interest_received: "proposal",
+  interest_accepted: "proposal",
+  interest_rejected: "proposal",
+  match_found: "match",
+  chat_message: "chat",
+  coin_earned: "coins",
+  coin_spent: "coins",
+  system: "system",
+};
+
 const mapNotification = (n) => ({
   id: n.id,
-  type: n.notification_type === "interest_received" ? "offer" : "match",
+  type: NOTIF_TYPE_MAP[n.notification_type] || "system",
+  text: n.title || n.message || "Notification",
   title: n.title,
   body: n.message,
   time: n.created_at ? new Date(n.created_at).toLocaleDateString() : "recently",
   read: n.is_read,
 });
+
 
 const mapConversation = (conv, currentUser) => {
   const otherParticipant = conv.other_participant || {};
@@ -290,14 +317,14 @@ const mapDispute = (d) => ({
 });
 
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(CURRENT_USER);
+  const [user, setUser] = useState(DEFAULT_USER);
   const [isAuthed, setIsAuthed] = useState(false);
   const [listings, setListings] = useState([]);
-  const [categoriesList, setCategoriesList] = useState(CATEGORIES);
-  const [proposals, setProposals] = useState(PROPOSALS);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [proposals, setProposals] = useState([]);
   const [chats, setChats] = useState([]);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
-  const [saved, setSaved] = useState(new Set(["l_3", "l_5"]));
+  const [notifications, setNotifications] = useState([]);
+  const [saved, setSaved] = useState(new Set());
   const [contracts, setContracts] = useState([]);
   const [trades, setTrades] = useState([]);
   const [disputes, setDisputes] = useState([]);
@@ -493,7 +520,18 @@ export const AppProvider = ({ children }) => {
     localStorage.removeItem("barter_token");
     localStorage.removeItem("barter_refresh_token");
     setIsAuthed(false);
-    setUser(CURRENT_USER);
+    setUser(DEFAULT_USER);
+    setListings([]);
+    setProposals([]);
+    setChats([]);
+    setNotifications([]);
+    setCategoriesList([]);
+    setWallet([]);
+    setReviewsList([]);
+    setContracts([]);
+    setTrades([]);
+    setDisputes([]);
+    setAiMatches([]);
     if (socketRef.current) {
       try { socketRef.current.close(); } catch (e) {}
       socketRef.current = null;
@@ -513,51 +551,59 @@ export const AppProvider = ({ children }) => {
 
       // Fetch categories
       const catRes = await api.get("/categories/");
-      const mappedCategories = catRes.data.map(mapCategory);
+      const catList = catRes.data.results || catRes.data;
+      const mappedCategories = catList.map(mapCategory);
       setCategoriesList(mappedCategories);
 
       // Fetch items feed
       const itemsRes = await api.get("/items/");
-      const mappedListings = itemsRes.data.map(mapItemToListing);
+      const itemsList = itemsRes.data.results || itemsRes.data;
+      const mappedListings = itemsList.map(mapItemToListing);
       setListings(mappedListings);
 
       // Fetch interests/proposals
       const interestsRes = await api.get("/interests/");
-      const mappedProposals = interestsRes.data.map((i) => mapInterestToProposal(i, profileRes.data.username));
+      const interestsList = interestsRes.data.results || interestsRes.data;
+      const mappedProposals = interestsList.map((i) => mapInterestToProposal(i, profileRes.data.username));
       setProposals(mappedProposals);
 
       // Fetch notifications
       const notifRes = await api.get("/notifications/");
-      const mappedNotifications = notifRes.data.map(mapNotification);
+      const notifList = notifRes.data.results || notifRes.data;
+      const mappedNotifications = notifList.map(mapNotification);
       setNotifications(mappedNotifications);
 
       // Fetch chats
       const chatsRes = await api.get("/chatrooms/");
-      const mappedChats = chatsRes.data.map(c => mapConversation(c, profileRes.data));
+      const chatsList = chatsRes.data.results || chatsRes.data;
+      const mappedChats = chatsList.map(c => mapConversation(c, profileRes.data));
       setChats(mappedChats);
 
       // Fetch wallet transactions
       try {
         const walletRes = await api.get("/wallet/transactions/");
-        setWallet(walletRes.data.map(mapWalletTransaction));
+        const walletList = walletRes.data.results || walletRes.data;
+        setWallet(walletList.map(mapWalletTransaction));
       } catch (err) {
         console.warn("Failed to fetch wallet transactions", err);
-        setWallet(WALLET_HISTORY); // Fallback to mock for now
+        setWallet([]);
       }
 
       // Fetch reviews
       try {
         const reviewsRes = await api.get("/reviews/");
-        setReviewsList(reviewsRes.data.map(mapReview));
+        const reviewsList = reviewsRes.data.results || reviewsRes.data;
+        setReviewsList(reviewsList.map(mapReview));
       } catch (err) {
         console.warn("Failed to fetch reviews", err);
-        setReviewsList(REVIEWS); // Fallback to mock for now
+        setReviewsList([]);
       }
 
       // Fetch contracts
       try {
         const contractsRes = await api.get("/contracts/");
-        setContracts(contractsRes.data.map(c => mapContract(c, profileRes.data.username)));
+        const contractsList = contractsRes.data.results || contractsRes.data;
+        setContracts(contractsList.map(c => mapContract(c, profileRes.data.username)));
       } catch (err) {
         console.warn("Failed to fetch contracts", err);
       }
@@ -565,7 +611,7 @@ export const AppProvider = ({ children }) => {
       // Fetch trades (Logistics)
       try {
         const tradesRes = await api.get("/trades/");
-        setTrades(tradesRes.data);
+        setTrades(tradesRes.data.results || tradesRes.data);
       } catch (err) {
         console.warn("Failed to fetch trades", err);
       }
@@ -573,7 +619,8 @@ export const AppProvider = ({ children }) => {
       // Fetch disputes
       try {
         const disputesRes = await api.get("/disputes/");
-        setDisputes(disputesRes.data.map(mapDispute));
+        const disputesList = disputesRes.data.results || disputesRes.data;
+        setDisputes(disputesList.map(mapDispute));
       } catch (err) {
         console.warn("Failed to fetch disputes", err);
       }
@@ -581,10 +628,32 @@ export const AppProvider = ({ children }) => {
       // Fetch AI Matches
       try {
         const matchesRes = await api.get("/recommendations/matches/");
-        setAiMatches(matchesRes.data);
+        // Map backend to frontend shape
+        const mappedMatches = (matchesRes.data || []).map((m) => {
+          const userItemId = m.user_item_id || (m.id ? Number((m.id.split("_")[2] || 0)) : null);
+          const matchItemId = m.match_item_id || m.item_id;
+          return {
+            id: m.id,
+            yourItem: userItemId,
+            theirItem: matchItemId,
+            score: m.confidence || 85,
+            reason: m.reason || "AI-powered match",
+          };
+        });
+        setAiMatches(mappedMatches);
       } catch (err) {
         console.warn("Failed to fetch AI matches", err);
-        setAiMatches(AI_MATCHES); // fallback to mock
+        setAiMatches([]);
+      }
+
+      // Fetch saved items
+      try {
+        const savedRes = await api.get("/saved-items/");
+        const rawSaved = savedRes.data.results || savedRes.data || [];
+        const savedIds = new Set(rawSaved.map((s) => s.item));
+        setSaved(savedIds);
+      } catch (err) {
+        console.warn("Failed to fetch saved items", err);
       }
 
       // Connect WebSocket
@@ -638,12 +707,29 @@ export const AppProvider = ({ children }) => {
   }, [initializeApp]);
 
 
-  const toggleSave = useCallback((id) => {
+  const toggleSave = useCallback(async (id) => {
+    // Optimistic update
     setSaved((prev) => {
       const s = new Set(prev);
       if (s.has(id)) s.delete(id); else s.add(id);
       return s;
     });
+    try {
+      const res = await api.post("/saved-items/toggle/", { item_id: id });
+      if (res.data.saved) {
+        toast.success("Saved to favorites ❤️");
+      } else {
+        toast.info("Removed from saved items");
+      }
+    } catch (err) {
+      // Revert on error
+      setSaved((prev) => {
+        const s = new Set(prev);
+        if (s.has(id)) s.delete(id); else s.add(id);
+        return s;
+      });
+      toast.error("Failed to update saved item.");
+    }
   }, []);
 
   const addListing = useCallback(async (listing) => {
@@ -1099,7 +1185,7 @@ export const AppProvider = ({ children }) => {
     disputes, setDisputes,
     wallet, setWallet,
     users: dynamicUsers, categories: categoriesList,
-    aiMatches: aiMatches.length > 0 ? aiMatches : AI_MATCHES, tracker: SWAP_TRACKER, reviews: reviewsList,
+    aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList,
     loading, error, boostListing,
   }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers]);
 

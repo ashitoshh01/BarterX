@@ -17,19 +17,20 @@ import requests as http_requests
 from .models import (
     BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
     UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
-    BarterInterest, Notification, DealConfirmation, Trade, Contract
+    BarterInterest, Notification, DealConfirmation, Trade, Contract, SavedItem
 )
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
     UserReviewSerializer, UserSerializer, UserProfileSerializer,
     TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
     DealConfirmationSerializer, BarterItemCompactSerializer, CoinTransactionSerializer,
-    ContractSerializer, TradeSerializer, DisputeSerializer
+    ContractSerializer, TradeSerializer, DisputeSerializer, SavedItemSerializer
 )
 from .email_services import send_otp_email
 from chat.services import broadcast_to_group
 from .pdf_service import generate_contract_pdf
 from .ai_service import get_ai_matches
+from .pagination import StandardResultsSetPagination
 
 # ============================================================
 # NEW AUTH VIEWS
@@ -288,6 +289,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class BarterItemViewSet(viewsets.ModelViewSet):
     serializer_class = BarterItemSerializer
+    pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'description', 'offering', 'wanting', 'location']
     ordering_fields = ['created_at', 'title']
@@ -304,9 +306,37 @@ class BarterItemViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 models.Q(owner=self.request.user) | ~models.Q(status='archived')
             )
-        else:
-            queryset = queryset.exclude(status='archived')
-            
+        # Query parameter filters
+        category = self.request.query_params.get('category')
+        if category and category != 'all':
+            queryset = queryset.filter(models.Q(category__slug__iexact=category) | models.Q(category__name__iexact=category))
+
+        condition = self.request.query_params.get('condition')
+        if condition and condition != 'all':
+            queryset = queryset.filter(condition__iexact=condition)
+
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        item_type = self.request.query_params.get('item_type')
+        if item_type and item_type != 'all':
+            queryset = queryset.filter(item_type__iexact=item_type)
+
+        val_min = self.request.query_params.get('valuation_min')
+        if val_min:
+            try:
+                queryset = queryset.filter(estimated_value__gte=float(val_min))
+            except ValueError:
+                pass
+
+        val_max = self.request.query_params.get('valuation_max')
+        if val_max:
+            try:
+                queryset = queryset.filter(estimated_value__lte=float(val_max))
+            except ValueError:
+                pass
+
         return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
@@ -316,8 +346,11 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.views_count += 1
-        instance.save(update_fields=['views_count'])
+        viewed_session_key = f'viewed_item_{instance.id}'
+        if not request.session.get(viewed_session_key):
+            instance.views_count += 1
+            instance.save(update_fields=['views_count'])
+            request.session[viewed_session_key] = True
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -697,6 +730,19 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        
+        # Calculate dynamic XP & Level
+        completed_trades_count = Trade.objects.filter(Q(requester=request.user) | Q(receiver=request.user), status='completed').count()
+        positive_reviews_count = UserReview.objects.filter(reviewed_user=request.user, rating__gte=4).count()
+        created_listings_count = BarterItem.objects.filter(owner=request.user).count()
+
+        xp = (completed_trades_count * 100) + (positive_reviews_count * 50) + (created_listings_count * 25)
+        level = (xp // 200) + 1
+
+        profile.xp = xp
+        profile.level = level
+        profile.save(update_fields=['xp', 'level'])
+
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
 
@@ -866,6 +912,30 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             'average_rating': profile.average_rating,
         })
 
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def listings(self, request):
+        items = BarterItem.objects.filter(owner=request.user)
+        serializer = BarterItemSerializer(items, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def completed_trades(self, request):
+        trades = Trade.objects.filter(Q(requester=request.user) | Q(receiver=request.user), status='completed')
+        serializer = TradeSerializer(trades, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def saved_items(self, request):
+        saved = SavedItem.objects.filter(user=request.user)
+        serializer = SavedItemSerializer(saved, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def reviews(self, request):
+        reviews = UserReview.objects.filter(reviewed_user=request.user)
+        serializer = UserReviewSerializer(reviews, many=True, context={'request': request})
+        return Response(serializer.data)
+
 
 class PurchaseCoinsView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -928,6 +998,7 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
     """Step 1: Raise, accept, reject barter interests."""
     serializer_class = BarterInterestSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -976,6 +1047,12 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         if duplicate_query.exists():
             return Response({"detail": "You already have an active proposal for this swap."}, status=status.HTTP_400_BAD_REQUEST)
 
+        coins_val = int(coins_offered or 0)
+        if coins_val > 0:
+            profile = getattr(request.user, 'profile', None)
+            if not profile or profile.coin_balance < coins_val:
+                return Response({"detail": f"Insufficient Barter Coins balance. You have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+
         interest = BarterInterest.objects.create(
             requester=request.user,
             receiver=requested_item.owner,
@@ -983,7 +1060,7 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             offered_item=offered_item,
             status='pending',
             proposal_message=proposal_message,
-            coins_offered=int(coins_offered or 0),
+            coins_offered=coins_val,
         )
 
         from chat.models import Conversation
@@ -1097,41 +1174,48 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def counter(self, request, pk=None):
-        """Create a counter proposal from an existing proposal."""
+        """Send a counter-offer for an existing proposal."""
         interest = self.get_object()
-        if interest.receiver != request.user:
-            return Response({"detail": "Only the receiver can counter."}, status=status.HTTP_403_FORBIDDEN)
+        if request.user not in [interest.requester, interest.receiver]:
+            return Response({"detail": "Not authorized to counter this proposal."}, status=status.HTTP_403_FORBIDDEN)
 
-        proposal_message = (request.data.get('proposal_message') or '').strip()
-        coins_offered = request.data.get('coins_offered', 0)
-        offered_item_id = request.data.get('offered_item')
+        offered_item_id = request.data.get('offered_item_id')
+        coins_offered = int(request.data.get('coins_offered', 0))
+        message = request.data.get('message', '')
 
-        offered_item = None
+        if coins_offered > 0:
+            profile = getattr(request.user, 'profile', None)
+            if not profile or profile.coin_balance < coins_offered:
+                return Response({"detail": f"Insufficient Barter Coins balance. You have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+
         if offered_item_id:
             try:
-                offered_item = BarterItem.objects.get(id=offered_item_id)
+                interest.offered_item = BarterItem.objects.get(id=offered_item_id)
             except BarterItem.DoesNotExist:
                 return Response({"detail": "Offered item not found."}, status=status.HTTP_404_NOT_FOUND)
-            if offered_item.owner != request.user:
-                return Response({"detail": "You can only offer your own items."}, status=status.HTTP_400_BAD_REQUEST)
+
+        interest.coins_offered = coins_offered
+        if message:
+            interest.proposal_message = message
 
         try:
             interest.transition_to('countered')
         except ValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        interest.proposal_message = proposal_message or interest.proposal_message
-        interest.coins_offered = int(coins_offered or 0)
-        if offered_item:
-            interest.offered_item = offered_item
-        interest.save(update_fields=['proposal_message', 'coins_offered', 'offered_item', 'status', 'updated_at'])
-
-        broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
+        recipient = interest.requester if request.user == interest.receiver else interest.receiver
+        _create_notification(
+            user=recipient,
+            ntype='interest_received',
+            title='Counter Offer Received',
+            message=f"{request.user.username} sent a counter offer for {interest.requested_item.title}.",
+            interest=interest
+        )
+        broadcast_to_group(f"user_{recipient.id}", "proposal.updated", {
             "id": interest.id,
             "status": interest.status,
         })
-
-        return Response({"detail": "Counter proposal sent.", "status": interest.status})
+        return Response(self.get_serializer(interest).data)
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -1170,6 +1254,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """Step 2: In-app notifications."""
     serializer_class = NotificationSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user)
@@ -1197,6 +1282,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 class CoinTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CoinTransactionSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         return CoinTransaction.objects.filter(user=self.request.user).order_by('-created_at')
@@ -1211,10 +1297,19 @@ class ContractViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
         contract = self.get_object()
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+        if ',' in client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+
+        now = timezone.now()
         if request.user == contract.party_a:
             contract.signed_a = True
+            contract.signed_a_timestamp = now
+            contract.signed_a_ip = client_ip
         elif request.user == contract.party_b:
             contract.signed_b = True
+            contract.signed_b_timestamp = now
+            contract.signed_b_ip = client_ip
         else:
             return Response({"detail": "Not authorized to sign this contract."}, status=status.HTTP_403_FORBIDDEN)
             
@@ -1250,16 +1345,47 @@ class TradeViewSet(viewsets.ModelViewSet):
         tracking_number = request.data.get('tracking_number')
         shipping_provider = request.data.get('shipping_provider')
 
-        if logistics_status:
+        STAGES = ['preparing', 'shipped', 'out_for_delivery', 'delivered']
+        if logistics_status and logistics_status in STAGES:
+            current_idx = STAGES.index(trade.logistics_status) if trade.logistics_status in STAGES else 0
+            new_idx = STAGES.index(logistics_status)
+            if new_idx < current_idx:
+                return Response({"detail": "Cannot revert trade logistics to a previous stage."}, status=status.HTTP_400_BAD_REQUEST)
             trade.logistics_status = logistics_status
+
         if tracking_number is not None:
             trade.tracking_number = tracking_number
         if shipping_provider is not None:
             trade.shipping_provider = shipping_provider
             
-        if logistics_status == 'delivered':
+        if logistics_status == 'delivered' and trade.status != 'completed':
             trade.status = 'completed'
             trade.completed_at = timezone.now()
+
+            # Escrow coin settlement
+            if trade.barter_interest and trade.barter_interest.coins_offered > 0:
+                coins = trade.barter_interest.coins_offered
+                sender_profile = getattr(trade.barter_interest.requester, 'profile', None)
+                receiver_profile = getattr(trade.barter_interest.receiver, 'profile', None)
+                
+                if sender_profile and receiver_profile and sender_profile.coin_balance >= coins:
+                    sender_profile.coin_balance -= coins
+                    sender_profile.save(update_fields=['coin_balance'])
+                    receiver_profile.coin_balance += coins
+                    receiver_profile.save(update_fields=['coin_balance'])
+
+                    CoinTransaction.objects.create(
+                        user=trade.barter_interest.requester,
+                        amount=-coins,
+                        transaction_type='swap_payment',
+                        description=f"Barter Coins transferred for Trade #{trade.id}"
+                    )
+                    CoinTransaction.objects.create(
+                        user=trade.barter_interest.receiver,
+                        amount=coins,
+                        transaction_type='swap_reward',
+                        description=f"Barter Coins received for Trade #{trade.id}"
+                    )
 
         trade.save()
         return Response(self.get_serializer(trade).data)
@@ -1274,6 +1400,14 @@ class DisputeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(raised_by=self.request.user)
 
+    @action(detail=True, methods=['post'])
+    def escalate(self, request, pk=None):
+        dispute = self.get_object()
+        dispute.is_escalated = True
+        dispute.status = 'escalated'
+        dispute.save(update_fields=['is_escalated', 'status'])
+        return Response(self.get_serializer(dispute).data)
+
 class AIRecommendationViewSet(viewsets.ViewSet):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -1281,4 +1415,28 @@ class AIRecommendationViewSet(viewsets.ViewSet):
     def matches(self, request):
         matches = get_ai_matches(request.user)
         return Response(matches)
+
+
+class SavedItemViewSet(viewsets.ModelViewSet):
+    serializer_class = SavedItemSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return SavedItem.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        item_id = request.data.get('item_id')
+        if not item_id:
+            return Response({"detail": "item_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        saved, created = SavedItem.objects.get_or_create(user=request.user, item_id=item_id)
+        if not created:
+            saved.delete()
+            return Response({"saved": False, "item_id": item_id})
+        return Response({"saved": True, "item_id": item_id})
+
 

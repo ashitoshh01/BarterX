@@ -29,10 +29,23 @@ const Contracts = () => {
     }
   };
 
-  const downloadPdf = (id) => {
-    const token = localStorage.getItem("barter_token");
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000";
-    window.open(`${backendUrl}/api/contracts/${id}/download_pdf/?token=${token}`, '_blank');
+  const downloadPdf = async (id) => {
+    try {
+      const res = await api.get(`/contracts/${id}/download_pdf/`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Contract_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Failed to download PDF contract.");
+    }
   };
 
   return (

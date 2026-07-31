@@ -252,6 +252,7 @@ class BarterInterest(models.Model):
         elif new_status == 'accepted' and previous_status != 'accepted':
             self._reserve_listings()
             self._ensure_trade_exists()
+            self._ensure_contract_exists()
 
         return self
 
@@ -279,6 +280,22 @@ class BarterInterest(models.Model):
             requester=self.requester,
             receiver=self.receiver,
             status='pending',
+        )
+
+    def _ensure_contract_exists(self):
+        if hasattr(self, 'contract'):
+            return self.contract
+        default_terms = [
+            "1. Both swappers agree to deliver listed items as described.",
+            "2. Shipping/hand-off must occur within 7 days of contract signature.",
+            "3. Disputes will be mediated by BAARTER platform support.",
+        ]
+        return Contract.objects.create(
+            barter_interest=self,
+            party_a=self.requester,
+            party_b=self.receiver,
+            status='pending',
+            terms=default_terms,
         )
 
 
@@ -447,6 +464,10 @@ class Contract(models.Model):
     terms = models.JSONField(default=list)
     signed_a = models.BooleanField(default=False)
     signed_b = models.BooleanField(default=False)
+    signed_a_timestamp = models.DateTimeField(null=True, blank=True)
+    signed_b_timestamp = models.DateTimeField(null=True, blank=True)
+    signed_a_ip = models.CharField(max_length=50, blank=True, null=True)
+    signed_b_ip = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -457,6 +478,7 @@ class Dispute(models.Model):
     STATUS_CHOICES = [
         ('open', 'Open'),
         ('investigating', 'Investigating'),
+        ('escalated', 'Escalated'),
         ('resolved', 'Resolved'),
     ]
 
@@ -465,11 +487,26 @@ class Dispute(models.Model):
     against = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_against')
     reason = models.CharField(max_length=100)
     detail = models.TextField()
+    evidence_image = models.FileField(upload_to='dispute_evidence/', null=True, blank=True)
+    is_escalated = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
     resolution = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Dispute {self.id} by {self.raised_by.username} against {self.against.username}"
+
+
+class SavedItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_items')
+    item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='saved_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'item')
+
+    def __str__(self):
+        return f"{self.user.username} saved item {self.item_id}"
+
 
 

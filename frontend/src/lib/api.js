@@ -34,17 +34,78 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Response interceptor ──────────────────────────────────────────────────────
+// ── Response interceptor — auto-refresh expired tokens ───────────────────────
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (token) prom.resolve(token);
+    else prom.reject(error);
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired / unauthorized — clear local storage
-      localStorage.removeItem("barter_token");
-      window.location.href = "/auth";
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem("barter_refresh_token");
+
+      // No refresh token — redirect to login
+      if (!refreshToken) {
+        localStorage.removeItem("barter_token");
+        localStorage.removeItem("barter_refresh_token");
+        window.location.href = "/auth";
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request until the refresh completes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const backendBase = process.env.REACT_APP_BACKEND_URL || "";
+        const res = await fetch(`${backendBase}/api/token/refresh/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+
+        if (!res.ok) throw new Error("Refresh failed");
+
+        const data = await res.json();
+        localStorage.setItem("barter_token", data.access);
+        processQueue(null, data.access);
+        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        localStorage.removeItem("barter_token");
+        localStorage.removeItem("barter_refresh_token");
+        window.location.href = "/auth";
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );
 
 export default api;
+

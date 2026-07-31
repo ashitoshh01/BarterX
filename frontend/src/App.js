@@ -24,8 +24,13 @@ import Profile from "@/pages/Profile";
 import Disputes from "@/pages/Disputes";
 import ServiceSwap from "@/pages/ServiceSwap";
 import AppLayout from "@/components/AppLayout";
+import PrivateRoute from "@/components/PrivateRoute";
 
-const Shell = ({ children }) => <AppLayout>{children}</AppLayout>;
+const Shell = ({ children }) => (
+  <PrivateRoute>
+    <AppLayout>{children}</AppLayout>
+  </PrivateRoute>
+);
 
 function App() {
   return (

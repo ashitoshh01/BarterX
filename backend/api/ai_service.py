@@ -67,6 +67,8 @@ def _get_gemini_matches(user_items, other_items):
             if user_item and match_item:
                 results.append({
                     "id": f"ai_match_{user_item.id}_{match_item.id}",
+                    "user_item_id": user_item.id,
+                    "match_item_id": match_item.id,
                     "item_id": match_item.id,
                     "title": match_item.title,
                     "reason": match.get("reason"),
@@ -112,9 +114,11 @@ def _get_fallback_matches(user_items, other_items):
             if user_likes and market_likes:
                 matches.append({
                     "id": f"ai_match_{u_item.id}_{m_item.id}",
+                    "user_item_id": u_item.id,
+                    "match_item_id": m_item.id,
                     "item_id": m_item.id,
                     "title": m_item.title,
-                    "reason": f"Perfect match! You both have what the other wants. They are looking for '{m_item.wanting}' and you want '{u_item.wanting}'.",
+                    "reason": f"Match! You want '{m_item.title}' and they are looking for what you offer.",
                     "confidence": 85
                 })
                 

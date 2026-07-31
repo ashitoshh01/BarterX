@@ -1,17 +1,32 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Gift, Zap } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { SectionTitle, NbButton } from "@/components/UI";
+import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
 
 const Wallet = () => {
-  const { user, wallet, boostListing } = useApp();
+  const { user, wallet } = useApp();
 
-  const boost = () => {
-    if (user.coins < 100) { toast.error("Not enough coins"); return; }
-    boostListing();
-  };
+  // Compute stats from real transaction data
+  const stats = useMemo(() => {
+    let earned = 0;
+    let spent = 0;
+    let referrals = 0;
+
+    wallet.forEach((w) => {
+      if (w.amount > 0) {
+        earned += w.amount;
+        if (w.reason && w.reason.toLowerCase().includes("referral")) {
+          referrals += 1;
+        }
+      } else {
+        spent += Math.abs(w.amount);
+      }
+    });
+
+    return { earned, spent, referrals };
+  }, [wallet]);
 
   return (
     <div className="space-y-6" data-testid="wallet-page">
@@ -28,29 +43,18 @@ const Wallet = () => {
         <div className="relative">
           <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3">BALANCE</div>
           <div className="font-display text-7xl md:text-8xl leading-none text-white flex items-baseline gap-2">
-            {user.coins.toLocaleString()}
+            {(user.coins || 0).toLocaleString()}
             <span className="text-3xl text-[var(--lime)]">◈</span>
           </div>
           <div className="font-mono2 text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-3">BAARTER COINS · BC</div>
-        </div>
-        <div className="mt-8 grid grid-cols-3 gap-2 relative">
-          <button className="nb-btn bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-full text-xs font-medium" data-testid="wallet-earn">
-            Earn
-          </button>
-          <button onClick={boost} className="nb-btn bg-[var(--lime)] text-black py-3 rounded-full text-xs font-bold" data-testid="wallet-boost">
-            Boost <span className="opacity-60">−100</span>
-          </button>
-          <button className="nb-btn bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-full text-xs font-medium" data-testid="wallet-gift">
-            Gift
-          </button>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Earned", value: "+775", icon: TrendingUp, tint: "tint-lime" },
-          { label: "Spent", value: "-100", icon: TrendingDown, tint: "tint-pink" },
-          { label: "Referrals", value: "3", icon: Gift, tint: "tint-amber" },
+          { label: "Earned", value: `+${stats.earned}`, icon: TrendingUp, tint: "tint-lime" },
+          { label: "Spent", value: `-${stats.spent}`, icon: TrendingDown, tint: "tint-pink" },
+          { label: "Referrals", value: String(stats.referrals), icon: Gift, tint: "tint-amber" },
         ].map((s) => (
           <div key={s.label} className={`nb-card p-4 border ${s.tint}`}>
             <s.icon size={18} strokeWidth={2} className="mb-2 opacity-80" />
@@ -62,22 +66,26 @@ const Wallet = () => {
 
       <div>
         <h3 className="font-display text-2xl mb-3">Recent activity</h3>
-        <div className="nb-card overflow-hidden divide-y-[3px] divide-white/8">
-          {wallet.map((w) => (
-            <div key={w.id} className="p-4 flex items-center gap-3 bg-[var(--surface)]" data-testid={`wallet-tx-${w.id}`}>
-              <div className={`w-10 h-10 rounded-full nb-border-2 flex items-center justify-center ${w.type === "earn" ? "tint-lime" : "tint-pink"}`}>
-                {w.type === "earn" ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
+        {wallet.length === 0 ? (
+          <EmptyState emoji="💰" title="No transactions yet" subtitle="Complete swaps and earn coins to see activity here." />
+        ) : (
+          <div className="nb-card overflow-hidden divide-y-[3px] divide-white/8">
+            {wallet.map((w) => (
+              <div key={w.id} className="p-4 flex items-center gap-3 bg-[var(--surface)]" data-testid={`wallet-tx-${w.id}`}>
+                <div className={`w-10 h-10 rounded-full nb-border-2 flex items-center justify-center ${w.type === "earn" ? "tint-lime" : "tint-pink"}`}>
+                  {w.type === "earn" ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-sm">{w.reason}</div>
+                  <div className="text-xs font-mono2 text-[var(--text-3)]">{w.time}</div>
+                </div>
+                <div className={`font-display text-xl ${w.type === "earn" ? "text-[var(--lime)]" : ""}`}>
+                  {w.amount > 0 ? "+" : ""}{w.amount}
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm">{w.reason}</div>
-                <div className="text-xs font-mono2 text-[var(--text-3)]">{w.time}</div>
-              </div>
-              <div className={`font-display text-xl ${w.type === "earn" ? "text-[var(--lime)]" : ""}`}>
-                {w.amount > 0 ? "+" : ""}{w.amount}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="nb-card p-6 tint-amber">

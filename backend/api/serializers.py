@@ -13,7 +13,7 @@ from django.db.models import Q
 from .models import (
     UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
     UserReview, TradeTransaction, OTPVerification,
-    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute
+    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, SavedItem
 )
 
 
@@ -421,7 +421,9 @@ class ContractSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'barter_interest', 'party_a', 'party_b', 
             'party_a_username', 'party_b_username', 'party_a_display_name', 'party_b_display_name',
-            'status', 'terms', 'signed_a', 'signed_b', 'created_at', 'updated_at'
+            'status', 'terms', 'signed_a', 'signed_b', 
+            'signed_a_timestamp', 'signed_b_timestamp', 'signed_a_ip', 'signed_b_ip',
+            'created_at', 'updated_at'
         )
         read_only_fields = ('barter_interest', 'party_a', 'party_b', 'status', 'created_at', 'updated_at')
 
@@ -458,3 +460,11 @@ class DisputeSerializer(serializers.ModelSerializer):
             return obj.against.profile.display_name or obj.against.username
         except:
             return obj.against.username
+
+
+class SavedItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedItem
+        fields = ('id', 'user', 'item', 'created_at')
+        read_only_fields = ('user', 'created_at')
+

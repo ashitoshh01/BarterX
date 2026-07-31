@@ -19,6 +19,7 @@ from .views import (
     TradeViewSet,
     DisputeViewSet,
     AIRecommendationViewSet,
+    SavedItemViewSet,
     FlexLoginView,
     SimpleRegisterView,
     GoogleOAuthView,
@@ -42,6 +43,7 @@ router.register(r'contracts', ContractViewSet, basename='contract')
 router.register(r'trades', TradeViewSet, basename='trade')
 router.register(r'disputes', DisputeViewSet, basename='dispute')
 router.register(r'recommendations', AIRecommendationViewSet, basename='recommendation')
+router.register(r'saved-items', SavedItemViewSet, basename='saved-item')
 
 urlpatterns = [
     path('', include(router.urls)),

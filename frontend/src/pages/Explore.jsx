@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Search, SlidersHorizontal, Grid, List } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ListingCard from "@/components/ListingCard";
@@ -9,9 +9,17 @@ const Explore = () => {
   const { listings, categories } = useApp();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [view, setView] = useState("grid");
   const [type, setType] = useState("all"); // all, product, service
   const activeCat = params.get("cat") || "all";
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [query]);
 
   const setCat = (id) => {
     if (id === "all") params.delete("cat"); else params.set("cat", id);
@@ -22,10 +30,10 @@ const Explore = () => {
     return listings.filter((l) => {
       if (activeCat !== "all" && String(l.category) !== String(activeCat)) return false;
       if (type !== "all" && l.type !== type) return false;
-      if (query && !`${l.title} ${l.description} ${l.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())) return false;
+      if (debouncedQuery && !`${l.title} ${l.description} ${l.tags.join(" ")}`.toLowerCase().includes(debouncedQuery.toLowerCase())) return false;
       return true;
     });
-  }, [listings, activeCat, type, query]);
+  }, [listings, activeCat, type, debouncedQuery]);
 
   return (
     <div className="space-y-6" data-testid="explore-page">
@@ -114,8 +122,8 @@ const Explore = () => {
       ) : (
         <div className="space-y-3">
           {filtered.map((l) => (
-            <a
-              href={`/app/listing/${l.id}`}
+            <Link
+              to={`/app/listing/${l.id}`}
               key={l.id}
               className="nb-card p-3 flex gap-4 items-center hover:tint-amber transition-colors"
               data-testid={`explore-row-${l.id}`}
@@ -129,7 +137,7 @@ const Explore = () => {
                 </div>
               </div>
               <span className="nb-tag tint-amber">~${l.estValue}</span>
-            </a>
+            </Link>
           ))}
         </div>
       )}
