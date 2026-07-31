@@ -1,141 +1,125 @@
-# 🔄 Barter — Frontend
+# 🔄 Barter Marketplace — Full-Stack Monorepo
 
-A React-based marketplace for bartering goods and services.
+A complete peer-to-peer barter marketplace web application built with **React** on the frontend and **Django REST Framework** on the backend.
 
 ---
 
-## ⚡ Quick Start (for team members)
+## 🚀 Overview & Key Features
 
-### Prerequisites
-Make sure you have these installed:
-- **Node.js** ≥ 20 (v24 recommended) — [nodejs.org](https://nodejs.org)
-- **npm** — comes with Node.js (no extra install needed)
+- **Authentication System**: Dual login (Email or Username), user signup with profile initialization, and integrated **Google OAuth Sign-In**.
+- **Coin & Trade System**: Swap goods/services directly or use coins as currency/top-ups.
+- **Smart AI Matching**: AI-powered trade recommendations using Google Gemini integration.
+- **Contract & PDF Generation**: Automatic generation of official PDF trade contracts using ReportLab.
+- **Dispute Resolution & Logistics**: Trade dispute management and shipping/logistics tracking updates.
+- **Nearby Traders**: Location-aware discovery of local traders.
 
-### 1. Clone & install
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, Tailwind CSS, Lucide Icons, Axios, `@react-oauth/google`
+- **Backend**: Django 4.x, Django REST Framework, SimpleJWT, ReportLab, Google GenAI SDK
+- **Database**: SQLite (Development)
+
+---
+
+## ⚡ Quick Start
+
+### 1. Backend Setup
+
 ```bash
-git clone <repo-url>
-cd uiui/frontend
-npm install
+cd backend
+
+# Create & activate a virtual environment (optional but recommended)
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On Mac/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations & seed test data
+python manage.py migrate
+python generate_test_data.py
+
+# Start Django development server
+python manage.py runserver
 ```
+The backend server runs at `http://localhost:8000`.
 
-> ✅ An `.npmrc` is already included that handles peer dependency conflicts automatically — no extra flags needed.
+---
 
-### 2. Configure environment
+### 2. Frontend Setup
+
 ```bash
-# Copy the example env file
+cd frontend
+
+# Install dependencies
+npm install
+
+# Configure environment variables
 cp .env.example .env
 ```
 
-Open `.env` and set `REACT_APP_BACKEND_URL` to your backend's address:
+Make sure your `frontend/.env` file contains:
 ```env
-REACT_APP_BACKEND_URL=http://localhost:8001   # local backend
-# or
-REACT_APP_BACKEND_URL=https://api.your-team-server.com  # shared/deployed backend
+REACT_APP_BACKEND_URL=http://localhost:8000
+REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
 ```
 
-### 3. Run the frontend
 ```bash
+# Start React development server
 npm start
 ```
-
-Opens at → **http://localhost:3000**
-
----
-
-## 🌐 Share with teammates on the same network
-
-If your teammates are on the **same Wi-Fi or LAN**, they can open the app directly from your machine — no deployment needed.
-
-**Windows** (PowerShell or CMD):
-```bash
-npm run start:network
-# or manually:
-set HOST=0.0.0.0 && npx craco start
-```
-
-**Mac / Linux**:
-```bash
-HOST=0.0.0.0 npm start
-```
-
-Then find your local IP and share with teammates:
-- **Windows**: run `ipconfig` → look for "IPv4 Address"
-- **Mac/Linux**: run `ifconfig | grep inet`
-
-```
-http://<YOUR_IP>:3000
-```
-e.g. `http://192.168.1.42:3000`
-
-> **Note**: Both machines must be on the same Wi-Fi/network. Make sure Windows Firewall allows port 3000 (or temporarily disable it for the Local Network profile).
+The application opens at `http://localhost:3000`.
 
 ---
 
-## 📁 Project Structure
+## 🔑 Google OAuth Setup (Optional)
+
+To enable Google Sign-In:
+1. Go to [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials.
+2. Create an **OAuth 2.0 Client ID** (Application type: *Web application*).
+3. Add `http://localhost:3000` to **Authorized JavaScript origins**.
+4. Copy your Client ID into `frontend/.env` under `REACT_APP_GOOGLE_CLIENT_ID`.
+5. Restart `npm start`.
+
+---
+
+## 📁 Repository Structure
 
 ```
-frontend/
-├── src/
-│   ├── App.js            # Router & page layout
-│   ├── lib/
-│   │   └── api.js        # ← Axios client (use this for all backend calls)
-│   ├── context/
-│   │   └── AppContext.jsx # Global state
-│   ├── pages/            # One file per route
-│   ├── components/       # Shared UI components
-│   ├── mock/             # Mock data (used while backend is not connected)
-│   └── constants/        # Test IDs, enums
-├── .env                  # Your local config (git-ignored)
-├── .env.example          # Template to copy ↑
-└── package.json
+barter-marketplace/
+├── backend/
+│   ├── api/                  # Core app (models, views, serializers, urls)
+│   │   ├── ai_service.py     # Gemini AI matching logic
+│   │   ├── pdf_service.py    # ReportLab contract PDF generator
+│   │   └── views.py          # Auth, Trades, Disputes, Wallet & Profile views
+│   ├── config/               # Django settings & root URL router
+│   ├── generate_test_data.py # Test data seeder script
+│   ├── requirements.txt      # Python dependencies
+│   └── manage.py
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # Reusable UI components
+│   │   ├── context/          # AppContext (Global State & Auth)
+│   │   ├── lib/              # Axios client (api.js)
+│   │   ├── pages/            # Auth, Feed, Explore, Wallet, Proposals, Chat, etc.
+│   ├── .env                  # Environment variables
+│   └── package.json
+└── README.md
 ```
 
 ---
 
-## 🔌 Connecting to the Backend
+## 🛠️ Git Workflow & Branches
 
-All API calls should go through the centralized client:
-
-```js
-import api from "@/lib/api";
-
-// GET  /api/status
-const { data } = await api.get("/status");
-
-// POST /api/status
-const { data } = await api.post("/status", { client_name: "web" });
-```
-
-The client automatically:
-- Points to `REACT_APP_BACKEND_URL` from your `.env`
-- Attaches the auth token (`barter_token` from localStorage) to every request
-- Redirects to `/auth` on 401 Unauthorized
-
----
-
-## 🛠️ Available Scripts
-
-| Command | What it does |
-|---|---|
-| `npm start` | Dev server on `localhost:3000` |
-| `npm run start:network` | Dev server visible on local network |
-| `npm run build` | Production build in `build/` |
-| `npm test` | Run tests |
-
----
-
-## 🗺️ Routes
-
-| Path | Page |
-|---|---|
-| `/` | Landing |
-| `/auth` | Login / Register |
-| `/onboarding` | New user onboarding |
-| `/app/feed` | Main feed |
-| `/app/explore` | Explore listings |
-| `/app/create` | Create a listing |
-| `/app/matches` | AI-matched trades |
-| `/app/proposals` | Trade proposals |
-| `/app/chat` | Conversations |
-| `/app/wallet` | Wallet & history |
-| `/app/profile` | User profile |
+- Primary working branch: `Khushi`
+- To push updates:
+  ```bash
+  git add .
+  git commit -m "Your descriptive commit message"
+  git push -u origin Khushi
+  ```

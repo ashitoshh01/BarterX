@@ -20,7 +20,7 @@ const Explore = () => {
 
   const filtered = useMemo(() => {
     return listings.filter((l) => {
-      if (activeCat !== "all" && l.category !== activeCat) return false;
+      if (activeCat !== "all" && String(l.category) !== String(activeCat)) return false;
       if (type !== "all" && l.type !== type) return false;
       if (query && !`${l.title} ${l.description} ${l.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())) return false;
       return true;

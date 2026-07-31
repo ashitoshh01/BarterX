@@ -7,9 +7,11 @@ import { toast } from "sonner";
 
 const statusColors = {
   pending: "tint-amber",
+  negotiating: "tint-purple",
+  countered: "tint-purple",
   accepted: "tint-lime",
-  rejected: "tint-pink",
-  counter: "tint-purple",
+  declined: "tint-pink",
+  cancelled: "tint-pink",
 };
 
 const Proposals = () => {
@@ -18,9 +20,12 @@ const Proposals = () => {
 
   const filtered = proposals.filter((p) => p.direction === tab);
 
-  const act = (p, action) => {
-    respondProposal(p.id, action);
-    toast.success(`Proposal ${action}`);
+  const act = async (p, action) => {
+    try {
+      await respondProposal(p.id, action);
+    } catch (err) {
+      toast.error(err.message || "Failed to update proposal.");
+    }
   };
 
   return (
@@ -50,31 +55,34 @@ const Proposals = () => {
         <div className="space-y-3">
           {filtered.map((p) => {
             const otherId = p.direction === "incoming" ? p.from : p.to;
-            const other = users[otherId];
-            const theirItem = listings.find((l) => l.id === p.theirItem);
-            const yourItem = listings.find((l) => l.id === p.yourItem);
+            const other = users?.[otherId] || {};
+            const otherName = other.name || (p.direction === "incoming" ? p.fromName : p.toName) || "Unknown user";
+            const otherHandle = other.handle || (otherId ? `@${otherId}` : "");
+            const theirItem = listings.find((l) => String(l.id) === String(p.theirItem)) || (p.direction === "incoming" ? p.offeredItemDetail : p.requestedItemDetail);
+            const yourItem = listings.find((l) => String(l.id) === String(p.yourItem)) || (p.direction === "incoming" ? p.requestedItemDetail : p.offeredItemDetail);
+            const displayStatus = (p.status || "pending").replace(/_/g, " ");
             return (
               <div key={p.id} className="nb-card p-4 md:p-5 bg-[var(--surface)]" data-testid={`proposal-${p.id}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <img src={other.avatar} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt="" />
                     <div>
-                      <div className="font-bold text-sm">{other.name} <span className="font-mono2 text-[var(--text-3)] font-normal">{other.handle}</span></div>
+                      <div className="font-bold text-sm">{otherName} <span className="font-mono2 text-[var(--text-3)] font-normal">{otherHandle}</span></div>
                       <div className="text-xs font-mono2 text-[var(--text-3)]">{p.created}</div>
                     </div>
                   </div>
-                  <span className={`nb-tag ${statusColors[p.status]}`}>{p.status}</span>
+                  <span className={`nb-tag ${statusColors[p.status] || "tint-amber"}`}>{displayStatus}</span>
                 </div>
 
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mb-3">
                   <Link to={theirItem ? `/app/listing/${theirItem.id}` : "#"} className="nb-border-2 rounded-lg p-2 bg-[var(--surface-2)] hover:tint-amber transition-colors">
-                    <img src={theirItem?.images[0]} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
-                    <div className="text-xs font-bold mt-1 line-clamp-1">{theirItem?.title}</div>
+                    <img src={theirItem?.images?.[0] || theirItem?.image || theirItem?.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
+                    <div className="text-xs font-bold mt-1 line-clamp-1">{theirItem?.title || "Requested item"}</div>
                   </Link>
                   <Repeat size={20} strokeWidth={3} />
                   <Link to={yourItem ? `/app/listing/${yourItem.id}` : "#"} className="nb-border-2 rounded-lg p-2 tint-amber hover:bg-[var(--surface)] transition-colors">
-                    <img src={yourItem?.images[0]} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
-                    <div className="text-xs font-bold mt-1 line-clamp-1">{yourItem?.title}</div>
+                    <img src={yourItem?.images?.[0] || yourItem?.image || yourItem?.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
+                    <div className="text-xs font-bold mt-1 line-clamp-1">{yourItem?.title || "Offered item"}</div>
                   </Link>
                 </div>
 
@@ -85,30 +93,45 @@ const Proposals = () => {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {p.direction === "incoming" && p.status === "pending" && (
+                  {p.direction === "incoming" && (
                     <>
-                      <button
-                        onClick={() => act(p, "accepted")}
-                        className="nb-btn tint-lime px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"
-                        data-testid={`proposal-accept-${p.id}`}
-                      >
-                        <Check size={14} strokeWidth={3} /> Accept
-                      </button>
-                      <button
-                        onClick={() => act(p, "counter")}
-                        className="nb-btn tint-purple px-4 py-2 rounded-lg text-sm font-bold"
-                        data-testid={`proposal-counter-${p.id}`}
-                      >
-                        Counter
-                      </button>
-                      <button
-                        onClick={() => act(p, "rejected")}
-                        className="nb-btn tint-pink px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"
-                        data-testid={`proposal-reject-${p.id}`}
-                      >
-                        <X size={14} strokeWidth={3} /> Decline
-                      </button>
+                      {p.canAccept && (
+                        <button
+                          onClick={() => act(p, "accept")}
+                          className="nb-btn tint-lime px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"
+                          data-testid={`proposal-accept-${p.id}`}
+                        >
+                          <Check size={14} strokeWidth={3} /> Accept
+                        </button>
+                      )}
+                      {p.canCounter && (
+                        <button
+                          onClick={() => act(p, "counter")}
+                          className="nb-btn tint-purple px-4 py-2 rounded-lg text-sm font-bold"
+                          data-testid={`proposal-counter-${p.id}`}
+                        >
+                          Counter
+                        </button>
+                      )}
+                      {p.canDecline && (
+                        <button
+                          onClick={() => act(p, "decline")}
+                          className="nb-btn tint-pink px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"
+                          data-testid={`proposal-reject-${p.id}`}
+                        >
+                          <X size={14} strokeWidth={3} /> Decline
+                        </button>
+                      )}
                     </>
+                  )}
+                  {p.direction === "outgoing" && p.canCancel && (
+                    <button
+                      onClick={() => act(p, "cancel")}
+                      className="nb-btn tint-pink px-4 py-2 rounded-lg text-sm font-bold"
+                      data-testid={`proposal-cancel-${p.id}`}
+                    >
+                      Cancel
+                    </button>
                   )}
                   {p.status === "accepted" && (
                     <Link to={`/app/tracker/${p.id}`}>

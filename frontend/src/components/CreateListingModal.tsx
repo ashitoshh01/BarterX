@@ -199,18 +199,33 @@ export default function CreateListingModal({ onClose, onSuccess }: CreateListing
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Condition</label>
+              <label className="block text-xs font-bold text-text-secondary uppercase mb-2">Condition</label>
               <select
                 value={condition}
                 onChange={e => setCondition(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-border bg-bg text-sm text-text-primary focus:border-primary focus:bg-white outline-none transition-all"
+                className="w-full h-12 px-5 rounded-[var(--radius-button)] border border-border bg-bg text-sm text-text-primary focus:border-primary focus:bg-white outline-none transition-all"
               >
                 <option value="brand_new">Brand New</option>
                 <option value="like_new">Like New</option>
                 <option value="used">Used</option>
                 <option value="refurbished">Refurbished</option>
               </select>
+              <div className="mt-4 p-4 rounded-2xl bg-bg border border-border">
+                <details className="group">
+                  <summary className="text-xs font-bold text-primary cursor-pointer list-none flex items-center justify-between">
+                    What does this condition mean?
+                    <span className="group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  <div className="mt-3 text-xs text-text-secondary space-y-2">
+                    <p><strong className="text-text-primary">Brand New:</strong> Sealed in original packaging, never used.</p>
+                    <p><strong className="text-text-primary">Like New:</strong> Opened but barely used, no visible wear, original accessories included.</p>
+                    <p><strong className="text-text-primary">Used:</strong> Shows signs of regular use, fully functional, minor cosmetic wear acceptable.</p>
+                    <p><strong className="text-text-primary">Refurbished:</strong> Professionally restored to working condition, may have minor cosmetic defects.</p>
+                  </div>
+                </details>
+              </div>
             </div>
+
 
             <div>
               <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Location</label>

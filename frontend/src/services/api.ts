@@ -232,34 +232,13 @@ export async function fetchTrendingSwaps(token: string): Promise<TrendingSwap[]>
 // ─── Nearby Traders Service ────────────────────────────────────────────────
 
 export async function fetchNearbyTraders(token: string): Promise<NearbyTrader[]> {
-  const [profileRes, itemsRes] = await Promise.all([
-    axios.get(`${API_URL}profile/`, authHeaders(token)),
-    fetchItems(token),
-  ]);
-
-  const myLocation = (profileRes.data as UserProfile).location;
-  const myUsername = (profileRes.data as UserProfile).username;
-
-  // Get unique traders from items
-  const traderMap = new Map<string, NearbyTrader>();
-  itemsRes.forEach(item => {
-    if (item.owner_username === myUsername) return;
-    if (traderMap.has(item.owner_username)) return;
-
-    const isNearby = item.location.toLowerCase().includes(myLocation.toLowerCase().split(',')[0] || '');
-    const distance = isNearby ? `${Math.floor(Math.random() * 5) + 1} km away` : `${Math.floor(Math.random() * 15) + 5} km away`;
-
-    traderMap.set(item.owner_username, {
-      username: item.owner_username,
-      display_name: item.owner_username,
-      profile_picture_url: null,
-      location: item.location,
-      average_rating: 4.5 + Math.random() * 0.5,
-      distance,
-    });
-  });
-
-  return Array.from(traderMap.values()).slice(0, 5);
+  try {
+    const res = await axios.get(`${API_URL}profile/nearby_traders/`, authHeaders(token));
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch nearby traders", err);
+    return [];
+  }
 }
 
 function getUserIdFromToken(token: string): number | null {
@@ -483,3 +462,39 @@ export const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'Media & Entertainment': 'Books',
   'Entertainment & Gaming': 'Sports',
 };
+
+// ─── Contracts Service ───────────────────────────────────────────────────────
+
+export async function signContract(token: string, contractId: number): Promise<any> {
+  const res = await axios.post(`${API_URL}contracts/${contractId}/sign/`, {}, authHeaders(token));
+  return res.data;
+}
+
+export function getContractPdfUrl(contractId: number): string {
+  return `${API_URL}contracts/${contractId}/download_pdf/`;
+}
+
+// ─── Trades & Logistics ──────────────────────────────────────────────────────
+
+export async function getTrades(token: string): Promise<any> {
+  const res = await axios.get(`${API_URL}trades/`, authHeaders(token));
+  return res.data;
+}
+
+export async function updateLogistics(token: string, tradeId: number, data: any): Promise<any> {
+  const res = await axios.post(`${API_URL}trades/${tradeId}/update_logistics/`, data, authHeaders(token));
+  return res.data;
+}
+
+// ─── Disputes ────────────────────────────────────────────────────────────────
+
+export async function getDisputes(token: string): Promise<any> {
+  const res = await axios.get(`${API_URL}disputes/`, authHeaders(token));
+  return res.data;
+}
+
+export async function createDispute(token: string, data: any): Promise<any> {
+  const res = await axios.post(`${API_URL}disputes/`, data, authHeaders(token));
+  return res.data;
+}
+

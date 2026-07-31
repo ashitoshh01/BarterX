@@ -3,11 +3,17 @@ import re
 from rest_framework import serializers
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
+# pyrefly: ignore [missing-import]
+from django.contrib.auth.hashers import check_password
+# pyrefly: ignore [missing-import]
+from django.db import models
+# pyrefly: ignore [missing-import]
+from django.db.models import Q
 
 from .models import (
-    UserProfile, Category, BarterItem, BarterItemImage, BarterOffer, ChatMessage,
+    UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
     UserReview, TradeTransaction, OTPVerification,
-    BarterInterest, Notification, ChatRoom, DealConfirmation
+    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute
 )
 
 
@@ -25,7 +31,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ('bio', 'location', 'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
                   'account_type', 'display_name', 'business_category', 'username', 'email', 'member_since',
-                  'trust_score', 'trust_level', 'reward_points', 'coin_balance')
+                  'trust_score', 'trust_level', 'reward_points', 'coin_balance',
+                  'cover_picture_url', 'college_organization', 'department_branch', 'year_of_study',
+                  'github_profile', 'linkedin_profile', 'portfolio_website', 'resume_url', 'proof_of_work')
         read_only_fields = ('is_verified', 'average_rating', 'account_type', 'trust_score', 'reward_points', 'coin_balance')
 
     def get_member_since(self, obj):
@@ -81,7 +89,7 @@ class UserSerializer(serializers.ModelSerializer):
         if not otp:
             raise serializers.ValidationError({"otp": "Verification code is required."})
 
-        from django.contrib.auth.hashers import check_password
+
         try:
             # Get latest OTP verification record
             otp_record = OTPVerification.objects.filter(email=email).latest('created_at')
@@ -183,15 +191,60 @@ class BarterItemImageSerializer(serializers.ModelSerializer):
         model = BarterItemImage
         fields = ('id', 'image')
 
+class ListingHistorySerializer(serializers.ModelSerializer):
+    performed_by_username = serializers.ReadOnlyField(source='performed_by.username')
+
+    class Meta:
+        model = ListingHistory
+        fields = ('id', 'action', 'metadata', 'created_at', 'performed_by_username')
+
 class BarterItemSerializer(serializers.ModelSerializer):
-    owner_username = serializers.ReadOnlyField(source='owner.username')
+    owner = serializers.SerializerMethodField()
     category_name = serializers.ReadOnlyField(source='category.name')
     additional_images = BarterItemImageSerializer(many=True, read_only=True)
+    history_logs = ListingHistorySerializer(many=True, read_only=True)
+    proposal_count = serializers.SerializerMethodField()
+    chat_count = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterItem
         fields = '__all__'
-        read_only_fields = ('owner', 'item_score')
+        read_only_fields = ('owner', 'item_score', 'is_boosted', 'boosted_at', 'boost_expires_at', 'views_count')
+
+    def get_owner(self, obj):
+        profile = getattr(obj.owner, 'profile', None)
+        if profile:
+            return {
+                "id": obj.owner.id,
+                "username": obj.owner.username,
+                "display_name": profile.display_name or obj.owner.username,
+                "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+                "verified": profile.is_verified,
+                "trust_score": profile.trust_score,
+                "rating": profile.average_rating,
+                "coin_balance": profile.coin_balance
+            }
+        return {
+            "id": obj.owner.id,
+            "username": obj.owner.username,
+            "display_name": obj.owner.username,
+            "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+            "verified": False,
+            "trust_score": 50,
+            "rating": 0.0,
+            "coin_balance": 0
+        }
+
+    def get_proposal_count(self, obj):
+        from .models import BarterInterest
+        return BarterInterest.objects.filter(Q(requested_item=obj) | Q(offered_item=obj)).count()
+
+    def get_chat_count(self, obj):
+        from chat.models import Conversation
+        return Conversation.objects.filter(
+            Q(listing=obj) | 
+            Q(barter_interest__offered_item=obj)
+        ).count()
 
 class BarterOfferSerializer(serializers.ModelSerializer):
     sender_username = serializers.ReadOnlyField(source='sender.username')
@@ -203,28 +256,7 @@ class BarterOfferSerializer(serializers.ModelSerializer):
         model = BarterOffer
         fields = '__all__'
 
-class ChatMessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.ReadOnlyField(source='sender.username')
-    # For backward compat, keep receiver_username
-    receiver_username = serializers.SerializerMethodField()
-    media_url = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ChatMessage
-        fields = '__all__'
-
-    def get_receiver_username(self, obj):
-        if obj.receiver:
-            return obj.receiver.username
-        return None
-
-    def get_media_url(self, obj):
-        if obj.media:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.media.url)
-            return obj.media.url
-        return None
+# ChatMessageSerializer is replaced by MessageSerializer in the chat app.
 
 class UserReviewSerializer(serializers.ModelSerializer):
     reviewer_username = serializers.ReadOnlyField(source='reviewer.username')
@@ -296,6 +328,11 @@ class BarterInterestSerializer(serializers.ModelSerializer):
     requester_display_name = serializers.SerializerMethodField()
     receiver_display_name = serializers.SerializerMethodField()
     chat_room_id = serializers.SerializerMethodField()
+    is_read_only = serializers.SerializerMethodField()
+    can_cancel = serializers.SerializerMethodField()
+    can_accept = serializers.SerializerMethodField()
+    can_counter = serializers.SerializerMethodField()
+    can_decline = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterInterest
@@ -303,7 +340,9 @@ class BarterInterestSerializer(serializers.ModelSerializer):
                   'requester_display_name', 'receiver_display_name',
                   'requested_item', 'offered_item',
                   'requested_item_detail', 'offered_item_detail',
-                  'status', 'chat_room_id', 'created_at', 'updated_at')
+                  'proposal_message', 'coins_offered', 'metadata',
+                  'status', 'chat_room_id', 'is_read_only', 'can_cancel', 'can_accept', 'can_counter', 'can_decline',
+                  'created_at', 'updated_at')
         read_only_fields = ('requester', 'receiver', 'status')
 
     def get_requester_display_name(self, obj):
@@ -321,8 +360,23 @@ class BarterInterestSerializer(serializers.ModelSerializer):
     def get_chat_room_id(self, obj):
         try:
             return obj.chat_room.id
-        except ChatRoom.DoesNotExist:
+        except Exception:
             return None
+
+    def get_is_read_only(self, obj):
+        return obj.status in {'accepted', 'declined', 'cancelled'}
+
+    def get_can_cancel(self, obj):
+        return obj.status not in {'declined', 'cancelled'}
+
+    def get_can_accept(self, obj):
+        return obj.status == 'pending'
+
+    def get_can_counter(self, obj):
+        return obj.status in {'pending', 'negotiating'}
+
+    def get_can_decline(self, obj):
+        return obj.status in {'pending', 'negotiating', 'countered'}
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -335,77 +389,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         read_only_fields = ('user', 'notification_type', 'title', 'message', 'barter_interest_id')
 
 
-class ChatRoomSerializer(serializers.ModelSerializer):
-    barter_interest_detail = BarterInterestSerializer(source='barter_interest', read_only=True)
-    user1_username = serializers.ReadOnlyField(source='user1.username')
-    user2_username = serializers.ReadOnlyField(source='user2.username')
-    user1_display_name = serializers.SerializerMethodField()
-    user2_display_name = serializers.SerializerMethodField()
-    last_message = serializers.SerializerMethodField()
-    unread_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ChatRoom
-        fields = ('id', 'barter_interest', 'barter_interest_detail',
-                  'user1', 'user1_username', 'user1_display_name',
-                  'user2', 'user2_username', 'user2_display_name',
-                  'last_message', 'unread_count', 'created_at')
-
-    def get_user1_display_name(self, obj):
-        try:
-            return obj.user1.profile.display_name or obj.user1.username
-        except UserProfile.DoesNotExist:
-            return obj.user1.username
-
-    def get_user2_display_name(self, obj):
-        try:
-            return obj.user2.profile.display_name or obj.user2.username
-        except UserProfile.DoesNotExist:
-            return obj.user2.username
-
-    def get_last_message(self, obj):
-        last_msg = obj.messages.order_by('-created_at').first()
-        if last_msg:
-            return {
-                'message': last_msg.message[:80] if last_msg.message else '📷 Image',
-                'sender_username': last_msg.sender.username,
-                'created_at': last_msg.created_at.isoformat(),
-                'is_read': last_msg.is_read,
-            }
-        return None
-
-    def get_unread_count(self, obj):
-        request = self.context.get('request')
-        if request and request.user:
-            return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
-        return 0
-
-
-class RoomChatMessageSerializer(serializers.ModelSerializer):
-    """Serializer specifically for room-based chat messages."""
-    sender_username = serializers.ReadOnlyField(source='sender.username')
-    sender_display_name = serializers.SerializerMethodField()
-    media_url = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ChatMessage
-        fields = ('id', 'room', 'sender', 'sender_username', 'sender_display_name',
-                  'message', 'media', 'media_url', 'is_read', 'created_at')
-        read_only_fields = ('sender',)
-
-    def get_sender_display_name(self, obj):
-        try:
-            return obj.sender.profile.display_name or obj.sender.username
-        except UserProfile.DoesNotExist:
-            return obj.sender.username
-
-    def get_media_url(self, obj):
-        if obj.media:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.media.url)
-            return obj.media.url
-        return None
+# ChatRoomSerializer and RoomChatMessageSerializer are replaced by ConversationSerializer and MessageSerializer in the chat app.
 
 
 class DealConfirmationSerializer(serializers.ModelSerializer):
@@ -419,3 +403,58 @@ class DealConfirmationSerializer(serializers.ModelSerializer):
                   'user1_cooldown_until', 'user2_cooldown_until',
                   'is_completed', 'completed_at', 'created_at')
         read_only_fields = '__all__'
+
+class CoinTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CoinTransaction
+        fields = ('id', 'user', 'amount', 'transaction_type', 'description', 'created_at')
+        read_only_fields = ('user', 'amount', 'transaction_type', 'description', 'created_at')
+
+class ContractSerializer(serializers.ModelSerializer):
+    party_a_username = serializers.ReadOnlyField(source='party_a.username')
+    party_b_username = serializers.ReadOnlyField(source='party_b.username')
+    party_a_display_name = serializers.SerializerMethodField()
+    party_b_display_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Contract
+        fields = (
+            'id', 'barter_interest', 'party_a', 'party_b', 
+            'party_a_username', 'party_b_username', 'party_a_display_name', 'party_b_display_name',
+            'status', 'terms', 'signed_a', 'signed_b', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('barter_interest', 'party_a', 'party_b', 'status', 'created_at', 'updated_at')
+
+    def get_party_a_display_name(self, obj):
+        try:
+            return obj.party_a.profile.display_name or obj.party_a.username
+        except:
+            return obj.party_a.username
+
+    def get_party_b_display_name(self, obj):
+        try:
+            return obj.party_b.profile.display_name or obj.party_b.username
+        except:
+            return obj.party_b.username
+
+class TradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trade
+        fields = '__all__'
+        read_only_fields = ('proposal', 'requested_listing', 'offered_listing', 'requester', 'receiver', 'created_at')
+
+class DisputeSerializer(serializers.ModelSerializer):
+    against_username = serializers.ReadOnlyField(source='against.username')
+    against_name = serializers.SerializerMethodField()
+    raised_by_username = serializers.ReadOnlyField(source='raised_by.username')
+    
+    class Meta:
+        model = Dispute
+        fields = '__all__'
+        read_only_fields = ('raised_by', 'status', 'created_at', 'resolution')
+        
+    def get_against_name(self, obj):
+        try:
+            return obj.against.profile.display_name or obj.against.username
+        except:
+            return obj.against.username

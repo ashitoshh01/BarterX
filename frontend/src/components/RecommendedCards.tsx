@@ -37,8 +37,15 @@ export default function RecommendedCards({ items, loading, onItemClick }: Recomm
     );
   }
 
-  const getImage = (item: BarterItem) =>
-    item.image_url || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80';
+  const getImage = (item: BarterItem) => {
+    // If image_url is a full URL, use it directly. 
+    // If it's a relative path, assume it's served from the backend static/media directory.
+    // For this test data, we are using absolute URLs.
+    if (item.image_url && item.image_url.startsWith('http')) {
+      return item.image_url;
+    }
+    return item.image || 'https://placehold.co/400x400/png?text=No+Image';
+  };
 
   const isService = (item: BarterItem) =>
     (item.category_name || '').toLowerCase().includes('service');
