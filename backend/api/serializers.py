@@ -13,7 +13,7 @@ from django.db.models import Q
 from .models import (
     UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
     UserReview, TradeTransaction, OTPVerification,
-    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, SavedItem
+    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, DisputeEvidence, SavedItem
 )
 
 
@@ -445,10 +445,16 @@ class TradeSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('proposal', 'requested_listing', 'offered_listing', 'requester', 'receiver', 'created_at')
 
+class DisputeEvidenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DisputeEvidence
+        fields = ('id', 'file', 'uploaded_at')
+
 class DisputeSerializer(serializers.ModelSerializer):
     against_username = serializers.ReadOnlyField(source='against.username')
     against_name = serializers.SerializerMethodField()
     raised_by_username = serializers.ReadOnlyField(source='raised_by.username')
+    evidence_files = DisputeEvidenceSerializer(many=True, read_only=True)
     
     class Meta:
         model = Dispute

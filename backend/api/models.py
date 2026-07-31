@@ -487,7 +487,6 @@ class Dispute(models.Model):
     against = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_against')
     reason = models.CharField(max_length=100)
     detail = models.TextField()
-    evidence_image = models.FileField(upload_to='dispute_evidence/', null=True, blank=True)
     is_escalated = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -495,6 +494,15 @@ class Dispute(models.Model):
 
     def __str__(self):
         return f"Dispute {self.id} by {self.raised_by.username} against {self.against.username}"
+
+
+class DisputeEvidence(models.Model):
+    dispute = models.ForeignKey(Dispute, on_delete=models.CASCADE, related_name='evidence_files')
+    file = models.FileField(upload_to='dispute_evidence/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Evidence {self.id} for Dispute #{self.dispute_id}"
 
 
 class SavedItem(models.Model):

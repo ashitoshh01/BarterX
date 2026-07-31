@@ -1097,6 +1097,15 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         if interest.receiver != request.user:
             return Response({"detail": "Only the receiver can accept."}, status=status.HTTP_403_FORBIDDEN)
 
+        # Re-validate coin balance at acceptance time
+        if interest.coins_offered > 0:
+            sender_profile = getattr(interest.requester, 'profile', None)
+            if not sender_profile or sender_profile.coin_balance < interest.coins_offered:
+                return Response(
+                    {"detail": f"Cannot accept proposal: requester has insufficient coin balance ({sender_profile.coin_balance if sender_profile else 0} available, {interest.coins_offered} required)."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         try:
             interest.transition_to('accepted')
         except ValidationError as exc:
@@ -1340,55 +1349,64 @@ class TradeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def update_logistics(self, request, pk=None):
-        trade = self.get_object()
-        logistics_status = request.data.get('logistics_status')
-        tracking_number = request.data.get('tracking_number')
-        shipping_provider = request.data.get('shipping_provider')
+        with transaction.atomic():
+            trade = Trade.objects.select_for_update().get(pk=pk)
 
-        STAGES = ['preparing', 'shipped', 'out_for_delivery', 'delivered']
-        if logistics_status and logistics_status in STAGES:
-            current_idx = STAGES.index(trade.logistics_status) if trade.logistics_status in STAGES else 0
-            new_idx = STAGES.index(logistics_status)
-            if new_idx < current_idx:
-                return Response({"detail": "Cannot revert trade logistics to a previous stage."}, status=status.HTTP_400_BAD_REQUEST)
-            trade.logistics_status = logistics_status
+            # Check idempotency: if trade is already completed, return error
+            if trade.status == 'completed':
+                return Response({"detail": "Trade is already completed and payout has been processed."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if tracking_number is not None:
-            trade.tracking_number = tracking_number
-        if shipping_provider is not None:
-            trade.shipping_provider = shipping_provider
-            
-        if logistics_status == 'delivered' and trade.status != 'completed':
-            trade.status = 'completed'
-            trade.completed_at = timezone.now()
+            logistics_status = request.data.get('logistics_status')
+            tracking_number = request.data.get('tracking_number')
+            shipping_provider = request.data.get('shipping_provider')
 
-            # Escrow coin settlement
-            if trade.barter_interest and trade.barter_interest.coins_offered > 0:
-                coins = trade.barter_interest.coins_offered
-                sender_profile = getattr(trade.barter_interest.requester, 'profile', None)
-                receiver_profile = getattr(trade.barter_interest.receiver, 'profile', None)
+            STAGES = ['preparing', 'shipped', 'out_for_delivery', 'delivered']
+            if logistics_status and logistics_status in STAGES:
+                current_idx = STAGES.index(trade.logistics_status) if trade.logistics_status in STAGES else 0
+                new_idx = STAGES.index(logistics_status)
+                if new_idx < current_idx:
+                    return Response({"detail": "Cannot revert trade logistics to a previous stage."}, status=status.HTTP_400_BAD_REQUEST)
+                trade.logistics_status = logistics_status
+
+            if tracking_number is not None:
+                trade.tracking_number = tracking_number
+            if shipping_provider is not None:
+                trade.shipping_provider = shipping_provider
                 
-                if sender_profile and receiver_profile and sender_profile.coin_balance >= coins:
-                    sender_profile.coin_balance -= coins
-                    sender_profile.save(update_fields=['coin_balance'])
-                    receiver_profile.coin_balance += coins
-                    receiver_profile.save(update_fields=['coin_balance'])
+            if logistics_status == 'delivered':
+                trade.status = 'completed'
+                trade.completed_at = timezone.now()
 
-                    CoinTransaction.objects.create(
-                        user=trade.barter_interest.requester,
-                        amount=-coins,
-                        transaction_type='swap_payment',
-                        description=f"Barter Coins transferred for Trade #{trade.id}"
-                    )
-                    CoinTransaction.objects.create(
-                        user=trade.barter_interest.receiver,
-                        amount=coins,
-                        transaction_type='swap_reward',
-                        description=f"Barter Coins received for Trade #{trade.id}"
-                    )
+                # Escrow coin settlement
+                if trade.barter_interest and trade.barter_interest.coins_offered > 0:
+                    coins = trade.barter_interest.coins_offered
+                    sender_profile = getattr(trade.barter_interest.requester, 'profile', None)
+                    receiver_profile = getattr(trade.barter_interest.receiver, 'profile', None)
+                    
+                    if sender_profile and receiver_profile:
+                        if sender_profile.coin_balance < coins:
+                            return Response({"detail": f"Requester has insufficient coin balance ({sender_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
+                        
+                        sender_profile.coin_balance -= coins
+                        sender_profile.save(update_fields=['coin_balance'])
+                        receiver_profile.coin_balance += coins
+                        receiver_profile.save(update_fields=['coin_balance'])
 
-        trade.save()
-        return Response(self.get_serializer(trade).data)
+                        CoinTransaction.objects.create(
+                            user=trade.barter_interest.requester,
+                            amount=-coins,
+                            transaction_type='spent',
+                            description=f"Barter Coins transferred for Trade #{trade.id}"
+                        )
+                        CoinTransaction.objects.create(
+                            user=trade.barter_interest.receiver,
+                            amount=coins,
+                            transaction_type='earned',
+                            description=f"Barter Coins received for Trade #{trade.id}"
+                        )
+
+            trade.save()
+            return Response(self.get_serializer(trade).data)
 
 class DisputeViewSet(viewsets.ModelViewSet):
     serializer_class = DisputeSerializer
@@ -1398,7 +1416,10 @@ class DisputeViewSet(viewsets.ModelViewSet):
         return Dispute.objects.filter(Q(raised_by=self.request.user) | Q(against=self.request.user)).order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(raised_by=self.request.user)
+        dispute = serializer.save(raised_by=self.request.user)
+        files = self.request.FILES.getlist('evidence_files') or self.request.FILES.getlist('evidence')
+        for f in files:
+            DisputeEvidence.objects.create(dispute=dispute, file=f)
 
     @action(detail=True, methods=['post'])
     def escalate(self, request, pk=None):
