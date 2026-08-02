@@ -203,6 +203,7 @@ const mapInterestToProposal = (interest, currentUserUsername) => {
     chatRoomId: interest.chat_room_id,
     requestedItemDetail: interest.requested_item_detail,
     offeredItemDetail: interest.offered_item_detail,
+    coinsOffered: interest.coins_offered || 0,
   };
 };
 
@@ -1153,6 +1154,69 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const purchaseCoins = useCallback(async (amount) => {
+    try {
+      setError(null);
+      const res = await api.post("/wallet/purchase-coins/", { amount: Number(amount) });
+      setUser((prev) => ({ ...prev, coins: res.data.new_balance }));
+      
+      // Refresh wallet transaction logs
+      try {
+        const walletRes = await api.get("/wallet/transactions/");
+        const walletList = walletRes.data.results || walletRes.data;
+        setWallet(walletList.map(mapWalletTransaction));
+      } catch (e) {
+        console.warn("Failed to refresh transactions after purchase", e);
+      }
+      
+      toast.success(res.data.message || `Successfully purchased ${amount} coins.`);
+      return res.data.new_balance;
+    } catch (err) {
+      console.error("Failed to purchase coins:", err);
+      const msg = parseBackendError(err, "Failed to purchase coins.");
+      toast.error(msg);
+      throw new Error(msg);
+    }
+  }, []);
+
+  const createRazorpayOrder = useCallback(async (amount) => {
+    try {
+      setError(null);
+      const res = await api.post("/wallet/create-razorpay-order/", { amount: Number(amount) });
+      return res.data; // { order_id, amount_inr, amount_coins, currency }
+    } catch (err) {
+      console.error("Failed to create Razorpay order:", err);
+      const msg = parseBackendError(err, "Failed to initiate payment order.");
+      toast.error(msg);
+      throw new Error(msg);
+    }
+  }, []);
+
+  const verifyRazorpayPayment = useCallback(async (paymentDetails) => {
+    try {
+      setError(null);
+      const res = await api.post("/wallet/verify-razorpay-payment/", paymentDetails);
+      setUser((prev) => ({ ...prev, coins: res.data.new_balance }));
+
+      // Refresh wallet transaction logs
+      try {
+        const walletRes = await api.get("/wallet/transactions/");
+        const walletList = walletRes.data.results || walletRes.data;
+        setWallet(walletList.map(mapWalletTransaction));
+      } catch (e) {
+        console.warn("Failed to refresh transactions after verification", e);
+      }
+
+      toast.success(res.data.message || "Payment verified successfully!");
+      return res.data.new_balance;
+    } catch (err) {
+      console.error("Failed to verify Razorpay payment:", err);
+      const msg = parseBackendError(err, "Payment verification failed.");
+      toast.error(msg);
+      throw new Error(msg);
+    }
+  }, []);
+
   const dynamicUsers = useMemo(() => {
     const map = { ...USERS };
     if (user && user.id) {
@@ -1193,11 +1257,11 @@ export const AppProvider = ({ children }) => {
     contracts, setContracts,
     trades, setTrades,
     disputes, setDisputes,
-    wallet, setWallet,
+    wallet, setWallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment,
     users: dynamicUsers, categories: categoriesList,
     aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment]);
 
   if (loading) {
     return (

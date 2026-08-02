@@ -86,6 +86,24 @@ const Proposals = () => {
                   </Link>
                 </div>
 
+                {p.coinsOffered !== 0 && (
+                  <div className={`nb-border-2 rounded-lg p-2.5 text-xs font-mono2 font-bold text-center mb-3 ${
+                    p.coinsOffered > 0 
+                      ? (p.direction === "incoming" ? "bg-[var(--lime)] text-black" : "bg-[var(--pink)] text-white")
+                      : (p.direction === "incoming" ? "bg-[var(--pink)] text-white" : "bg-[var(--lime)] text-black")
+                  }`}>
+                    {p.coinsOffered > 0 ? (
+                      p.direction === "incoming" 
+                        ? `💰 You will receive ${p.coinsOffered} coins on swap completion.`
+                        : `⚠️ You will pay ${p.coinsOffered} coins on swap completion.`
+                    ) : (
+                      p.direction === "incoming"
+                        ? `⚠️ You will pay ${Math.abs(p.coinsOffered)} coins on swap completion.`
+                        : `💰 You will receive ${Math.abs(p.coinsOffered)} coins on swap completion.`
+                    )}
+                  </div>
+                )}
+
                 {p.message && (
                   <div className="nb-border-2 rounded-lg bg-[var(--surface-2)] p-3 text-sm font-medium mb-3">
                     "{p.message}"

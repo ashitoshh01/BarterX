@@ -1,10 +1,13 @@
 from rest_framework import viewsets, generics, permissions, filters, status
 from rest_framework.decorators import action
+from django.conf import settings
+import razorpay
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.db import transaction
@@ -103,7 +106,7 @@ class SimpleRegisterView(generics.CreateAPIView):
             UserProfile.objects.filter(user=user).update(
                 display_name=name,
                 account_type='individual',
-                coin_balance=10,
+                coin_balance=100,
             )
 
         refresh = RefreshToken.for_user(user)
@@ -162,7 +165,7 @@ class GoogleOAuthView(generics.GenericAPIView):
                     display_name=name,
                     account_type='individual',
                     profile_picture_url=picture,
-                    coin_balance=10,
+                    coin_balance=100,
                 )
 
         refresh = RefreshToken.for_user(user)
@@ -299,7 +302,7 @@ class VerifyOTPAndRegisterView(generics.GenericAPIView):
             profile.account_type = 'individual'
             profile.is_verified = False
             profile.trust_score = 20
-            profile.coin_balance = 10
+            profile.coin_balance = 100
             profile.save()
             otp_record.delete()
 
@@ -1016,6 +1019,120 @@ class PurchaseCoinsView(generics.GenericAPIView):
         
         return Response({"message": f"Successfully purchased {amount} coins.", "new_balance": profile.coin_balance})
 
+
+class CreateRazorpayOrderView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        amount = int(request.data.get('amount', 0))
+        if amount <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Indian college student pricing packages (₹5 base, with discounts)
+        if amount == 50:
+            price_inr = 250
+        elif amount == 100:
+            price_inr = 450
+        elif amount == 250:
+            price_inr = 1000
+        elif amount == 500:
+            price_inr = 1750
+        else:
+            price_inr = amount * 5
+
+        # Check if real Razorpay credentials are set in settings
+        razorpay_key = getattr(settings, 'RAZORPAY_KEY_ID', None)
+        razorpay_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
+
+        if razorpay_key and razorpay_secret:
+            try:
+                client = razorpay.Client(auth=(razorpay_key, razorpay_secret))
+                # Razorpay expects amount in paise (1 INR = 100 paise)
+                data = {
+                    "amount": price_inr * 100,
+                    "currency": "INR",
+                    "receipt": f"receipt_coins_{random.randint(1000, 9999)}",
+                    "payment_capture": 1
+                }
+                order = client.order.create(data=data)
+                return Response({
+                    "order_id": order["id"],
+                    "amount_inr": price_inr,
+                    "amount_coins": amount,
+                    "currency": "INR",
+                    "key_id": razorpay_key,
+                    "is_simulated": False
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                # If Razorpay client fails, fallback to simulated in debug, or raise error in prod
+                if not getattr(settings, 'DEBUG', True):
+                    return Response({"detail": f"Razorpay API Error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Fallback simulated order ID
+        simulated_order_id = f"order_sim_{random.randint(100000, 999999)}"
+
+        return Response({
+            "order_id": simulated_order_id,
+            "amount_inr": price_inr,
+            "amount_coins": amount,
+            "currency": "INR",
+            "key_id": "rzp_test_simulated_key",
+            "is_simulated": True
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyRazorpayPaymentView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        order_id = request.data.get('order_id')
+        payment_id = request.data.get('payment_id')
+        signature = request.data.get('signature')
+        amount = int(request.data.get('amount_coins', 0))
+
+        if not order_id or not payment_id or not signature or amount <= 0:
+            return Response({"detail": "Missing payment verification parameters."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if real Razorpay credentials are set in settings
+        razorpay_key = getattr(settings, 'RAZORPAY_KEY_ID', None)
+        razorpay_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
+
+        is_valid = False
+        if razorpay_key and razorpay_secret and not order_id.startswith("order_sim_"):
+            try:
+                client = razorpay.Client(auth=(razorpay_key, razorpay_secret))
+                params_dict = {
+                    'razorpay_order_id': order_id,
+                    'razorpay_payment_id': payment_id,
+                    'razorpay_signature': signature
+                }
+                client.utility.verify_payment_signature(params_dict)
+                is_valid = True
+            except Exception:
+                return Response({"detail": "Razorpay Signature Verification Failed."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Simulated check
+            if order_id.startswith("order_sim_") or signature == "simulated_razorpay_sig_123456":
+                is_valid = True
+
+        if not is_valid:
+            return Response({"detail": "Invalid payment transaction signature."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        profile.add_coins(amount)
+
+        CoinTransaction.objects.create(
+            user=request.user,
+            amount=amount,
+            transaction_type='purchased',
+            description=f"Purchased {amount} coins via Razorpay ({payment_id})"
+        )
+
+        return Response({
+            "message": f"Successfully verified payment. {amount} coins credited.",
+            "new_balance": profile.coin_balance
+        }, status=status.HTTP_200_OK)
+
 class RedeemCoinsView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -1105,11 +1222,21 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         if duplicate_query.exists():
             return Response({"detail": "You already have an active proposal for this swap."}, status=status.HTTP_400_BAD_REQUEST)
 
-        coins_val = int(coins_offered or 0)
+        # Auto-calculate the valuation gap offset: 1 Coin = 100 units of purchase_price
+        coins_val = 0
+        if offered_item:
+            req_price = float(requested_item.purchase_price or 0)
+            off_price = float(offered_item.purchase_price or 0)
+            coins_val = int((req_price - off_price) / 100)
+
         if coins_val > 0:
             profile = getattr(request.user, 'profile', None)
             if not profile or profile.coin_balance < coins_val:
-                return Response({"detail": f"Insufficient Barter Coins balance. You have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": f"Insufficient Barter Coins balance. You need {coins_val} coins to bridge the value gap, but you only have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+        elif coins_val < 0:
+            receiver_profile = getattr(requested_item.owner, 'profile', None)
+            if not receiver_profile or receiver_profile.coin_balance < abs(coins_val):
+                return Response({"detail": f"The other trader has insufficient coin balance. They need {abs(coins_val)} coins to bridge the value gap, but they only have {receiver_profile.coin_balance if receiver_profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
 
         interest = BarterInterest.objects.create(
             requester=request.user,
@@ -1436,31 +1563,40 @@ class TradeViewSet(viewsets.ModelViewSet):
                 trade.completed_at = timezone.now()
 
                 # Escrow coin settlement
-                if trade.barter_interest and trade.barter_interest.coins_offered > 0:
+                if trade.barter_interest and trade.barter_interest.coins_offered != 0:
                     coins = trade.barter_interest.coins_offered
                     sender_profile = getattr(trade.barter_interest.requester, 'profile', None)
                     receiver_profile = getattr(trade.barter_interest.receiver, 'profile', None)
                     
                     if sender_profile and receiver_profile:
-                        if sender_profile.coin_balance < coins:
-                            return Response({"detail": f"Requester has insufficient coin balance ({sender_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
+                        if coins > 0:
+                            # Requester pays Receiver
+                            if sender_profile.coin_balance < coins:
+                                return Response({"detail": f"Requester has insufficient coin balance ({sender_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
+                            sender_profile.coin_balance -= coins
+                            receiver_profile.coin_balance += coins
+                        else:
+                            # Receiver pays Requester (coins is negative)
+                            abs_coins = abs(coins)
+                            if receiver_profile.coin_balance < abs_coins:
+                                return Response({"detail": f"Receiver has insufficient coin balance ({receiver_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
+                            receiver_profile.coin_balance -= abs_coins
+                            sender_profile.coin_balance += abs_coins
                         
-                        sender_profile.coin_balance -= coins
                         sender_profile.save(update_fields=['coin_balance'])
-                        receiver_profile.coin_balance += coins
                         receiver_profile.save(update_fields=['coin_balance'])
 
                         CoinTransaction.objects.create(
                             user=trade.barter_interest.requester,
                             amount=-coins,
-                            transaction_type='spent',
-                            description=f"Barter Coins transferred for Trade #{trade.id}"
+                            transaction_type='spent' if coins > 0 else 'earned',
+                            description=f"Barter Coins adjustment for Trade #{trade.id}"
                         )
                         CoinTransaction.objects.create(
                             user=trade.barter_interest.receiver,
                             amount=coins,
-                            transaction_type='earned',
-                            description=f"Barter Coins received for Trade #{trade.id}"
+                            transaction_type='earned' if coins > 0 else 'spent',
+                            description=f"Barter Coins adjustment for Trade #{trade.id}"
                         )
 
             trade.save()

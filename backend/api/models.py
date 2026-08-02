@@ -50,7 +50,7 @@ class UserProfile(models.Model):
     reward_points = models.IntegerField(default=0)
     
     # BarterX Coin System
-    coin_balance = models.IntegerField(default=10)
+    coin_balance = models.IntegerField(default=100)
 
     # Real-Time Chat Presence fields
     online_status = models.CharField(

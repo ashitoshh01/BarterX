@@ -78,7 +78,10 @@ const ListingDetail = () => {
   const submitProposal = async () => {
     if (!selectedItem) { toast.error("Pick an item to offer"); return; }
     try {
-      await createProposal(listing.id, selectedItem, message.trim(), Number(coins || 0));
+      const selectedOfferedItem = myItems.find(it => it.id === selectedItem);
+      const priceDiff = (listing.estValue || 0) - (selectedOfferedItem?.estValue || 0);
+      const calculatedCoins = Math.floor(priceDiff / 100);
+      await createProposal(listing.id, selectedItem, message.trim(), calculatedCoins);
       toast.success("Swap proposal sent! 🤝");
       setProposeOpen(false);
       nav("/app/proposals");
@@ -329,15 +332,37 @@ const ListingDetail = () => {
                 ))}
               </div>
             )}
-            <div className="text-xs font-mono2 uppercase mb-2">Sweeten with coins? (optional)</div>
-            <input
-              type="number"
-              value={coins}
-              onChange={(e) => setCoins(e.target.value)}
-              placeholder="0"
-              className="nb-input mb-4"
-              data-testid="propose-coins"
-            />
+            {selectedItem && (
+              (() => {
+                const selectedOfferedItem = myItems.find(it => it.id === selectedItem);
+                if (!selectedOfferedItem) return null;
+                const priceDiff = (listing.estValue || 0) - (selectedOfferedItem.estValue || 0);
+                const calculatedCoins = Math.floor(priceDiff / 100);
+                return (
+                  <div className="nb-card p-3 bg-[var(--surface)] mb-4 text-sm font-mono2 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Their Item Value:</span>
+                      <span>₹{listing.estValue || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Your Item Value:</span>
+                      <span>₹{selectedOfferedItem.estValue || 0}</span>
+                    </div>
+                    <div className="border-t border-white/10 my-1 pt-1 flex justify-between font-bold">
+                      <span>Valuation Gap:</span>
+                      <span>₹{priceDiff}</span>
+                    </div>
+                    <div className={`p-2 rounded text-xs font-bold text-center mt-2 ${
+                      calculatedCoins > 0 ? "bg-[var(--pink)] text-white" : calculatedCoins < 0 ? "bg-[var(--lime)] text-black" : "bg-[var(--surface-3)] text-white"
+                    }`}>
+                      {calculatedCoins > 0 && `⚠️ You will owe ${calculatedCoins} coins to the other swapper.`}
+                      {calculatedCoins < 0 && `🎉 The other swapper will owe you ${Math.abs(calculatedCoins)} coins.`}
+                      {calculatedCoins === 0 && `✅ Even swap! No coins required.`}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
             <div className="text-xs font-mono2 uppercase mb-2">Message</div>
             <textarea
               value={message}

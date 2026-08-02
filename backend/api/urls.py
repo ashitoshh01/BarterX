@@ -15,6 +15,8 @@ from .views import (
     NotificationViewSet,
     PurchaseCoinsView,
     RedeemCoinsView,
+    CreateRazorpayOrderView,
+    VerifyRazorpayPaymentView,
     CoinTransactionViewSet,
     ContractViewSet,
     TradeViewSet,
@@ -58,4 +60,6 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('wallet/purchase-coins/', PurchaseCoinsView.as_view(), name='purchase-coins'),
     path('wallet/redeem-coins/', RedeemCoinsView.as_view(), name='redeem-coins'),
+    path('wallet/create-razorpay-order/', CreateRazorpayOrderView.as_view(), name='create-razorpay-order'),
+    path('wallet/verify-razorpay-payment/', VerifyRazorpayPaymentView.as_view(), name='verify-razorpay-payment'),
 ]
