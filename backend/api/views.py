@@ -17,7 +17,8 @@ import requests as http_requests
 from .models import (
     BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
     UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
-    BarterInterest, Notification, DealConfirmation, Trade, Contract, SavedItem
+    BarterInterest, Notification, DealConfirmation, Trade, Contract, SavedItem,
+    Dispute, DisputeEvidence
 )
 from .serializers import (
     BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
@@ -293,12 +294,13 @@ class VerifyOTPAndRegisterView(generics.GenericAPIView):
                 password=password,
                 first_name=name,
             )
-            UserProfile.objects.filter(user=user).update(
-                display_name=name,
-                account_type='individual',
-                is_verified=True,
-                coin_balance=10,
-            )
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.display_name = name
+            profile.account_type = 'individual'
+            profile.is_verified = False
+            profile.trust_score = 20
+            profile.coin_balance = 10
+            profile.save()
             otp_record.delete()
 
         refresh = RefreshToken.for_user(user)
@@ -818,12 +820,10 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         xp = (completed_trades_count * 100) + (positive_reviews_count * 50) + (created_listings_count * 25)
         level = (xp // 200) + 1
 
-        profile.xp = xp
-        profile.level = level
-        profile.save(update_fields=['xp', 'level'])
-
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+        data = UserProfileSerializer(profile).data
+        data['xp'] = xp
+        data['level'] = level
+        return Response(data)
 
     @action(detail=False, methods=['put', 'patch'], permission_classes=[permissions.IsAuthenticated])
     def update_me(self, request):
@@ -857,7 +857,15 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
 
         profile.display_name = display_name
         profile.bio = request.data.get('bio', profile.bio)
-        profile.location = request.data.get('location', profile.location)
+        profile.city = request.data.get('city', profile.city)
+        profile.state = request.data.get('state', profile.state)
+        profile.profession = request.data.get('profession', profile.profession)
+        
+        if profile.city and profile.state:
+            profile.location = f"{profile.city}, {profile.state}"
+        elif request.data.get('location'):
+            profile.location = request.data.get('location')
+
         profile.phone_number = request.data.get('phone_number', profile.phone_number)
         profile.profile_picture_url = request.data.get('profile_picture_url', profile.profile_picture_url)
         profile.cover_picture_url = request.data.get('cover_picture_url', profile.cover_picture_url)
@@ -867,36 +875,6 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             profile_pic = request.FILES['profile_picture']
             file_name = default_storage.save(f'profile_pics/{request.user.id}_{profile_pic.name}', profile_pic)
             profile.profile_picture_url = request.build_absolute_uri(default_storage.url(file_name))
-            
-        if 'cover_picture' in request.FILES:
-            from django.core.files.storage import default_storage
-            cover_pic = request.FILES['cover_picture']
-            file_name = default_storage.save(f'cover_pics/{request.user.id}_{cover_pic.name}', cover_pic)
-            profile.cover_picture_url = request.build_absolute_uri(default_storage.url(file_name))
-        
-        profile.college_organization = request.data.get('college_organization', profile.college_organization)
-        profile.department_branch = request.data.get('department_branch', profile.department_branch)
-        profile.year_of_study = request.data.get('year_of_study', profile.year_of_study)
-        
-        profile.github_profile = request.data.get('github_profile', profile.github_profile)
-        profile.linkedin_profile = request.data.get('linkedin_profile', profile.linkedin_profile)
-        profile.portfolio_website = request.data.get('portfolio_website', profile.portfolio_website)
-        profile.resume_url = request.data.get('resume_url', profile.resume_url)
-        
-        if 'resume' in request.FILES:
-            from django.core.files.storage import default_storage
-            resume_file = request.FILES['resume']
-            file_name = default_storage.save(f'resumes/{request.user.id}_{resume_file.name}', resume_file)
-            profile.resume_url = request.build_absolute_uri(default_storage.url(file_name))
-        
-        proof_of_work = request.data.get('proof_of_work', profile.proof_of_work)
-        if isinstance(proof_of_work, str):
-            import json
-            try:
-                proof_of_work = json.loads(proof_of_work)
-            except ValueError:
-                pass
-        profile.proof_of_work = proof_of_work
 
         is_verified = request.data.get('is_verified', profile.is_verified)
         if isinstance(is_verified, str):
@@ -909,19 +887,20 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             status='completed'
         ).count()
         
-        profile_complete = bool(profile.display_name and profile.bio and profile.location)
-        email_verified = bool(request.user.email)
-        phone_verified = bool(profile.phone_number)
+        # Simple completion rule: Name + City/State/Location + Profession
+        has_location = bool(profile.city or profile.state or profile.location)
+        profile_complete = bool(profile.display_name and has_location and profile.profession)
         
-        score = 30
-        if profile_complete: score += 10
-        if email_verified: score += 5
-        if phone_verified: score += 10
-        if profile.is_verified: score += 20
-        score += min(25, completed_interests * 5)
+        score = 20
+        if profile_complete:
+            score = 60
+            
+        if profile.is_verified:
+            score += 20
+        score += min(20, completed_interests * 5)
         score += min(20, int(profile.average_rating * 4))
         
-        profile.trust_score = score
+        profile.trust_score = min(100, score)
         profile.save()
         
         serializer = UserProfileSerializer(profile)

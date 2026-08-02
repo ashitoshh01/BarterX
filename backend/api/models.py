@@ -9,6 +9,9 @@ from django.utils import timezone
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    profession = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(max_length=150, default="Remote")
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     profile_picture_url = models.URLField(max_length=500, blank=True, null=True)
@@ -40,8 +43,8 @@ class UserProfile(models.Model):
     proof_of_work = models.JSONField(default=list, blank=True)
 
     # Trust Score System (Step 7)
-    # New users start at 50, range 0-100
-    trust_score = models.IntegerField(default=50)
+    # New users start at 20, range 0-100
+    trust_score = models.IntegerField(default=20)
 
     # Reward Points System (Step 8)
     reward_points = models.IntegerField(default=0)

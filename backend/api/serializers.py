@@ -29,7 +29,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('bio', 'location', 'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
+        fields = ('bio', 'city', 'state', 'profession', 'location', 'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
                   'account_type', 'display_name', 'business_category', 'username', 'email', 'member_since',
                   'trust_score', 'trust_level', 'reward_points', 'coin_balance',
                   'cover_picture_url', 'college_organization', 'department_branch', 'year_of_study',

@@ -29,7 +29,7 @@ const getAbsoluteUrl = (path) => {
   if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
     return path;
   }
-  const backendBase = process.env.REACT_APP_BACKEND_URL || "http://localhost:8001";
+  const backendBase = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
   const slashPath = path.startsWith("/") ? path : `/${path}`;
   return `${backendBase}${slashPath}`;
 };
@@ -62,24 +62,17 @@ const mapUserProfile = (profile) => ({
   handle: `@${profile.username}`,
   name: profile.display_name || profile.username,
   bio: profile.bio || "",
-  avatar: getAbsoluteUrl(profile.profile_picture_url) || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
-  location: profile.location || "Remote",
+  city: profile.city || "",
+  state: profile.state || "",
+  profession: profile.profession || "",
+  location: (profile.city && profile.state) ? `${profile.city}, ${profile.state}` : (profile.location || "Location not set"),
   coins: profile.coin_balance ?? 0,
-  trustScore: profile.trust_score ?? 50,
+  trustScore: profile.trust_score ?? 20,
   swapsCompleted: profile.reward_points ? Math.floor(profile.reward_points / 50) : 0,
   rating: profile.average_rating ?? 0.0,
   verified: profile.is_verified ?? false,
   joined: profile.member_since || "",
-  badges: profile.badges || ["Swap Star", "Trusted Trader"],
-  coverPicture: getAbsoluteUrl(profile.cover_picture_url) || "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000",
-  college: profile.college_organization || "",
-  department: profile.department_branch || "",
-  yearOfStudy: profile.year_of_study || "",
-  github: profile.github_profile || "",
-  linkedin: profile.linkedin_profile || "",
-  portfolio: profile.portfolio_website || "",
-  resume: getAbsoluteUrl(profile.resume_url) || "",
-  proofOfWork: profile.proof_of_work || [],
+  badges: profile.badges || [],
 });
 
 const mapCategory = (cat) => {
@@ -350,7 +343,7 @@ export const AppProvider = ({ children }) => {
     }
 
     const wsScheme = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = process.env.REACT_APP_WS_URL || "localhost:8001";
+    const host = process.env.REACT_APP_WS_URL || `${window.location.hostname}:8000`;
     const wsUrl = `${wsScheme}//${host}/ws/chat/?token=${token}`;
 
     console.log("Connecting to WebSocket:", wsUrl);
@@ -500,15 +493,22 @@ export const AppProvider = ({ children }) => {
       }
     };
 
-    ws.onclose = () => {
-      console.log("WebSocket disconnected. Reconnecting in 3 seconds...");
+    ws.onclose = (event) => {
       setWsConnected(false);
-      setTimeout(() => {
-        const currentToken = localStorage.getItem("barter_token");
-        if (currentToken) {
-          connectWebSocket(currentToken);
-        }
-      }, 3000);
+      // Only retry up to 3 times to prevent log spamming when server is in standard HTTP mode
+      if (!ws._retryCount) ws._retryCount = 0;
+      if (ws._retryCount < 3) {
+        ws._retryCount += 1;
+        console.log(`WebSocket disconnected. Retrying (${ws._retryCount}/3) in 5 seconds...`);
+        setTimeout(() => {
+          const currentToken = localStorage.getItem("barter_token");
+          if (currentToken) {
+            connectWebSocket(currentToken);
+          }
+        }, 5000);
+      } else {
+        console.log("WebSocket max retry limit reached. Real-time updates paused.");
+      }
     };
 
     ws.onerror = (err) => {
@@ -856,7 +856,8 @@ export const AppProvider = ({ children }) => {
     try {
       setLoading(true);
       const itemsRes = await api.get("/items/");
-      const mappedListings = itemsRes.data.map(mapItemToListing);
+      const itemsList = itemsRes.data.results || itemsRes.data;
+      const mappedListings = itemsList.map(mapItemToListing);
       setListings(mappedListings);
     } catch (err) {
       console.error("Failed to refresh feed:", err);
@@ -915,7 +916,8 @@ export const AppProvider = ({ children }) => {
       setProposals((prev) => [newProposal, ...prev]);
 
       const itemsRes = await api.get("/items/");
-      setListings(itemsRes.data.map(mapItemToListing));
+      const itemsList = itemsRes.data.results || itemsRes.data;
+      setListings(itemsList.map(mapItemToListing));
 
       return newProposal;
     } catch (err) {
@@ -928,7 +930,8 @@ export const AppProvider = ({ children }) => {
   const loadChatMessages = useCallback(async (chatId) => {
     try {
       const res = await api.get(`/chatrooms/${chatId}/messages/`);
-      const mappedMsgs = res.data.map(mapMessage);
+      const msgsList = res.data.results || res.data;
+      const mappedMsgs = msgsList.map(mapMessage);
       setChats((prev) => prev.map((c) => c.id === String(chatId) ? { ...c, messages: mappedMsgs } : c));
     } catch (err) {
       console.error("Failed to load chat messages:", err);
@@ -1027,6 +1030,7 @@ export const AppProvider = ({ children }) => {
             }
             return c;
           }));
+          loadChatMessages(chatId);
         })
         .catch((err) => {
           toast.error("Failed to send message.");
@@ -1205,4 +1209,6 @@ export const useApp = () => {
   if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
 };
+
+export default AppProvider;
 

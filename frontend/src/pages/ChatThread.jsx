@@ -18,7 +18,14 @@ const ChatThread = () => {
     if (id) {
       loadChatMessages(id);
       joinChatRoom(id);
+
+      // Fast polling interval (every 3s) for real-time sync
+      const interval = setInterval(() => {
+        loadChatMessages(id);
+      }, 3000);
+
       return () => {
+        clearInterval(interval);
         leaveChatRoom(id);
       };
     }
