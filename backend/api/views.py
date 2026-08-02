@@ -222,12 +222,14 @@ class SendOTPView(generics.GenericAPIView):
             defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
         )
 
-        try:
-            send_otp_email(email, otp)
-        except Exception as e:
-            return Response({"detail": "Failed to send email."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        success, detail, dev_otp = send_otp_email(email, otp)
+        if not success:
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"message": "Verification OTP sent to email successfully."}, status=status.HTTP_200_OK)
+        resp_data = {"message": "Verification OTP sent to email successfully."}
+        if dev_otp:
+            resp_data["dev_otp"] = dev_otp
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class VerifyOTPAndRegisterView(generics.GenericAPIView):

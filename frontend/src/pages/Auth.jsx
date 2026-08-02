@@ -108,13 +108,18 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      await api.post("/register/send-otp/", {
+      const res = await api.post("/register/send-otp/", {
         name: signupForm.name.trim(),
         username: signupForm.username.trim().toLowerCase(),
         email: signupForm.email.trim().toLowerCase(),
       });
 
-      toast.success(`Verification code sent to ${signupForm.email} 📧`);
+      if (res.data?.dev_otp) {
+        toast.success(`Verification Code: ${res.data.dev_otp} 🔑`);
+        setOtp(res.data.dev_otp);
+      } else {
+        toast.success(`Verification code sent to ${signupForm.email} 📧`);
+      }
       setSignupStep("otp");
       setResendCooldown(60);
     } catch (err) {
