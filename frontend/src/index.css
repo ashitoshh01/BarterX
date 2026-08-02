@@ -57,7 +57,19 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-html, body, #root { height: 100%; background: var(--bg); }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+#root {
+  min-height: 100%;
+  background: var(--bg);
+  overflow-x: hidden;
+  max-width: 100vw;
+}
 
 body {
   margin: 0;
@@ -311,12 +323,18 @@ body {
 
 /* Cursor spotlight */
 .spotlight {
-  position: absolute; pointer-events: none; z-index: 0;
-  width: 500px; height: 500px; border-radius: 50%;
+  position: fixed !important;
+  pointer-events: none;
+  z-index: 9999;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
   background: radial-gradient(circle, var(--lime-glow) 0%, transparent 70%);
   filter: blur(60px);
   transform: translate(-50%, -50%);
-  opacity: 0.5;
+  opacity: 0.45;
+  will-change: left, top;
+  overflow: hidden;
 }
 
 @layer base {

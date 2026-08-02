@@ -209,7 +209,7 @@ const SideRail = () => {
 
 export const AppLayout = ({ children }) => {
   return (
-    <div className="min-h-screen text-white flex flex-col" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen text-white flex flex-col overflow-x-hidden w-full max-w-full relative" style={{ background: "var(--bg)" }}>
       <TopBar />
       <div className="max-w-7xl w-full mx-auto flex-1 flex gap-8 px-4 md:px-6 py-6 pb-24 md:pb-8">
         <SideRail />

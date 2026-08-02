@@ -13,14 +13,21 @@ const CursorSpotlight = () => {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let frameId;
     const move = (e) => {
-      el.style.left = e.clientX + "px";
-      el.style.top = e.clientY + "px";
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        el.style.left = e.clientX + "px";
+        el.style.top = e.clientY + "px";
+      });
     };
     window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      if (frameId) cancelAnimationFrame(frameId);
+    };
   }, []);
-  return <div ref={ref} className="spotlight fixed hidden md:block" />;
+  return <div ref={ref} className="spotlight fixed hidden md:block pointer-events-none" />;
 };
 
 /* --- Floating listing card --- */
@@ -55,7 +62,7 @@ const Landing = () => {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
 
   return (
-    <div className="min-h-screen text-white overflow-x-hidden" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen text-white overflow-x-hidden w-full max-w-full relative" style={{ background: "var(--bg)" }}>
       <CursorSpotlight />
 
       {/* Nav */}
