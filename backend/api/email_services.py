@@ -24,7 +24,7 @@ def _get_resend_key():
                             return val
             except Exception:
                 pass
-    return "re_4rFRz4CL_7PfjYZtcJBh5cvD2LoMy8FSP"
+    return None
 
 def send_otp_email(email, otp):
     """
