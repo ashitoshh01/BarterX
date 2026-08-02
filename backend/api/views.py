@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q
@@ -197,23 +197,22 @@ class SendOTPView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email', '').strip()
-        username = request.data.get('username', '').strip()
-        account_type = request.data.get('account_type', 'individual')
+        email = request.data.get('email', '').strip().lower()
+        username = request.data.get('username', '').strip().lower()
 
         if not email:
-            return Response({"email": ["Email is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"email": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
         if not re.match(r'[^@]+@[^@]+\.[^@]+', email):
-            return Response({"email": ["Please enter a valid email address."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"email": "Please enter a valid email address."}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(email=email).exists():
-            return Response({"email": ["This email is already registered."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"email": "An account with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if account_type == 'individual':
-            if not username:
-                return Response({"username": ["Username is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        if username:
+            if not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
+                return Response({"username": "Username must be 3-30 characters (letters, numbers, underscores)."}, status=status.HTTP_400_BAD_REQUEST)
             if User.objects.filter(username=username).exists():
-                return Response({"username": ["This username is already taken."]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"username": "This username is already taken."}, status=status.HTTP_400_BAD_REQUEST)
 
         otp = str(random.randint(100000, 999999))
         otp_hash = make_password(otp)
@@ -225,10 +224,88 @@ class SendOTPView(generics.GenericAPIView):
 
         try:
             send_otp_email(email, otp)
-        except Exception:
+        except Exception as e:
             return Response({"detail": "Failed to send email."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({"message": "Verification code sent successfully."}, status=status.HTTP_200_OK)
+        return Response({"message": "Verification OTP sent to email successfully."}, status=status.HTTP_200_OK)
+
+
+class VerifyOTPAndRegisterView(generics.GenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        name = data.get('name', '').strip()
+        username = data.get('username', '').strip().lower()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        otp = str(data.get('otp', '')).strip()
+
+        # Validation
+        errors = {}
+        if not name:
+            errors['name'] = 'Full name is required.'
+        if not username:
+            errors['username'] = 'Username is required.'
+        elif not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
+            errors['username'] = 'Username must be 3-30 characters (letters, numbers, underscores).'
+        elif User.objects.filter(username=username).exists():
+            errors['username'] = 'This username is already taken.'
+
+        if not email or not re.match(r'[^@]+@[^@]+\.[^@]+', email):
+            errors['email'] = 'A valid email address is required.'
+        elif User.objects.filter(email=email).exists():
+            errors['email'] = 'An account with this email already exists.'
+
+        if len(password) < 8:
+            errors['password'] = 'Password must be at least 8 characters.'
+
+        if not otp or len(otp) != 6 or not otp.isdigit():
+            errors['otp'] = 'A valid 6-digit OTP is required.'
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve OTP record
+        try:
+            otp_record = OTPVerification.objects.get(email=email)
+        except OTPVerification.DoesNotExist:
+            return Response({'otp': 'No OTP requested for this email. Please request a code first.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.is_expired():
+            return Response({'otp': 'OTP code has expired (valid for 5 mins). Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.attempts >= 5:
+            return Response({'otp': 'Too many failed attempts. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(otp, otp_record.otp_hash):
+            otp_record.attempts += 1
+            otp_record.save(update_fields=['attempts'])
+            return Response({'otp': 'Invalid verification code. Please check your email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Complete Registration
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=name,
+            )
+            UserProfile.objects.filter(user=user).update(
+                display_name=name,
+                account_type='individual',
+                is_verified=True,
+                coin_balance=10,
+            )
+            otp_record.delete()
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'username': user.username,
+            'message': 'Account created and email verified successfully!',
+        }, status=status.HTTP_201_CREATED)
 
 
 class RegisterView(generics.CreateAPIView):
