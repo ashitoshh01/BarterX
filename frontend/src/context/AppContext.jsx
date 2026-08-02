@@ -230,20 +230,26 @@ const mapNotification = (n) => ({
 
 
 const mapConversation = (conv, currentUser) => {
-  const otherParticipant = conv.other_participant || {};
-  const lastMsg = conv.last_message || {};
+  const currentUsername = typeof currentUser === 'string' ? currentUser : (currentUser?.id || currentUser?.username);
+  const participants = conv.participants_detail || [];
+  const otherParticipant = conv.other_participant || participants.find((p) => p.username !== currentUsername) || participants[0] || {};
   
+  const lastMsg = conv.last_message_detail || (typeof conv.last_message === 'object' ? conv.last_message : {}) || {};
+  
+  const lastMsgText = lastMsg.text || (lastMsg.message_type === 'IMAGE' ? "📷 Image" : lastMsg.message_type === 'FILE' ? "📁 Attachment" : "");
+  const lastTimeText = lastMsg.created_at ? new Date(lastMsg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+
   return {
     id: String(conv.id),
     with: otherParticipant.username || "anonymous",
-    lastMessage: lastMsg.text || (lastMsg.message_type === 'IMAGE' ? "📷 Image" : lastMsg.message_type === 'FILE' ? "📁 Attachment" : ""),
-    lastTime: lastMsg.created_at ? new Date(lastMsg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "",
+    lastMessage: lastMsgText,
+    lastTime: lastTimeText,
     unread: conv.unread_count || 0,
     messages: [],
     other: {
-      username: otherParticipant.username,
-      name: otherParticipant.display_name || otherParticipant.username,
-      avatar: getAbsoluteUrl(otherParticipant.avatar) || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+      username: otherParticipant.username || "user",
+      name: otherParticipant.display_name || otherParticipant.username || "User",
+      avatar: getAbsoluteUrl(otherParticipant.avatar),
       trustScore: otherParticipant.trust_score || 50,
       onlineStatus: otherParticipant.online_status || 'offline',
       lastSeen: otherParticipant.last_seen || ''

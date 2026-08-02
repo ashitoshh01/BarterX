@@ -39,7 +39,8 @@ const ChatThread = () => {
   }, [chat?.messages, chat?.isTyping]);
 
   if (!chat) return <div className="p-10 text-center font-display text-3xl">Chat not found.</div>;
-  const other = users[chat.with];
+  const other = users[chat.with] || chat.other || {};
+  const displayName = other.name || other.username || chat.with || "Barter User";
 
   const handleInputChange = (e) => {
     setText(e.target.value);
@@ -82,14 +83,14 @@ const ChatThread = () => {
         <Link to="/app/chat" className="p-2 hover:bg-black/5 rounded-lg"><ArrowLeft size={18} strokeWidth={3} /></Link>
         
         <div className="relative">
-          <img src={other?.avatar} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt={other?.name} />
+          <img src={other.avatar || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt={displayName} />
           {other?.onlineStatus === 'online' && (
             <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-[var(--lime)] border-[1.5px] border-black" />
           )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="font-display text-lg">{other?.name}</div>
+          <div className="font-display text-lg text-white">{displayName}</div>
           <div className="text-xs font-mono2 text-[var(--text-3)] flex items-center gap-1">
             <Shield size={10} strokeWidth={3} /> Trust {other?.trustScore ?? 50} · {other?.onlineStatus === 'online' ? 'Online' : 'Offline'}
           </div>
