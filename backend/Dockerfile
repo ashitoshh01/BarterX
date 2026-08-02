@@ -21,12 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . /app/
 
-# Copy and make entrypoint.sh executable
-COPY entrypoint.sh /app/
-RUN chmod +x /app/entrypoint.sh
-
 # Expose port
 EXPOSE 8000
 
-# Set entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Run migrations, collectstatic, and start Daphne ASGI server
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"]
