@@ -22,6 +22,11 @@
 | TC-01 | A | Successful Barter Completion | Item status 'completed', trust scores adjusted. |
 | TC-02 | A | Interest Rejection | `BarterInterest` status 'rejected', no chat created. |
 | TC-03 | B | Coin Balance Increase | `CoinTransaction` created, balance reflects increase. |
+| TC-04 | A | Contract Auto-Creation & Dual Signature | Contract auto-created on interest acceptance; dual signature updates status to 'signed'. |
+| TC-05 | A | Dispute Raising & Escalation | Dispute opened on trade with evidence; escalation updates status to 'escalated'. |
+| TC-06 | B | Coin Transaction Ledger & Balance Sync | `CoinTransaction` logged and `UserProfile.coin_balance` updated via `add_coins`. |
+| TC-07 | A | Trust Score Adjustment & Level Calculation | `adjust_trust()` remains within 0–100 bounds and updates `trust_level` ('high'/'medium'/'low'). |
+| TC-08 | A | Dual Deal Confirmation Workflow | `DealConfirmation` `is_completed` evaluates to True only when both swappers confirm. |
 
 ## 3. Data Generation Strategy
 - Generate 100+ users with varied `UserProfile` data.

@@ -60,7 +60,9 @@ users_data = {
     "David L.":  {"username": "david_l",  "email": "david@example.com", "location": "Hyderabad, TS"},
     "Chloe W.":  {"username": "chloe_w",  "email": "chloe@example.com", "location": "Bengaluru, KA"},
     "Riya S.":   {"username": "riya_s",   "email": "riya@example.com", "location": "Jaipur, RJ"},
-    "Arjun P.":  {"username": "arjun_p",  "email": "arjun@example.com", "location": "Mumbai, MH"},
+    "Arjun P.":  {"username": "arjun_p",  "email": "arjun@example.com", "location": "Chennai, TN"},
+    "Vikram S.": {"username": "vikram_s", "email": "vikram@example.com", "location": "Ahmedabad, GJ"},
+    "Neha G.":   {"username": "neha_g",   "email": "neha@example.com", "location": "Kolkata, WB"},
 }
 
 print("\nSeeding users...")
@@ -191,7 +193,16 @@ items = [
         "wanting": "OBD2 scanner or car emergency kit",
         "category_name": "Automotive & Accessories",
         "image_url": "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&auto=format&fit=crop&q=80",
-        "owner_name": "Arjun P.", "location": "Mumbai, MH", "condition": "like_new",
+        "owner_name": "Vikram S.", "location": "Ahmedabad, GJ", "condition": "like_new",
+    },
+    {
+        "title": "Custom Mechanical Keyboard (Keychron Q1)",
+        "description": "75% layout, hot-swappable Gateron Pro switches, RGB backlighting.",
+        "offering": "Keychron Q1 Mechanical Keyboard",
+        "wanting": "Wireless Noise Cancelling Headphones",
+        "category_name": "Electronics & Gadgets",
+        "image_url": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80",
+        "owner_name": "Neha G.", "location": "Kolkata, WB", "condition": "like_new",
     },
     {
         "title": "Motorcycle Helmet (AGV K6)",
