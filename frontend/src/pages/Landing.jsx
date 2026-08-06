@@ -6,6 +6,7 @@ import { LogoWordmark, LogoMark } from "@/components/Logo";
 import Marquee from "@/components/Marquee";
 import { NbButton, XPBar, LevelBadge } from "@/components/UI";
 import { LISTINGS, USERS } from "@/mock/data";
+import { useApp } from "@/context/AppContext";
 
 /* --- Live cursor spotlight --- */
 const CursorSpotlight = () => {
@@ -56,6 +57,9 @@ const FloatCard = ({ listing, rotate, delay, className = "" }) => (
 );
 
 const Landing = () => {
+  const { listings: appListings } = useApp();
+  const displayListings = (appListings && appListings.length > 0) ? appListings : LISTINGS;
+
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
@@ -168,48 +172,51 @@ const Landing = () => {
 
             {/* Visual */}
             <div className="lg:col-span-5 relative h-[560px] hidden lg:block">
-              <FloatCard listing={LISTINGS[2]} rotate={5}  delay={0.2} className="top-4  right-4" />
-              <FloatCard listing={LISTINGS[1]} rotate={-6} delay={0.4} className="top-44 left-0" />
-              <FloatCard listing={LISTINGS[0]} rotate={4}  delay={0.6} className="bottom-4 right-16" />
-
-              {/* Central swap ring */}
+              {/* 3D Hero Graphic Container */}
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full flex items-center justify-center"
-                style={{ background: "conic-gradient(from 0deg, var(--lime), var(--pink), var(--blue), var(--lime))", boxShadow: "0 0 80px -10px var(--lime-glow)" }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1, delay: 0.3 }}
+                className="relative w-full h-full rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-2 shadow-2xl backdrop-blur-2xl group"
               >
-                <div className="w-28 h-28 rounded-full bg-[var(--bg)] flex items-center justify-center border border-white/10">
-                  <Repeat size={40} strokeWidth={1.5} className="text-[var(--lime)]" />
+                <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                  <img
+                    src="/hero_banner.png"
+                    alt="BarterX 3D Marketplace Visual"
+                    className="w-full h-full object-cover rounded-2xl transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent opacity-80" />
                 </div>
               </motion.div>
 
-              {/* Achievement sticker */}
+              {/* Floating Live Product Cards */}
+              <FloatCard listing={displayListings[0] || LISTINGS[0]} rotate={4} delay={0.5} className="-top-4 -right-4 shadow-2xl border-lime-500/30" />
+              <FloatCard listing={displayListings[1] || LISTINGS[1]} rotate={-6} delay={0.7} className="bottom-12 -left-6 shadow-2xl border-pink-500/30" />
+
+              {/* Central Swap Ring Overlay */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full flex items-center justify-center pointer-events-none"
+                style={{ background: "conic-gradient(from 0deg, var(--lime), var(--pink), var(--blue), var(--lime))", boxShadow: "0 0 70px 10px rgba(184, 255, 0, 0.4)" }}
+              >
+                <div className="w-24 h-24 rounded-full bg-[var(--bg)]/90 backdrop-blur-md flex items-center justify-center border border-white/20">
+                  <Repeat size={36} strokeWidth={2} className="text-[var(--lime)] animate-pulse" />
+                </div>
+              </motion.div>
+
+              {/* Achievement Sticker */}
               <motion.div
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.1, type: "spring", stiffness: 200 }}
-                className="absolute top-8 left-8 tint-lime border rounded-2xl px-3 py-2 backdrop-blur-md"
+                className="absolute top-6 left-6 tint-lime border border-lime-400/40 rounded-2xl px-3.5 py-2 backdrop-blur-md shadow-xl"
               >
                 <div className="flex items-center gap-2">
-                  <Trophy size={14} strokeWidth={2.5} />
+                  <Trophy size={16} strokeWidth={2.5} className="text-[var(--lime)]" />
                   <div>
-                    <div className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Streak</div>
-                    <div className="font-mono2 text-sm font-bold text-white">7 days</div>
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.3, type: "spring", stiffness: 200 }}
-                className="absolute bottom-16 left-8 nb-card px-4 py-3"
-              >
-                <div className="flex items-center gap-2">
-                  <LevelBadge level={4} />
-                  <div className="min-w-[100px]">
-                    <XPBar value={340} max={500} />
+                    <div className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Active Barter Streak</div>
+                    <div className="font-mono2 text-xs font-bold text-white">7 Days · 10 Active Items</div>
                   </div>
                 </div>
               </motion.div>
@@ -253,6 +260,85 @@ const Landing = () => {
               <div className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mt-2 relative">{s.l}</div>
             </motion.div>
           ))}
+        </div>
+      </section>
+
+      {/* ─────── FEATURED PRODUCT ITEMS SHOWCASE ─────── */}
+      <section className="max-w-7xl mx-auto px-4 md:px-6 py-16 border-y border-white/5 bg-white/[0.01]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+          <div>
+            <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--lime)] mb-3 flex items-center gap-2">
+              <Sparkles size={14} /> LIVE PRODUCT CATALOG
+            </div>
+            <h2 className="font-display text-4xl md:text-6xl text-white leading-tight">
+              Featured <span className="font-serif-i italic text-[var(--lime)]">Swaps</span> Ready Now.
+            </h2>
+          </div>
+          <Link to="/app/explore" className="shrink-0">
+            <NbButton variant="ghost" className="text-sm px-5 py-3">
+              Explore All {displayListings.length} Products <ArrowUpRight size={16} />
+            </NbButton>
+          </Link>
+        </div>
+
+        {/* Interactive Grid of Active Products */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayListings.slice(0, 8).map((item, idx) => {
+            const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
+            return (
+              <motion.div
+                key={item.id || idx}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08, duration: 0.5 }}
+                className="nb-card group overflow-hidden flex flex-col justify-between hover:border-[var(--lime)]/50 transition-all duration-300 shadow-xl"
+              >
+                <div>
+                  <div className="relative h-48 w-full overflow-hidden bg-black/40">
+                    <img
+                      src={imgSrc}
+                      alt={item.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
+                    />
+                    <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 uppercase tracking-wider text-[var(--lime)] border border-white/10">
+                      {item.condition || "Active"}
+                    </div>
+                    {item.location && (
+                      <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 text-white/90 border border-white/10">
+                        📍 {item.location}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <div className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1">
+                      {item.categoryName || item.category || "Product"}
+                    </div>
+                    <h3 className="font-display text-xl text-white group-hover:text-[var(--lime)] transition-colors line-clamp-1">
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-[var(--text-2)] line-clamp-2 mt-2 leading-relaxed">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-white/8 flex items-center justify-between text-xs font-mono2">
+                      <span className="text-[var(--text-3)]">WANTS:</span>
+                      <span className="text-[var(--lime)] font-semibold truncate max-w-[140px]">{item.wanting || "Open Barter"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 pt-0">
+                  <Link to="/auth">
+                    <button className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[var(--lime)] hover:text-black font-mono2 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                      Propose Trade <Repeat size={14} />
+                    </button>
+                  </Link>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -308,23 +394,23 @@ const Landing = () => {
         <div className="grid md:grid-cols-6 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="md:col-span-4 nb-card p-8 relative overflow-hidden min-h-[280px]"
+            className="md:col-span-4 nb-card p-8 relative overflow-hidden min-h-[320px] flex flex-col justify-between"
           >
             <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: "var(--lime)" }} />
-            <div className="tint-lime inline-flex px-2.5 py-1 rounded-full text-[10px] font-mono2 font-bold mb-4 uppercase tracking-widest">AI Powered</div>
-            <h3 className="font-display text-4xl leading-tight mb-3">Match engine that <span className="font-serif-i italic text-[var(--lime)]">actually</span> gets you.</h3>
-            <p className="text-sm text-[var(--text-2)] max-w-lg mb-6">Reads your wants + haves and finds 2-way, 3-way, and community swaps in real-time.</p>
-            <div className="space-y-2 max-w-md">
-              {[
-                { s: 96, t: "Your Monstera ↔ Zoe's book", ok: true },
-                { s: 88, t: "Your Monstera ↔ Dex's headphones", ok: true },
-                { s: 74, t: "Your Monstera ↔ Kai's skateboard", ok: false },
-              ].map((m, i) => (
-                <div key={i} className="flex items-center gap-3 backdrop-blur bg-white/[0.03] border border-white/5 rounded-full pr-4 pl-1 py-1">
-                  <div className={`px-2.5 py-1 rounded-full text-[11px] font-mono2 font-bold ${m.ok ? "tint-lime" : "tint-amber"}`}>{m.s}%</div>
-                  <div className="text-xs text-white/90 flex-1">{m.t}</div>
-                </div>
-              ))}
+            
+            <div>
+              <div className="tint-lime inline-flex px-2.5 py-1 rounded-full text-[10px] font-mono2 font-bold mb-4 uppercase tracking-widest">AI Matchmaking Engine</div>
+              <h3 className="font-display text-4xl leading-tight mb-3">Match engine that <span className="font-serif-i italic text-[var(--lime)]">actually</span> gets you.</h3>
+              <p className="text-sm text-[var(--text-2)] max-w-lg mb-6">Reads your wants + haves and finds 2-way, 3-way, and community swaps in real-time.</p>
+            </div>
+
+            {/* Visual Hologram Graphic Insertion */}
+            <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-white/10 mt-2">
+              <img src="/match_visual.png" alt="AI Match Engine Hologram" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg)]/90 via-transparent to-[var(--bg)]/90" />
+              <div className="absolute bottom-3 left-4 flex items-center gap-2 tint-lime px-3 py-1 rounded-full text-xs font-mono2 font-bold">
+                <Sparkles size={14} /> 3-Way Barter Loop Match (96% Match Confidence)
+              </div>
             </div>
           </motion.div>
 
