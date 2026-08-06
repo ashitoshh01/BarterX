@@ -855,7 +855,28 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem("barter_token");
     if (token) {
-      initializeApp(token);
+      if (token === "demo-token") {
+        setUser({
+          id: 1,
+          handle: "alex_m",
+          name: "Alex M.",
+          bio: "Active trader on BarterX",
+          avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+          location: "Mumbai, MH",
+          coins: 100,
+          trustScore: 85,
+          swapsCompleted: 12,
+          rating: 4.9,
+          verified: true,
+          joined: "2024",
+          badges: ["Verified Swapper", "Power Trader"],
+        });
+        setListings(FALLBACK_LISTINGS);
+        setIsAuthed(true);
+        setLoading(false);
+      } else {
+        initializeApp(token);
+      }
     } else {
       // Unauthenticated visitor (e.g. browsing Vercel landing page / feed)
       api.get("/items/").then(res => {

@@ -360,6 +360,20 @@ const Auth = () => {
                   <NbButton type="submit" disabled={loading} className="w-full py-4 text-base" data-testid="auth-submit">
                     {loading ? "Signing in..." : "Log in"} <ArrowRight size={18} strokeWidth={2.5} />
                   </NbButton>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem("barter_token", "demo-token");
+                        toast.success("Welcome to Demo Mode! 🎉");
+                        window.location.href = "/app/feed";
+                      }}
+                      className="w-full py-3.5 px-4 rounded-xl bg-[var(--yellow)] text-black font-bold text-sm hover:brightness-105 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                    >
+                      ⚡ Quick Demo Mode (Explore All Products)
+                    </button>
+                  </div>
                 </motion.form>
               ) : signupStep === "form" ? (
                 <motion.form
