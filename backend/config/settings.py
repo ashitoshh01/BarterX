@@ -189,6 +189,10 @@ else:
 BOOST_COST = 100
 BOOST_DURATION_DAYS = 7
 
+# Razorpay credentials
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
+
 # Django Channels Channel Layers
 import logging
 logger = logging.getLogger(__name__)

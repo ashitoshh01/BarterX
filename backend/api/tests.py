@@ -195,3 +195,72 @@ class BarterInterestWorkflowTests(TestCase):
         deal_confirm.save()
         self.assertTrue(deal_confirm.is_completed)
 
+    def test_p2p_coin_transfer_success(self):
+        """Test successful coin transfer between two users."""
+        from .models import UserProfile, CoinTransaction
+        from rest_framework_simplejwt.tokens import AccessToken
+        sender_profile, _ = UserProfile.objects.get_or_create(user=self.requester)
+        sender_profile.coin_balance = 100
+        sender_profile.save()
+
+        recipient_profile, _ = UserProfile.objects.get_or_create(user=self.receiver)
+        recipient_profile.coin_balance = 50
+        recipient_profile.save()
+
+        token = AccessToken.for_user(self.requester)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+        
+        response = self.client.post(
+            '/api/wallet/transfer/',
+            {'recipient_username': 'receiver', 'amount': 40, 'description': 'Thanks!'},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['new_balance'], 60)
+
+        sender_profile.refresh_from_db()
+        recipient_profile.refresh_from_db()
+        self.assertEqual(sender_profile.coin_balance, 60)
+        self.assertEqual(recipient_profile.coin_balance, 90)
+
+        # Check transactions
+        self.assertTrue(CoinTransaction.objects.filter(user=self.requester, amount=-40, transaction_type='spent').exists())
+        self.assertTrue(CoinTransaction.objects.filter(user=self.receiver, amount=40, transaction_type='earned').exists())
+
+    def test_p2p_coin_transfer_insufficient_balance(self):
+        """Test coin transfer fails if sender has insufficient balance."""
+        from .models import UserProfile
+        from rest_framework_simplejwt.tokens import AccessToken
+        sender_profile, _ = UserProfile.objects.get_or_create(user=self.requester)
+        sender_profile.coin_balance = 20
+        sender_profile.save()
+
+        token = AccessToken.for_user(self.requester)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+
+        response = self.client.post(
+            '/api/wallet/transfer/',
+            {'recipient_username': 'receiver', 'amount': 40},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Insufficient coin balance.", response.data['detail'])
+
+    def test_p2p_coin_transfer_to_self(self):
+        """Test coin transfer to oneself is rejected."""
+        from rest_framework_simplejwt.tokens import AccessToken
+        token = AccessToken.for_user(self.requester)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+
+        response = self.client.post(
+            '/api/wallet/transfer/',
+            {'recipient_username': 'requester', 'amount': 10},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("You cannot transfer coins to yourself.", response.data['detail'])
+
+
+
+
+

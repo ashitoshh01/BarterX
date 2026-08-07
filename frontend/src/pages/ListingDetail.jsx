@@ -154,7 +154,7 @@ const ListingDetail = () => {
             <div className="font-display text-4xl">~₹{listing.estValue}</div>
             <div className="font-mono2 text-xs uppercase text-[var(--text-3)] mt-3 mb-2">Owner wants</div>
             <div className="flex flex-wrap gap-1.5">
-              {listing.wants.map((w) => {
+              {(listing.wants || []).map((w) => {
                 const c = categories.find((c) => c.id === w);
                 return <span key={w} className={`nb-tag ${c?.tint}`}>{c?.emoji} {c?.name}</span>;
               })}

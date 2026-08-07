@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check, Plus, X } from "lucide-react";
@@ -35,9 +35,11 @@ const CreateListing = () => {
 
   const [coverPreview, setCoverPreview] = useState("");
 
+  const isInitializedRef = useRef(false);
+
   // Pre-load listing data in Edit Mode
   useEffect(() => {
-    if (id && existingListing) {
+    if (id && existingListing && !isInitializedRef.current) {
       setForm({
         type: existingListing.type || "product",
         title: existingListing.title || "",
@@ -52,6 +54,7 @@ const CreateListing = () => {
         images: existingListing.images || [],
         status: existingListing.status || "active",
       });
+      isInitializedRef.current = true;
     }
   }, [id, existingListing]);
 

@@ -6,7 +6,7 @@ import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
 
 const Wallet = () => {
-  const { user, wallet, createRazorpayOrder, verifyRazorpayPayment } = useApp();
+  const { user, wallet, createRazorpayOrder, verifyRazorpayPayment, transferCoins } = useApp();
 
   // Razorpay Checkout Simulation State
   const [razorpayOrder, setRazorpayOrder] = useState(null);
@@ -17,6 +17,40 @@ const Wallet = () => {
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
   const [selectedBank, setSelectedBank] = useState("sbi");
+
+  // P2P Coin Transfer State
+  const [transferRecipient, setTransferRecipient] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const handleSendCoins = async () => {
+    if (!transferRecipient.trim()) {
+      toast.error("Please enter a recipient username.");
+      return;
+    }
+    const amt = parseInt(transferAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error("Please enter a valid transfer amount.");
+      return;
+    }
+    if (user.coins < amt) {
+      toast.error("Insufficient coin balance.");
+      return;
+    }
+
+    try {
+      setIsTransferring(true);
+      await transferCoins(transferRecipient.trim(), amt, transferNote);
+      setTransferRecipient("");
+      setTransferAmount("");
+      setTransferNote("");
+    } catch (err) {
+      // handled
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   // Load Razorpay checkout script dynamically
   useEffect(() => {
@@ -185,7 +219,61 @@ const Wallet = () => {
         )}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-4">
+        {/* Send Coins Card */}
+        <div className="nb-card p-6 tint-pink flex flex-col justify-between" data-testid="p2p-transfer-card">
+          <div>
+            <div className="font-display text-2xl mb-2">💸 Send Coins (P2P)</div>
+            <p className="text-xs font-mono2 uppercase text-[var(--text-3)] mb-4">Transfer coins directly to another user's wallet</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Recipient Username</label>
+                <input
+                  type="text"
+                  placeholder="e.g. alex_m"
+                  value={transferRecipient}
+                  onChange={(e) => setTransferRecipient(e.target.value)}
+                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
+                  data-testid="p2p-recipient-input"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Amount (◈)</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
+                  data-testid="p2p-amount-input"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Optional Note</label>
+                <input
+                  type="text"
+                  placeholder="Valuation gap / Tip / Thank you!"
+                  value={transferNote}
+                  onChange={(e) => setTransferNote(e.target.value)}
+                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
+                  data-testid="p2p-note-input"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <NbButton
+              size="sm"
+              disabled={isTransferring}
+              onClick={handleSendCoins}
+              className="w-full text-center"
+              data-testid="p2p-send-btn"
+            >
+              {isTransferring ? "Sending..." : "Send Coins"}
+            </NbButton>
+          </div>
+        </div>
+
         {/* Buy Coins Store */}
         <div className="nb-card p-6 tint-lime flex flex-col justify-between">
           <div>

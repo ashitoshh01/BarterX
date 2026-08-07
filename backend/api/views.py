@@ -1655,3 +1655,91 @@ class SavedItemViewSet(viewsets.ModelViewSet):
         return Response({"saved": True, "item_id": item_id})
 
 
+class CoinTransferView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        from django.db import transaction
+        from django.contrib.auth.models import User
+        from chat.services import broadcast_to_group
+
+        recipient_username = request.data.get('recipient_username')
+        amount = request.data.get('amount')
+        description = request.data.get('description', '')
+
+        if not recipient_username:
+            return Response({"detail": "recipient_username is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            amount = int(amount)
+            if amount <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response({"detail": "Amount must be a positive integer."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if recipient_username == request.user.username:
+            return Response({"detail": "You cannot transfer coins to yourself."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            recipient = User.objects.get(username=recipient_username)
+        except User.DoesNotExist:
+            return Response({"detail": "Recipient user not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_ids = sorted([request.user.id, recipient.id])
+
+        with transaction.atomic():
+            # Row locking
+            locked_profiles = {
+                p.user_id: p 
+                for p in UserProfile.objects.select_for_update().filter(user_id__in=user_ids)
+            }
+            
+            sender_profile = locked_profiles.get(request.user.id)
+            recipient_profile = locked_profiles.get(recipient.id)
+
+            if not sender_profile:
+                sender_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+            if not recipient_profile:
+                recipient_profile, _ = UserProfile.objects.get_or_create(user=recipient)
+
+            if sender_profile.coin_balance < amount:
+                return Response({"detail": "Insufficient coin balance."}, status=status.HTTP_400_BAD_REQUEST)
+
+            sender_profile.coin_balance -= amount
+            sender_profile.save()
+
+            recipient_profile.coin_balance += amount
+            recipient_profile.save()
+
+            # Record transactions
+            CoinTransaction.objects.create(
+                user=request.user,
+                amount=-amount,
+                transaction_type='spent',
+                description=f"Transferred to {recipient.username}: {description}".strip()
+            )
+
+            CoinTransaction.objects.create(
+                user=recipient,
+                amount=amount,
+                transaction_type='earned',
+                description=f"Received from {request.user.username}: {description}".strip()
+            )
+
+        try:
+            broadcast_to_group(f"user_{request.user.id}", "wallet.updated", {
+                "balance": sender_profile.coin_balance
+            })
+            broadcast_to_group(f"user_{recipient.id}", "wallet.updated", {
+                "balance": recipient_profile.coin_balance
+            })
+        except Exception:
+            pass
+
+        return Response({
+            "message": f"Successfully transferred {amount} coins to {recipient.username}.",
+            "new_balance": sender_profile.coin_balance
+        }, status=status.HTTP_200_OK)
+
+
+

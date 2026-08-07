@@ -287,13 +287,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 coins_to_credit = int(diff / 100)
                 
                 if coins_to_credit > 0:
-                    # User receiving the lower value item gets the coins
                     if price1 < price2:
                         recipient = interest.requester
+                        payer = interest.receiver
                     else:
                         recipient = interest.receiver
+                        payer = interest.requester
                         
                     from api.models import UserProfile, CoinTransaction
+                    
+                    # Credit recipient
                     profile, _ = UserProfile.objects.get_or_create(user=recipient)
                     profile.add_coins(coins_to_credit)
                     CoinTransaction.objects.create(
@@ -304,6 +307,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     )
                     broadcast_to_group(f"user_{recipient.id}", "wallet.updated", {
                         "balance": profile.coin_balance
+                    })
+
+                    # Deduct from payer
+                    payer_profile, _ = UserProfile.objects.get_or_create(user=payer)
+                    payer_profile.coin_balance -= coins_to_credit
+                    payer_profile.save()
+                    CoinTransaction.objects.create(
+                        user=payer,
+                        amount=-coins_to_credit,
+                        transaction_type='spent',
+                        description=f"Coin deduction for barter value gap (Items: {interest.requested_item.title} vs {interest.offered_item.title if interest.offered_item else 'N/A'})"
+                    )
+                    broadcast_to_group(f"user_{payer.id}", "wallet.updated", {
+                        "balance": payer_profile.coin_balance
                     })
 
                 # Award trust & points to both users (Steps 7 & 8)

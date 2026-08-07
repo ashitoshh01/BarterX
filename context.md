@@ -69,22 +69,22 @@ A full-stack cashless P2P barter exchange platform. Users trade physical goods, 
 
 | Module | Status | Notes |
 |---|---|---|
-| Feed | | |
-| Explore | | |
-| Listing Detail | | |
-| Create/Edit | | |
-| Matches | | |
-| Proposals | | |
-| Chat | | |
-| Tracker | | |
-| Contracts | | |
-| Logistics | | |
-| Verification | | |
-| Wallet | | |
-| Notifications | | |
-| Profile | | |
-| Disputes | | |
-| Service Swap | | |
+| Feed | Done | Displays "For You", "Trending" (by views), and "Near You" (location matching). |
+| Explore | Done | Filtered search, discovery, and saving items. |
+| Listing Detail | Done | View detailed item parameters, trust score, and initiate trade offers. |
+| Create/Edit | Done | Complete posting form with image upload support and price calculator. |
+| Matches | Done | AI-based matching using Google GenAI SDK (Gemini) over `/recommendations/matches/`. |
+| Proposals | Done | Dual negotiation flow (`BarterInterest`) supporting counter-offers and status transitions. |
+| Chat | Done | Real-time Django Channels WebSockets support for text, typing, and status syncing. |
+| Tracker | Done | Swap tracker tracking logistics stages from accepted to completed. |
+| Contracts | Done | Digital signature flow with ReportLab PDF contract generation. |
+| Logistics | Done | Delivery carrier tracking, verification updates. |
+| Verification | Done | Trust score calculation (0-100) and user details/KYC. |
+| Wallet | Done | BarterX Coin system with transaction ledger and Razorpay integration (real or simulated). |
+| Notifications | Done | Live WS push notifications and persistent ledger. |
+| Profile | Done | Stats, badges, user bio/profile details and ratings. |
+| Disputes | Done | Create disputes on trades with evidence file upload and tracking. |
+| Service Swap | Done | Skill and service exchange filtering. |
 
 ## Non-Goals / Out of Scope (for now)
 - Real payment processing for Coin Store purchases (stub server-side, don't fake success).

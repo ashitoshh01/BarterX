@@ -1,18 +1,55 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Send, ArrowLeft, MoreVertical, Shield, Paperclip } from "lucide-react";
+import { Send, ArrowLeft, MoreVertical, Shield, Paperclip, Coins } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { NbButton } from "@/components/UI";
+import { toast } from "sonner";
 
 const ChatThread = () => {
   const { id } = useParams();
-  const { chats, users, user, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, sendAttachment } = useApp();
+  const { chats, users, user, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, sendAttachment, transferCoins } = useApp();
   const [text, setText] = useState("");
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  // Send Coins Modal State
+  const [showCoinModal, setShowCoinModal] = useState(false);
+  const [coinAmount, setCoinAmount] = useState("");
+  const [coinNote, setCoinNote] = useState("");
+  const [isSendingCoins, setIsSendingCoins] = useState(false);
+
   const chat = chats.find((c) => c.id === String(id));
+
+  const handleSendChatCoins = async () => {
+    const amt = parseInt(coinAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error("Please enter a valid coin amount.");
+      return;
+    }
+    if (user.coins < amt) {
+      toast.error("Insufficient coin balance.");
+      return;
+    }
+
+    try {
+      setIsSendingCoins(true);
+      const recipientUsername = other.username || chat.with;
+      await transferCoins(recipientUsername, amt, coinNote);
+      
+      // Auto-post verification message to chat thread
+      const systemMessage = `◈ Sent ${amt} coins${coinNote ? `: "${coinNote}"` : ""}`;
+      sendMessage(chat.id, systemMessage);
+      
+      setShowCoinModal(false);
+      setCoinAmount("");
+      setCoinNote("");
+    } catch (err) {
+      // handled
+    } finally {
+      setIsSendingCoins(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -151,6 +188,9 @@ const ChatThread = () => {
         <NbButton onClick={() => fileInputRef.current?.click()} className="px-3 py-2.5 h-full" title="Attach file">
           <Paperclip size={16} strokeWidth={3} />
         </NbButton>
+        <NbButton onClick={() => setShowCoinModal(true)} className="px-3 py-2.5 h-full tint-pink" title="Send Coins" data-testid="chat-send-coins-btn">
+          <Coins size={16} strokeWidth={3} />
+        </NbButton>
         <input
           value={text}
           onChange={handleInputChange}
@@ -163,6 +203,60 @@ const ChatThread = () => {
           <Send size={16} strokeWidth={3} />
         </NbButton>
       </div>
+
+      {/* Coin Transfer Modal */}
+      {showCoinModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[var(--surface)] nb-border-3 p-6 text-white shadow-2xl space-y-4">
+            <h4 className="font-display text-2xl flex items-center gap-2">
+              <Coins className="text-[var(--lime)]" size={24} strokeWidth={2.5} />
+              Send Coins to {displayName}
+            </h4>
+            <p className="text-xs font-mono2 text-[var(--text-3)]">
+              This will instantly transfer coins from your wallet to their wallet.
+            </p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Amount (◈)</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={coinAmount}
+                  onChange={(e) => setCoinAmount(e.target.value)}
+                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
+                  data-testid="chat-coin-amount-input"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Optional Note</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Thanks for the quick swap!"
+                  value={coinNote}
+                  onChange={(e) => setCoinNote(e.target.value)}
+                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
+                  data-testid="chat-coin-note-input"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <NbButton variant="dark" size="sm" onClick={() => setShowCoinModal(false)}>
+                Cancel
+              </NbButton>
+              <NbButton
+                size="sm"
+                disabled={isSendingCoins}
+                onClick={handleSendChatCoins}
+                data-testid="chat-coin-confirm-btn"
+              >
+                {isSendingCoins ? "Sending..." : "Send Coins"}
+              </NbButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

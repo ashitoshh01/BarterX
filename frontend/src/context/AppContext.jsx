@@ -922,6 +922,10 @@ export const AppProvider = ({ children }) => {
 
 
   const toggleSave = useCallback(async (id) => {
+    if (!isAuthed) {
+      toast.error("Please log in to save items. ❤️");
+      return;
+    }
     // Optimistic update
     setSaved((prev) => {
       const s = new Set(prev);
@@ -944,7 +948,7 @@ export const AppProvider = ({ children }) => {
       });
       toast.error("Failed to update saved item.");
     }
-  }, []);
+  }, [isAuthed]);
 
   const addListing = useCallback(async (listing) => {
     try {
@@ -1424,6 +1428,34 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const transferCoins = useCallback(async (recipientUsername, amount, note = "") => {
+    try {
+      setError(null);
+      const res = await api.post("/wallet/transfer/", {
+        recipient_username: recipientUsername,
+        amount: Number(amount),
+        description: note
+      });
+      setUser((prev) => ({ ...prev, coins: res.data.new_balance }));
+
+      try {
+        const walletRes = await api.get("/wallet/transactions/");
+        const walletList = walletRes.data.results || walletRes.data;
+        setWallet(walletList.map(mapWalletTransaction));
+      } catch (e) {
+        console.warn("Failed to refresh transactions after transfer", e);
+      }
+
+      toast.success(res.data.message || "Coins transferred successfully!");
+      return res.data.new_balance;
+    } catch (err) {
+      console.error("Failed to transfer coins:", err);
+      const msg = parseBackendError(err, "Failed to transfer coins.");
+      toast.error(msg);
+      throw new Error(msg);
+    }
+  }, []);
+
   const dynamicUsers = useMemo(() => {
     const map = { ...USERS };
     if (user && user.id) {
@@ -1464,11 +1496,11 @@ export const AppProvider = ({ children }) => {
     contracts, setContracts,
     trades, setTrades,
     disputes, setDisputes,
-    wallet, setWallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment,
+    wallet, setWallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins,
     users: dynamicUsers, categories: categoriesList,
     aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins]);
 
   if (loading) {
     return (

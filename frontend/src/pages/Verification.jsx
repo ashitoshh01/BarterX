@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 
 const Verification = () => {
-  const { user, setUser } = useApp();
+  const { user, updateProfile } = useApp();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(null);
@@ -40,12 +40,9 @@ const Verification = () => {
   const verifyPhone = async () => {
     setVerifying("phone");
     try {
-      // Update profile with a placeholder phone to trigger verification
       const phone = prompt("Enter your phone number:");
       if (!phone) { setVerifying(null); return; }
-      await api.put("/profile/", { phone_number: phone }, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      await updateProfile({ phone });
       setStats((prev) => ({
         ...prev,
         verification: { ...prev?.verification, phone_verified: true }
@@ -65,10 +62,7 @@ const Verification = () => {
   const verifyId = async () => {
     setVerifying("id");
     try {
-      // For now, mark as ID-verified through a profile update
-      await api.put("/profile/", { is_verified: true }, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      await updateProfile({ is_verified: true });
       setStats((prev) => ({
         ...prev,
         verification: { ...prev?.verification, id_verified: true }

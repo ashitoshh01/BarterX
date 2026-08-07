@@ -26,6 +26,7 @@ from .views import (
     FlexLoginView,
     SimpleRegisterView,
     GoogleOAuthView,
+    CoinTransferView,
 )
 
 from chat.views import ConversationViewSet
@@ -62,4 +63,5 @@ urlpatterns = [
     path('wallet/redeem-coins/', RedeemCoinsView.as_view(), name='redeem-coins'),
     path('wallet/create-razorpay-order/', CreateRazorpayOrderView.as_view(), name='create-razorpay-order'),
     path('wallet/verify-razorpay-payment/', VerifyRazorpayPaymentView.as_view(), name='verify-razorpay-payment'),
+    path('wallet/transfer/', CoinTransferView.as_view(), name='transfer-coins'),
 ]
