@@ -7,7 +7,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from api.models import UserProfile, Category, BarterItem, BarterInterest, ChatRoom, ChatMessage, DealConfirmation
+from api.models import UserProfile, Category, BarterItem, BarterInterest, DealConfirmation
+from chat.models import Conversation, Message
 
 def generate_data():
     print("Generating V1 product-only test data...")
@@ -27,8 +28,8 @@ def generate_data():
     # Clear existing test data
     BarterItem.objects.all().delete()
     BarterInterest.objects.all().delete()
-    ChatRoom.objects.all().delete()
-    ChatMessage.objects.all().delete()
+    Conversation.objects.all().delete()
+    Message.objects.all().delete()
     DealConfirmation.objects.all().delete()
 
     # Get Users and filter only product Categories
@@ -75,9 +76,12 @@ def generate_data():
         )
 
         if interest.status in ['accepted', 'completed']:
-            room = ChatRoom.objects.create(barter_interest=interest, user1=requester, user2=receiver)
-            ChatMessage.objects.create(room=room, sender=requester, message="Interested in a trade?")
-            ChatMessage.objects.create(room=room, sender=receiver, message="Sounds good, let's discuss.")
+            conv = Conversation.objects.create(barter_interest=interest, listing=requested_item)
+            conv.participants.set([requester, receiver])
+            m1 = Message.objects.create(conversation=conv, sender=requester, text="Interested in a trade?")
+            m2 = Message.objects.create(conversation=conv, sender=receiver, text="Sounds good, let's discuss.")
+            conv.last_message = m2
+            conv.save()
         
         if interest.status == 'completed':
             DealConfirmation.objects.create(barter_interest=interest, user1_confirmed=True, user2_confirmed=True)

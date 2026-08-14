@@ -6,7 +6,30 @@ import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
 
 const Wallet = () => {
-  const { user, wallet, createRazorpayOrder, verifyRazorpayPayment, transferCoins } = useApp();
+  const { user, wallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins } = useApp();
+
+  // Buy Coins Modal State
+  const [buyModalOpen, setBuyModalOpen] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
+
+  const handleBuyCoinsTier = async (amount) => {
+    const coinsNum = parseInt(amount, 10);
+    if (isNaN(coinsNum) || coinsNum <= 0) {
+      toast.error("Please enter a valid coin amount.");
+      return;
+    }
+    try {
+      setPurchasing(true);
+      await purchaseCoins(coinsNum);
+      setBuyModalOpen(false);
+      setCustomAmount("");
+    } catch (err) {
+      // toast error handled in purchaseCoins
+    } finally {
+      setPurchasing(false);
+    }
+  };
 
   // Razorpay Checkout Simulation State
   const [razorpayOrder, setRazorpayOrder] = useState(null);
@@ -171,13 +194,22 @@ const Wallet = () => {
       >
         <div className="aurora" style={{ opacity: 0.4 }} />
         <div className="grid-bg absolute inset-0 opacity-30" />
-        <div className="relative">
-          <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3">BALANCE</div>
-          <div className="font-display text-7xl md:text-8xl leading-none text-white flex items-baseline gap-2">
-            {(user.coins || 0).toLocaleString()}
-            <span className="text-3xl text-[var(--lime)]">◈</span>
+        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3">BALANCE</div>
+            <div className="font-display text-7xl md:text-8xl leading-none text-white flex items-baseline gap-2">
+              {(user.coins || 0).toLocaleString()}
+              <span className="text-3xl text-[var(--lime)]">◈</span>
+            </div>
+            <div className="font-mono2 text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-3">BAARTER COINS · BC</div>
           </div>
-          <div className="font-mono2 text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-3">BAARTER COINS · BC</div>
+          <NbButton
+            onClick={() => setBuyModalOpen(true)}
+            className="bg-[var(--lime)] text-black px-6 py-3 font-bold text-base hover:scale-105 transition-transform"
+            data-testid="buy-coins-btn"
+          >
+            ⚡ Buy Coins
+          </NbButton>
         </div>
       </motion.div>
 
@@ -503,6 +535,76 @@ const Wallet = () => {
                   </NbButton>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Buy Coins Store Modal */}
+      <AnimatePresence>
+        {buyModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setBuyModalOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-white shadow-2xl space-y-4"
+              data-testid="buy-coins-modal"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                  <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">COIN STORE</div>
+                  <h3 className="font-display text-2xl">⚡ Buy Barter Coins</h3>
+                </div>
+                <button onClick={() => setBuyModalOpen(false)} className="nb-btn bg-[var(--surface)] px-3 py-1 text-sm">✕</button>
+              </div>
+
+              <p className="text-xs font-mono2 text-[var(--text-3)]">
+                Select a coin pack or enter a custom amount. Purchased coins are added to your wallet balance immediately.
+              </p>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { coins: 50, price: "₹250", label: "Starter" },
+                  { coins: 200, price: "₹900", label: "Pro Trader" },
+                  { coins: 500, price: "₹1,750", label: "Whale" },
+                ].map((tier) => (
+                  <button
+                    key={tier.coins}
+                    disabled={purchasing}
+                    onClick={() => handleBuyCoinsTier(tier.coins)}
+                    className="nb-card p-4 text-center bg-[var(--surface)] hover:tint-lime transition-all border-2 border-white/10 hover:border-[var(--lime)]"
+                    data-testid={`buy-tier-${tier.coins}`}
+                  >
+                    <div className="font-display text-2xl text-[var(--lime)]">{tier.coins} ◈</div>
+                    <div className="text-xs font-bold text-white mt-1">{tier.price}</div>
+                    <div className="text-[9px] font-mono2 text-[var(--text-3)] uppercase mt-0.5">{tier.label}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="border-t border-white/10 pt-3 space-y-2">
+                <label className="block text-xs font-mono2 uppercase text-[var(--text-3)]">Or Custom Coin Amount</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="e.g. 150"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    className="nb-input py-2 text-sm flex-1 bg-[var(--surface)]"
+                    data-testid="custom-coins-input"
+                  />
+                  <NbButton
+                    disabled={purchasing || !customAmount}
+                    onClick={() => handleBuyCoinsTier(customAmount)}
+                    className="bg-[var(--lime)] text-black py-2 px-4 text-xs font-bold"
+                    data-testid="custom-buy-btn"
+                  >
+                    {purchasing ? "Buying..." : "Buy"}
+                  </NbButton>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
