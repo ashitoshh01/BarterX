@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Sparkles, Shield, Coins, Repeat, MessageCircle, Zap, Star, Flame, Trophy, ChevronDown } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Sparkles, Shield, Coins, Repeat, MessageCircle, Star, Trophy, ChevronDown } from "lucide-react";
 import { LogoWordmark, LogoMark } from "@/components/Logo";
 import Marquee from "@/components/Marquee";
-import { NbButton, XPBar, LevelBadge } from "@/components/UI";
-import { LISTINGS, USERS } from "@/mock/data";
+import { NbButton, XPBar } from "@/components/UI";
+import api from "@/lib/api";
 import { useApp } from "@/context/AppContext";
 
 /* --- Live cursor spotlight --- */
@@ -32,33 +32,77 @@ const CursorSpotlight = () => {
 };
 
 /* --- Floating listing card --- */
-const FloatCard = ({ listing, rotate, delay, className = "" }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 40, rotate: 0 }}
-    animate={{ opacity: 1, y: 0, rotate }}
-    transition={{ duration: 0.9, delay, ease: [0.2, 0.9, 0.2, 1] }}
-    className={`absolute nb-card overflow-hidden w-56 ${className}`}
-  >
+const FloatCard = ({ listing, rotate, delay, className = "" }) => {
+  const rawImg = listing.image_url || listing.image || (listing.images && listing.images[0]) || null;
+  const imgSrc = rawImg
+    ? (rawImg.startsWith("http") ? rawImg : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}${rawImg}`)
+    : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
+  return (
     <motion.div
-      animate={{ y: [0, -14, 0] }}
-      transition={{ duration: 6, delay: delay + 0.5, repeat: Infinity, ease: "easeInOut" }}
+      initial={{ opacity: 0, y: 40, rotate: 0 }}
+      animate={{ opacity: 1, y: 0, rotate }}
+      transition={{ duration: 0.9, delay, ease: [0.2, 0.9, 0.2, 1] }}
+      className={`absolute nb-card overflow-hidden w-56 ${className}`}
     >
-      <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover" />
-      <div className="p-3">
-        <div className="text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">{listing.condition}</div>
-        <div className="font-display text-sm text-white leading-tight line-clamp-1">{listing.title}</div>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] font-mono2 text-[var(--lime)]">~${listing.estValue}</span>
-          <span className="text-[10px] font-mono2 text-[var(--text-3)]">◈ SWAP</span>
+      <motion.div
+        animate={{ y: [0, -14, 0] }}
+        transition={{ duration: 6, delay: delay + 0.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <img src={imgSrc} alt={listing.title} className="w-full h-40 object-cover" onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600"; }} />
+        <div className="p-3">
+          <div className="text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">{listing.condition || "Active"}</div>
+          <div className="font-display text-sm text-white leading-tight line-clamp-1">{listing.title}</div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[10px] font-mono2 text-[var(--lime)] truncate">{listing.wanting || "Open Barter"}</span>
+            <span className="text-[10px] font-mono2 text-[var(--text-3)]">◈ SWAP</span>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
-);
+  );
+};
+
+// Static fallback avatars for the social proof row (not user-specific)
+const SOCIAL_PROOF_AVATARS = [
+  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
+];
+
+// Static testimonial personas (marketing copy — intentionally static)
+const TESTIMONIALS = [
+  {
+    t: "Got a portrait shoot for teaching Spanish. Best trade I've ever made.",
+    name: "Zoe P.", handle: "@zoethrift", swap: "PHOTO ↔ SPANISH",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop",
+  },
+  {
+    t: "Traded my old Canon for a rooted Monstera + a hand-painted canvas. Zero regrets.",
+    name: "Ren O.", handle: "@renmakes", swap: "CAMERA ↔ PLANTS",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
+  },
+  {
+    t: "My side hustle logo cost me 0 dollars and 1 skateboard.",
+    name: "Kai N.", handle: "@kaiwave", swap: "SKATE ↔ LOGO",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
+  },
+];
 
 const Landing = () => {
-  const { listings: appListings } = useApp();
-  const displayListings = (appListings && appListings.length > 0) ? appListings : LISTINGS;
+  const [liveItems, setLiveItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/items/?page_size=8&ordering=-created_at")
+      .then((res) => {
+        const list = res.data.results || res.data || [];
+        setLiveItems(list);
+      })
+      .catch(() => { /* silently use empty state */ })
+      .finally(() => setItemsLoading(false));
+  }, []);
 
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
@@ -156,8 +200,8 @@ const Landing = () => {
                 className="mt-12 flex items-center gap-4"
               >
                 <div className="flex -space-x-2">
-                  {Object.values(USERS).slice(0, 5).map((u) => (
-                    <img key={u.id} src={u.avatar} alt={u.name} className="w-9 h-9 rounded-full border-2 border-[var(--bg)] object-cover" />
+                  {SOCIAL_PROOF_AVATARS.map((src, i) => (
+                    <img key={i} src={src} alt="Swapper" className="w-9 h-9 rounded-full border-2 border-[var(--bg)] object-cover" />
                   ))}
                 </div>
                 <div>
@@ -190,8 +234,8 @@ const Landing = () => {
               </motion.div>
 
               {/* Floating Live Product Cards */}
-              <FloatCard listing={displayListings[0] || LISTINGS[0]} rotate={4} delay={0.5} className="-top-4 -right-4 shadow-2xl border-lime-500/30" />
-              <FloatCard listing={displayListings[1] || LISTINGS[1]} rotate={-6} delay={0.7} className="bottom-12 -left-6 shadow-2xl border-pink-500/30" />
+              {liveItems[0] && <FloatCard listing={liveItems[0]} rotate={4} delay={0.5} className="-top-4 -right-4 shadow-2xl border-lime-500/30" />}
+              {liveItems[1] && <FloatCard listing={liveItems[1]} rotate={-6} delay={0.7} className="bottom-12 -left-6 shadow-2xl border-pink-500/30" />}
 
               {/* Central Swap Ring Overlay */}
               <motion.div
@@ -276,70 +320,103 @@ const Landing = () => {
           </div>
           <Link to="/app/explore" className="shrink-0">
             <NbButton variant="ghost" className="text-sm px-5 py-3">
-              Explore All {displayListings.length} Products <ArrowUpRight size={16} />
+              Explore All Listings <ArrowUpRight size={16} />
             </NbButton>
           </Link>
         </div>
 
-        {/* Interactive Grid of Active Products */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayListings.slice(0, 8).map((item, idx) => {
-            const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
-            return (
-              <motion.div
-                key={item.id || idx}
-                initial={{ opacity: 0, y: 25 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08, duration: 0.5 }}
-                className="nb-card group overflow-hidden flex flex-col justify-between hover:border-[var(--lime)]/50 transition-all duration-300 shadow-xl"
-              >
-                <div>
-                  <div className="relative h-48 w-full overflow-hidden bg-black/40">
-                    <img
-                      src={imgSrc}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
-                    />
-                    <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 uppercase tracking-wider text-[var(--lime)] border border-white/10">
-                      {item.condition || "Active"}
+        {/* Loading skeleton */}
+        {itemsLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="nb-card overflow-hidden animate-pulse">
+                <div className="h-48 bg-white/5" />
+                <div className="p-5 space-y-3">
+                  <div className="h-3 bg-white/10 rounded w-1/3" />
+                  <div className="h-5 bg-white/10 rounded w-3/4" />
+                  <div className="h-3 bg-white/5 rounded w-full" />
+                  <div className="h-3 bg-white/5 rounded w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!itemsLoading && liveItems.length === 0 && (
+          <div className="text-center py-20">
+            <div className="font-display text-5xl mb-4">🔄</div>
+            <p className="font-mono2 text-sm text-[var(--text-3)] uppercase tracking-widest">Be the first to list something.</p>
+            <Link to="/auth" className="inline-block mt-6">
+              <NbButton variant="primary">Start swapping <ArrowRight size={16} /></NbButton>
+            </Link>
+          </div>
+        )}
+
+        {/* Live grid */}
+        {!itemsLoading && liveItems.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {liveItems.map((item, idx) => {
+              const rawImg = item.image_url || item.image || (item.images && item.images[0]) || null;
+              const imgSrc = rawImg
+                ? (rawImg.startsWith("http") ? rawImg : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}${rawImg}`)
+                : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
+              return (
+                <motion.div
+                  key={item.id || idx}
+                  initial={{ opacity: 0, y: 25 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.06, duration: 0.5 }}
+                  className="nb-card group overflow-hidden flex flex-col justify-between hover:border-[var(--lime)]/50 transition-all duration-300 shadow-xl"
+                >
+                  <div>
+                    <div className="relative h-48 w-full overflow-hidden bg-black/40">
+                      <img
+                        src={imgSrc}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600"; }}
+                      />
+                      {item.condition && (
+                        <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 uppercase tracking-wider text-[var(--lime)] border border-white/10">
+                          {item.condition}
+                        </div>
+                      )}
+                      {item.location && (
+                        <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 text-white/90 border border-white/10">
+                          📍 {item.location}
+                        </div>
+                      )}
                     </div>
-                    {item.location && (
-                      <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 text-white/90 border border-white/10">
-                        📍 {item.location}
+                    <div className="p-5">
+                      <div className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1">
+                        {item.category_name || "Product"}
                       </div>
-                    )}
-                  </div>
-
-                  <div className="p-5">
-                    <div className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1">
-                      {item.categoryName || item.category || "Product"}
-                    </div>
-                    <h3 className="font-display text-xl text-white group-hover:text-[var(--lime)] transition-colors line-clamp-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-[var(--text-2)] line-clamp-2 mt-2 leading-relaxed">
-                      {item.description}
-                    </p>
-
-                    <div className="mt-4 pt-3 border-t border-white/8 flex items-center justify-between text-xs font-mono2">
-                      <span className="text-[var(--text-3)]">WANTS:</span>
-                      <span className="text-[var(--lime)] font-semibold truncate max-w-[140px]">{item.wanting || "Open Barter"}</span>
+                      <h3 className="font-display text-xl text-white group-hover:text-[var(--lime)] transition-colors line-clamp-1">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-[var(--text-2)] line-clamp-2 mt-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="mt-4 pt-3 border-t border-white/8 flex items-center justify-between text-xs font-mono2">
+                        <span className="text-[var(--text-3)]">WANTS:</span>
+                        <span className="text-[var(--lime)] font-semibold truncate max-w-[140px]">{item.wanting || "Open Barter"}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="p-5 pt-0">
-                  <Link to="/auth">
-                    <button className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[var(--lime)] hover:text-black font-mono2 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
-                      Propose Trade <Repeat size={14} />
-                    </button>
-                  </Link>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                  <div className="p-5 pt-0">
+                    <Link to="/auth">
+                      <button className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[var(--lime)] hover:text-black font-mono2 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                        Propose Trade <Repeat size={14} />
+                      </button>
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* ─────── HOW ─────── */}
@@ -507,35 +584,28 @@ const Landing = () => {
           </h2>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
-          {[
-            { t: "Got a portrait shoot for teaching Spanish. Best trade I've ever made.", a: "u_zoe", swap: "PHOTO ↔ SPANISH" },
-            { t: "Traded my old Canon for a rooted Monstera + a hand-painted canvas. Zero regrets.", a: "u_ren", swap: "CAMERA ↔ PLANTS" },
-            { t: "My side hustle logo cost me 0 dollars and 1 skateboard.", a: "u_kai", swap: "SKATE ↔ LOGO" },
-          ].map((r, i) => {
-            const u = USERS[r.a];
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="nb-card p-6"
-                data-testid={`testimonial-${i}`}
-              >
-                <div className="text-[var(--lime)] font-serif-i text-5xl italic leading-none mb-4">"</div>
-                <p className="text-lg leading-tight mb-6 text-white/90">{r.t}</p>
-                <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                  <div className="flex items-center gap-2">
-                    <img src={u.avatar} className="w-8 h-8 rounded-full border border-white/10 object-cover" alt={u.name} />
-                    <div>
-                      <div className="text-xs font-medium text-white">{u.name}</div>
-                      <div className="text-[10px] font-mono2 text-[var(--text-3)]">{u.handle}</div>
-                    </div>
+          {TESTIMONIALS.map((r, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="nb-card p-6"
+              data-testid={`testimonial-${i}`}
+            >
+              <div className="text-[var(--lime)] font-serif-i text-5xl italic leading-none mb-4">"</div>
+              <p className="text-lg leading-tight mb-6 text-white/90">{r.t}</p>
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <div className="flex items-center gap-2">
+                  <img src={r.avatar} className="w-8 h-8 rounded-full border border-white/10 object-cover" alt={r.name} />
+                  <div>
+                    <div className="text-xs font-medium text-white">{r.name}</div>
+                    <div className="text-[10px] font-mono2 text-[var(--text-3)]">{r.handle}</div>
                   </div>
-                  <span className="nb-tag tint-lime">{r.swap}</span>
                 </div>
-              </motion.div>
-            );
-          })}
+                <span className="nb-tag tint-lime">{r.swap}</span>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </section>
 

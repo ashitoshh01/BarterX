@@ -198,6 +198,47 @@ class ListingHistorySerializer(serializers.ModelSerializer):
         model = ListingHistory
         fields = ('id', 'action', 'metadata', 'created_at', 'performed_by_username')
 
+class BarterItemListSerializer(serializers.ModelSerializer):
+    """Lightweight list serializer for feed — excludes history_logs and uses annotated counts."""
+    owner = serializers.SerializerMethodField()
+    category_name = serializers.ReadOnlyField(source='category.name')
+    additional_images = BarterItemImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BarterItem
+        fields = (
+            'id', 'title', 'description', 'offering', 'wanting', 'category', 'category_name',
+            'image_url', 'image', 'condition', 'owner', 'location', 'status',
+            'age_months', 'purchase_price', 'item_score', 'is_boosted', 'boosted_at',
+            'boost_expires_at', 'views_count', 'additional_images', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('owner', 'item_score', 'is_boosted', 'boosted_at', 'boost_expires_at', 'views_count')
+
+    def get_owner(self, obj):
+        profile = getattr(obj.owner, 'profile', None)
+        if profile:
+            return {
+                "id": obj.owner.id,
+                "username": obj.owner.username,
+                "display_name": profile.display_name or obj.owner.username,
+                "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+                "verified": profile.is_verified,
+                "trust_score": profile.trust_score,
+                "rating": profile.average_rating,
+                "coin_balance": profile.coin_balance
+            }
+        return {
+            "id": obj.owner.id,
+            "username": obj.owner.username,
+            "display_name": obj.owner.username,
+            "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+            "verified": False,
+            "trust_score": 50,
+            "rating": 0.0,
+            "coin_balance": 0
+        }
+
+
 class BarterItemSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     category_name = serializers.ReadOnlyField(source='category.name')
@@ -236,10 +277,14 @@ class BarterItemSerializer(serializers.ModelSerializer):
         }
 
     def get_proposal_count(self, obj):
+        if hasattr(obj, 'annotated_proposal_count'):
+            return obj.annotated_proposal_count
         from .models import BarterInterest
         return BarterInterest.objects.filter(Q(requested_item=obj) | Q(offered_item=obj)).count()
 
     def get_chat_count(self, obj):
+        if hasattr(obj, 'annotated_chat_count'):
+            return obj.annotated_chat_count
         from chat.models import Conversation
         return Conversation.objects.filter(
             Q(listing=obj) | 
@@ -265,6 +310,7 @@ class UserReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserReview
         fields = '__all__'
+        read_only_fields = ('reviewer',)
 
 class TradeTransactionSerializer(serializers.ModelSerializer):
     user_1_username = serializers.ReadOnlyField(source='user_1.username')
@@ -344,6 +390,15 @@ class BarterInterestSerializer(serializers.ModelSerializer):
                   'status', 'chat_room_id', 'is_read_only', 'can_cancel', 'can_accept', 'can_counter', 'can_decline',
                   'created_at', 'updated_at')
         read_only_fields = ('requester', 'receiver', 'status')
+
+    def validate(self, attrs):
+        offered_item = attrs.get('offered_item')
+        coins_offered = attrs.get('coins_offered', 0) or 0
+        if not offered_item and coins_offered <= 0:
+            raise serializers.ValidationError(
+                "A proposal must include either an offered item or a positive coin offer (or both)."
+            )
+        return attrs
 
     def get_requester_display_name(self, obj):
         try:
@@ -440,10 +495,33 @@ class ContractSerializer(serializers.ModelSerializer):
             return obj.party_b.username
 
 class TradeSerializer(serializers.ModelSerializer):
+    handshake_pin = serializers.SerializerMethodField()
+    pending_review = serializers.SerializerMethodField()
+
     class Meta:
         model = Trade
         fields = '__all__'
         read_only_fields = ('proposal', 'requested_listing', 'offered_listing', 'requester', 'receiver', 'created_at')
+
+    def get_handshake_pin(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user:
+            return None
+        if request.user.id == obj.receiver_id or request.user == obj.receiver:
+            return obj.handshake_pin
+        return None
+
+    def get_pending_review(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user or obj.status != 'completed':
+            return False
+        other_user = obj.receiver if request.user == obj.requester else obj.requester
+        already_reviewed = UserReview.objects.filter(
+            reviewer=request.user,
+            reviewed_user=other_user,
+            trade=obj
+        ).exists()
+        return not already_reviewed
 
 class DisputeEvidenceSerializer(serializers.ModelSerializer):
     class Meta:
