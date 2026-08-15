@@ -284,7 +284,7 @@ const mapItemToListing = (item) => {
   } else if (item.image_url) {
     images.push(getAbsoluteUrl(item.image_url));
   } else {
-    images.push("https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800");
+    images.push("https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800");
   }
   if (item.additional_images && item.additional_images.length > 0) {
     item.additional_images.forEach(img => {

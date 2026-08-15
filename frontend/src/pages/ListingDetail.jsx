@@ -122,7 +122,7 @@ const ListingDetail = () => {
               src={listing.images[activeImg]}
               className="w-full h-full object-cover"
               alt={listing.title}
-              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
             />
           </div>
           {listing.images.length > 1 && (
@@ -138,7 +138,7 @@ const ListingDetail = () => {
                     src={img}
                     className="w-full h-full object-cover"
                     alt=""
-                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
                   />
                 </button>
               ))}

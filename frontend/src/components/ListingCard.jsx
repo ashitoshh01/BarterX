@@ -20,6 +20,7 @@ const conditionTint = {
 
 export const ListingCard = ({ listing, compact = false }) => {
   const { saved, toggleSave } = useApp();
+  const [imageError, setImageError] = React.useState(false);
   const owner = listing.owner || {
     name: "Anonymous",
     handle: "@anonymous",
@@ -29,6 +30,8 @@ export const ListingCard = ({ listing, compact = false }) => {
   };
   const isSaved = saved.has(listing.id);
   const tint = conditionTint[listing.condition] || "tint-amber";
+
+  if (imageError) return null;
 
   return (
     <Link
@@ -43,7 +46,7 @@ export const ListingCard = ({ listing, compact = false }) => {
             alt={listing.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             loading="lazy"
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+            onError={() => setImageError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap max-w-[70%]">

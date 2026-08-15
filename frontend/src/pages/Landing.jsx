@@ -36,7 +36,7 @@ const FloatCard = ({ listing, rotate, delay, className = "" }) => {
   const rawImg = listing.image_url || listing.image || (listing.images && listing.images[0]) || null;
   const imgSrc = rawImg
     ? (rawImg.startsWith("http") ? rawImg : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}${rawImg}`)
-    : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
+    : "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=600";
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, rotate: 0 }}
@@ -48,7 +48,7 @@ const FloatCard = ({ listing, rotate, delay, className = "" }) => {
         animate={{ y: [0, -14, 0] }}
         transition={{ duration: 6, delay: delay + 0.5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <img src={imgSrc} alt={listing.title} className="w-full h-40 object-cover" onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600"; }} />
+        <img src={imgSrc} alt={listing.title} className="w-full h-40 object-cover" onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=600"; }} />
         <div className="p-3">
           <div className="text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">{listing.condition || "Active"}</div>
           <div className="font-display text-sm text-white leading-tight line-clamp-1">{listing.title}</div>
@@ -360,7 +360,7 @@ const Landing = () => {
               const rawImg = item.image_url || item.image || (item.images && item.images[0]) || null;
               const imgSrc = rawImg
                 ? (rawImg.startsWith("http") ? rawImg : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}${rawImg}`)
-                : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600";
+                : "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=600";
               return (
                 <motion.div
                   key={item.id || idx}
@@ -376,7 +376,7 @@ const Landing = () => {
                         src={imgSrc}
                         alt={item.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600"; }}
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=600"; }}
                       />
                       {item.condition && (
                         <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono2 uppercase tracking-wider text-[var(--lime)] border border-white/10">
