@@ -76,12 +76,29 @@ const ListingDetail = () => {
   const similar = listings.filter((l) => l.id !== listing.id && l.category === listing.category).slice(0, 4);
 
   const submitProposal = async () => {
-    if (!selectedItem) { toast.error("Pick an item to offer"); return; }
-    try {
+    const isPureCoin = selectedItem === "coins" || !selectedItem;
+    const offeredItemId = isPureCoin ? null : selectedItem;
+
+    let finalCoins = Number(coins) || 0;
+    if (isPureCoin) {
+      if (finalCoins <= 0) {
+        finalCoins = Math.max(1, Math.floor((listing.estValue || 0) / 100));
+      }
+    } else {
       const selectedOfferedItem = myItems.find(it => it.id === selectedItem);
       const priceDiff = (listing.estValue || 0) - (selectedOfferedItem?.estValue || 0);
-      const calculatedCoins = Math.floor(priceDiff / 100);
-      await createProposal(listing.id, selectedItem, message.trim(), calculatedCoins);
+      if (priceDiff > 0 && finalCoins <= 0) {
+        finalCoins = Math.floor(priceDiff / 100);
+      }
+    }
+
+    if (!offeredItemId && finalCoins <= 0) {
+      toast.error("Pick an item to offer or enter coins.");
+      return;
+    }
+
+    try {
+      await createProposal(listing.id, offeredItemId, message.trim(), finalCoins);
       toast.success("Swap proposal sent! 🤝");
       setProposeOpen(false);
       nav("/app/proposals");
@@ -105,7 +122,7 @@ const ListingDetail = () => {
               src={listing.images[activeImg]}
               className="w-full h-full object-cover"
               alt={listing.title}
-              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
             />
           </div>
           {listing.images.length > 1 && (
@@ -121,7 +138,7 @@ const ListingDetail = () => {
                     src={img}
                     className="w-full h-full object-cover"
                     alt=""
-                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
                   />
                 </button>
               ))}
@@ -310,59 +327,70 @@ const ListingDetail = () => {
               <button onClick={() => setProposeOpen(false)} className="nb-btn bg-[var(--surface)] px-3 py-1.5 rounded-lg text-sm">✕</button>
             </div>
             <div className="text-xs font-mono2 uppercase mb-2">Choose what you offer</div>
-            {myItems.length === 0 ? (
-              <div className="nb-card p-4 bg-[var(--surface)] text-center mb-4 border-2 border-dashed border-white/20">
-                <p className="text-sm mb-3 text-[var(--text-2)]">You don't have any active listings to offer.</p>
-                <NbButton onClick={() => { setProposeOpen(false); nav("/app/create"); }} className="py-2 text-xs bg-[var(--lime)] text-black font-bold">
-                  Post a Listing First
-                </NbButton>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {myItems.map((it) => (
-                  <button
-                    key={it.id}
-                    onClick={() => setSelectedItem(it.id)}
-                    className={`nb-border-2 rounded-lg p-2 text-left transition-all ${selectedItem === it.id ? "nb-shadow tint-lime" : "bg-[var(--surface)]"}`}
-                    data-testid={`propose-item-${it.id}`}
-                  >
-                    <img src={it.images[0]} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
-                    <div className="text-xs font-bold mt-1 line-clamp-1">{it.title}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-            {selectedItem && (
-              (() => {
-                const selectedOfferedItem = myItems.find(it => it.id === selectedItem);
-                if (!selectedOfferedItem) return null;
-                const priceDiff = (listing.estValue || 0) - (selectedOfferedItem.estValue || 0);
-                const calculatedCoins = Math.floor(priceDiff / 100);
-                return (
-                  <div className="nb-card p-3 bg-[var(--surface)] mb-4 text-sm font-mono2 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Their Item Value:</span>
-                      <span>₹{listing.estValue || 0}</span>
-                    </div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => setSelectedItem("coins")}
+                className={`nb-border-2 rounded-lg p-3 text-left transition-all col-span-2 flex items-center justify-between ${selectedItem === "coins" || (!selectedItem && myItems.length === 0) ? "nb-shadow tint-amber" : "bg-[var(--surface)]"}`}
+                data-testid="propose-item-coins"
+              >
+                <div>
+                  <div className="text-xs font-bold font-display text-white">🪙 Pure Coin Proposal</div>
+                  <div className="text-[10px] font-mono2 text-[var(--text-3)]">No item required · Offer Barter Coins directly</div>
+                </div>
+                <span className="nb-tag tint-lime text-[10px]">COINS ONLY</span>
+              </button>
+              {myItems.map((it) => (
+                <button
+                  key={it.id}
+                  onClick={() => setSelectedItem(it.id)}
+                  className={`nb-border-2 rounded-lg p-2 text-left transition-all ${selectedItem === it.id ? "nb-shadow tint-lime" : "bg-[var(--surface)]"}`}
+                  data-testid={`propose-item-${it.id}`}
+                >
+                  <img src={it.images[0]} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
+                  <div className="text-xs font-bold mt-1 line-clamp-1">{it.title}</div>
+                </button>
+              ))}
+            </div>
+
+            {(() => {
+              const selectedOfferedItem = selectedItem && selectedItem !== "coins" ? myItems.find(it => it.id === selectedItem) : null;
+              const isPureCoin = selectedItem === "coins" || (!selectedItem && myItems.length === 0);
+              const targetVal = listing.estValue || 0;
+              const offeredVal = selectedOfferedItem ? (selectedOfferedItem.estValue || 0) : 0;
+              const gapInr = Math.abs(targetVal - offeredVal);
+              const gapCoins = isPureCoin
+                ? Math.ceil(targetVal / 100) || 1
+                : (targetVal > offeredVal ? Math.ceil((targetVal - offeredVal) / 100) : 0);
+
+              return (
+                <div className="nb-card p-3 bg-[var(--surface)] mb-4 text-sm font-mono2 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Their Item Value:</span>
+                    <span>₹{targetVal}</span>
+                  </div>
+                  {!isPureCoin && (
                     <div className="flex justify-between">
                       <span>Your Item Value:</span>
-                      <span>₹{selectedOfferedItem.estValue || 0}</span>
+                      <span>₹{offeredVal}</span>
                     </div>
-                    <div className="border-t border-white/10 my-1 pt-1 flex justify-between font-bold">
-                      <span>Valuation Gap:</span>
-                      <span>₹{priceDiff}</span>
-                    </div>
-                    <div className={`p-2 rounded text-xs font-bold text-center mt-2 ${
-                      calculatedCoins > 0 ? "bg-[var(--pink)] text-white" : calculatedCoins < 0 ? "bg-[var(--lime)] text-black" : "bg-[var(--surface-3)] text-white"
-                    }`}>
-                      {calculatedCoins > 0 && `⚠️ You will owe ${calculatedCoins} coins to the other swapper.`}
-                      {calculatedCoins < 0 && `🎉 The other swapper will owe you ${Math.abs(calculatedCoins)} coins.`}
-                      {calculatedCoins === 0 && `✅ Even swap! No coins required.`}
-                    </div>
+                  )}
+                  <div className="border-t border-white/10 my-1 pt-1 flex justify-between font-bold">
+                    <span>Valuation Gap:</span>
+                    <span>₹{gapInr}</span>
                   </div>
-                );
-              })()
-            )}
+                  {gapCoins > 0 && (
+                    <div className="p-2 rounded text-xs font-bold text-center mt-2 bg-[var(--lime)] text-black">
+                      💡 Suggested balance top-up: {gapCoins} Barter Coins
+                    </div>
+                  )}
+                  {(!isPureCoin && gapCoins === 0 && targetVal === offeredVal) && (
+                    <div className="p-2 rounded text-xs font-bold text-center mt-2 bg-[var(--surface-3)] text-white">
+                      ✅ Even swap! No coins required.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div className="text-xs font-mono2 uppercase mb-2">Message</div>
             <textarea
               value={message}

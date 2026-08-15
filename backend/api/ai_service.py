@@ -1,17 +1,42 @@
 import os
 import json
 import math
+from django.utils import timezone
 from .models import BarterItem
 from .distance_service import haversine_distance_km, format_distance
 import google.generativeai as genai
 
 # Try to configure the Gemini API key from the environment
-gemini_api_key = os.environ.get("GEMINI_API_KEY")
+gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_API_KEY")
 if gemini_api_key:
     try:
         genai.configure(api_key=gemini_api_key)
     except Exception:
         pass
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Haversine formula to compute distance in km between two coordinate points."""
+    if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
+        return None
+    return haversine_distance_km(lat1, lon1, lat2, lon2)
+
+
+def is_interested_in(item_from, item_to):
+    """Simple semantic check to see if owner of item_from would want item_to."""
+    if item_from.owner == item_to.owner:
+        return False
+    wants = (item_from.wanting or '').lower()
+    offering = ((item_to.title or '') + ' ' + (item_to.description or '')).lower()
+
+    if not wants or wants == 'anything':
+        return True
+
+    keywords = [kw.strip() for kw in wants.split(',') if kw.strip()]
+    for kw in keywords:
+        if kw in offering:
+            return True
+    return False
 
 
 def get_ai_matches(user):
@@ -94,6 +119,7 @@ def get_ai_matches(user):
         m_copy["confidence"] = final_score
         m_copy["score"] = final_score
         m_copy["final_score"] = final_score
+        m_copy["recommendation_score"] = final_score
         m_copy["ai_score"] = int(round(ai_score))
         m_copy["proximity_score"] = round(prox_score, 1) if prox_score is not None else None
         m_copy["trust_score"] = int(round(trust_score))
@@ -105,6 +131,56 @@ def get_ai_matches(user):
 
     enhanced_matches.sort(key=lambda x: x["final_score"], reverse=True)
     return enhanced_matches
+
+
+def find_3_party_loops(user):
+    """
+    Detect circular 3-party swap loops (A -> B -> C -> A).
+    Returns: list of loops.
+    """
+    user_items = BarterItem.objects.filter(owner=user, status='active')
+    all_active_items = BarterItem.objects.filter(status='active')
+
+    loops = []
+    seen_loops = set()
+
+    for item_a in user_items:
+        for item_b in all_active_items:
+            if item_b.owner == user:
+                continue
+            if is_interested_in(item_a, item_b):  # You give A, want B
+                for item_c in all_active_items:
+                    if item_c.owner == user or item_c.owner == item_b.owner:
+                        continue
+                    if is_interested_in(item_b, item_c):  # B wants C
+                        if is_interested_in(item_c, item_a):  # C wants A
+                            loop_key = tuple(sorted([item_a.id, item_b.id, item_c.id]))
+                            if loop_key not in seen_loops:
+                                seen_loops.add(loop_key)
+                                loops.append({
+                                    "id": f"loop_{item_a.id}_{item_b.id}_{item_c.id}",
+                                    "user_item": {
+                                        "id": item_a.id,
+                                        "title": item_a.title,
+                                        "owner": item_a.owner.username
+                                    },
+                                    "party_b_item": {
+                                        "id": item_b.id,
+                                        "title": item_b.title,
+                                        "owner": item_b.owner.username
+                                    },
+                                    "party_c_item": {
+                                        "id": item_c.id,
+                                        "title": item_c.title,
+                                        "owner": item_c.owner.username
+                                    },
+                                    "visual_path": [
+                                        {"from": "You", "gives": item_a.title, "to": item_b.owner.username},
+                                        {"from": item_b.owner.username, "gives": item_b.title, "to": item_c.owner.username},
+                                        {"from": item_c.owner.username, "gives": item_c.title, "to": "You"}
+                                    ]
+                                })
+    return loops
 
 
 def _get_gemini_matches(user_items, other_items):
@@ -165,11 +241,13 @@ def _get_gemini_matches(user_items, other_items):
 
 STOP_WORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'to', 'in', 'on', 'with', 'of', 'at', 'by', 'from', 'similar', 'anything', 'any', 'preferred', 'combo', 'like'}
 
+
 def _extract_keywords(text):
     if not text:
         return set()
     words = text.lower().replace('/', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').replace('"', ' ').split()
     return {w.strip() for w in words if len(w.strip()) > 2 and w.strip() not in STOP_WORDS}
+
 
 def _get_fallback_matches(user_items, other_items):
     matches = []

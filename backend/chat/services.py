@@ -116,3 +116,83 @@ def mark_messages_as_delivered(conversation, receiver):
             "conversation_id": conversation.id,
             "delivered_at": now.isoformat()
         })
+
+
+def check_and_update_chat_limit(user):
+    """
+    Checks if a user is within their chat message limit.
+    Returns: (is_allowed, warning_triggered, details_dict)
+    """
+    from api.models import ChatUsage
+    now = timezone.now()
+    try:
+        profile = user.profile
+    except Exception:
+        return True, False, {"messages_remaining": 20, "resets_in_seconds": 60, "tier": "FREE"}
+
+    # Determine limits
+    if profile.is_premium:
+        max_per_minute = 100
+        max_per_day = 1000
+        tier = "PREMIUM"
+    elif profile.is_verified:
+        max_per_minute = 40
+        max_per_day = 500
+        tier = "VERIFIED"
+    else:
+        max_per_minute = 20
+        max_per_day = 200
+        tier = "FREE"
+
+    usage, created = ChatUsage.objects.get_or_create(user=user)
+
+    # Check reset periods
+    if now - usage.minute_reset_at > timezone.timedelta(minutes=1):
+        usage.messages_sent_this_minute = 0
+        usage.minute_reset_at = now
+
+    if now - usage.day_reset_at > timezone.timedelta(days=1):
+        usage.messages_sent_today = 0
+        usage.day_reset_at = now
+
+    minute_cooldown = max(0, int((usage.minute_reset_at + timezone.timedelta(minutes=1) - now).total_seconds()))
+    day_cooldown = max(0, int((usage.day_reset_at + timezone.timedelta(days=1) - now).total_seconds()))
+
+    # Check daily limit
+    if usage.messages_sent_today >= max_per_day:
+        return False, True, {
+            "error": f"You have reached your daily limit of {max_per_day} messages.",
+            "limit_type": "day",
+            "retry_after": day_cooldown,
+            "messages_remaining": 0,
+            "resets_in_seconds": day_cooldown,
+            "tier": tier
+        }
+
+    # Check minute limit
+    if usage.messages_sent_this_minute >= max_per_minute:
+        return False, True, {
+            "error": f"You have reached your limit of {max_per_minute} messages per minute.",
+            "limit_type": "minute",
+            "retry_after": minute_cooldown,
+            "messages_remaining": 0,
+            "resets_in_seconds": minute_cooldown,
+            "tier": tier
+        }
+
+    # Increment usage
+    usage.messages_sent_today += 1
+    usage.messages_sent_this_minute += 1
+    usage.last_message_sent_at = now
+    usage.save()
+
+    remaining_today = max(0, max_per_day - usage.messages_sent_today)
+    warning_triggered = (remaining_today <= (max_per_day * 0.1)) or (usage.messages_sent_this_minute >= (max_per_minute * 0.8))
+
+    return True, warning_triggered, {
+        "messages_remaining": remaining_today,
+        "resets_in_seconds": day_cooldown,
+        "tier": tier,
+        "messages_sent_today": usage.messages_sent_today,
+        "max_messages_today": max_per_day
+    }

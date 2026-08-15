@@ -23,6 +23,7 @@ import Notifications from "@/pages/Notifications";
 import Profile from "@/pages/Profile";
 import Disputes from "@/pages/Disputes";
 import ServiceSwap from "@/pages/ServiceSwap";
+import AdminDashboard from "@/pages/AdminDashboard";
 import AppLayout from "@/components/AppLayout";
 import PrivateRoute from "@/components/PrivateRoute";
 
@@ -73,6 +74,7 @@ function App() {
           <Route path="/app/profile" element={<Shell><Profile /></Shell>} />
           <Route path="/app/disputes" element={<Shell><Disputes /></Shell>} />
           <Route path="/app/service-swap" element={<Shell><ServiceSwap /></Shell>} />
+          <Route path="/app/admin" element={<Shell><AdminDashboard /></Shell>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

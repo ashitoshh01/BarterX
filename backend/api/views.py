@@ -1,5 +1,6 @@
 from rest_framework import viewsets, generics, permissions, filters, status
 from rest_framework.decorators import action
+from rest_framework.throttling import AnonRateThrottle
 from django.conf import settings
 import razorpay
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Avg, Count
 from django.http import HttpResponse
 import random
 import re
@@ -21,14 +22,15 @@ from .models import (
     BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
     UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
     BarterInterest, Notification, DealConfirmation, Trade, Contract, SavedItem,
-    Dispute, DisputeEvidence
+    Dispute, DisputeEvidence, WalletTransaction, TradeCoinReservation, ChatUsage, ImageModerationResult, AdminActionLog
 )
 from .serializers import (
-    BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
+    BarterItemSerializer, BarterItemListSerializer, CategorySerializer, BarterOfferSerializer,
     UserReviewSerializer, UserSerializer, UserProfileSerializer,
     TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
     DealConfirmationSerializer, BarterItemCompactSerializer, CoinTransactionSerializer,
-    ContractSerializer, TradeSerializer, DisputeSerializer, SavedItemSerializer
+    ContractSerializer, TradeSerializer, DisputeSerializer, SavedItemSerializer,
+    WalletTransactionSerializer, ImageModerationResultSerializer, AdminActionLogSerializer
 )
 from .email_services import send_otp_email
 from chat.services import broadcast_to_group
@@ -55,9 +57,22 @@ class EmailOrUsernameTokenSerializer(TokenObtainPairSerializer):
                 pass  # Let the default validator raise the error
         return super().validate(attrs)
 
+# ─── Auth rate throttles ──────────────────────────────────────────────────────
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login'
+
+class RegisterRateThrottle(AnonRateThrottle):
+    scope = 'register'
+
+class OTPRateThrottle(AnonRateThrottle):
+    scope = 'otp'
+
+
 class FlexLoginView(TokenObtainPairView):
     """Endpoint: POST /api/login/  — accepts username or email."""
     serializer_class = EmailOrUsernameTokenSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class SimpleRegisterView(generics.CreateAPIView):
@@ -68,6 +83,7 @@ class SimpleRegisterView(generics.CreateAPIView):
     No OTP required — straightforward signup.
     """
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -199,6 +215,7 @@ class GoogleOAuthView(generics.GenericAPIView):
 
 class SendOTPView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [OTPRateThrottle]
 
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
@@ -326,51 +343,6 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = (permissions.AllowAny,)
 
-
-    @action(detail=False, methods=['get'])
-    def nearby_traders(self, request):
-        user_profile = request.user.profile
-        my_location = user_profile.location or ""
-        my_city = my_location.split(',')[0].strip().lower() if my_location else ""
-        
-        # Get active items from other users
-        active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
-        
-        trader_map = {}
-        for item in active_items:
-            owner = item.owner
-            if owner.id not in trader_map:
-                owner_loc = item.location or owner.profile.location or ""
-                owner_city = owner_loc.split(',')[0].strip().lower() if owner_loc else ""
-                
-                # Deterministic pseudo-distance
-                if not my_city or not owner_city:
-                    distance_km = hash(owner.username) % 20 + 10 # 10-29 km
-                elif my_city == owner_city:
-                    distance_km = hash(owner.username) % 5 + 1 # 1-5 km
-                else:
-                    distance_km = hash(owner.username) % 15 + 5 # 5-19 km
-                    
-                trader_map[owner.id] = {
-                    "id": owner.id,
-                    "name": owner.profile.display_name or owner.username,
-                    "username": owner.username,
-                    "avatar": owner.profile.profile_picture_url,
-                    "distance": f"{distance_km} km away",
-                    "mutual_friends": hash(owner.username) % 5,
-                    "items": []
-                }
-                
-            trader_map[owner.id]["items"].append({
-                "id": item.id,
-                "image": item.image_url or (item.image.url if item.image else None)
-            })
-            
-        # Return only traders that have at least 1 item, sorted by distance
-        traders_list = list(trader_map.values())
-        traders_list.sort(key=lambda x: int(x["distance"].split(' ')[0]))
-        return Response(traders_list[:10])
-
 class BarterItemViewSet(viewsets.ModelViewSet):
     serializer_class = BarterItemSerializer
     pagination_class = StandardResultsSetPagination
@@ -378,13 +350,22 @@ class BarterItemViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'offering', 'wanting', 'location']
     ordering_fields = ['created_at', 'title']
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BarterItemListSerializer
+        return BarterItemSerializer
+
     def get_queryset(self):
         from django.utils import timezone
         from django.db import models
+        from django.db.models import Count
         # Deactivate expired boosts
         BarterItem.objects.filter(is_boosted=True, boost_expires_at__lt=timezone.now()).update(is_boosted=False)
         
-        queryset = BarterItem.objects.all()
+        queryset = BarterItem.objects.select_related('owner__profile', 'category').prefetch_related('additional_images', 'history_logs').annotate(
+            annotated_proposal_count=Count('interest_requests', distinct=True) + Count('interest_offers', distinct=True),
+            annotated_chat_count=Count('conversations', distinct=True)
+        )
         # Exclude archived items from general public feed, but let owners see their own archived listings.
         if self.request.user.is_authenticated:
             queryset = queryset.filter(
@@ -404,7 +385,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         category = self.request.query_params.get('category')
         if category and category != 'all':
             if str(category).isdigit():
-                queryset = queryset.filter(category__id=int(category))
+                queryset = queryset.filter(models.Q(category_id=int(category)) | models.Q(category__name__iexact=category))
             else:
                 queryset = queryset.filter(models.Q(category__slug__iexact=category) | models.Q(category__name__iexact=category))
 
@@ -414,13 +395,32 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
         location = self.request.query_params.get('location')
         if location:
-            queryset = queryset.filter(location__icontains=location)
+            queryset = queryset.filter(models.Q(location__icontains=location) | models.Q(city__icontains=location) | models.Q(state__icontains=location))
+
+        # Distance Bounding Box Search
+        lat = self.request.query_params.get('lat')
+        lng = self.request.query_params.get('lng')
+        radius = self.request.query_params.get('radius')
+        if lat and lng:
+            try:
+                lat = float(lat)
+                lng = float(lng)
+                radius_km = float(radius) if radius else 50.0
+                import math
+                lat_delta = radius_km / 111.0
+                lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
+                queryset = queryset.filter(
+                    latitude__gte=lat-lat_delta, latitude__lte=lat+lat_delta,
+                    longitude__gte=lng-lng_delta, longitude__lte=lng+lng_delta
+                )
+            except Exception:
+                pass
 
         item_type = self.request.query_params.get('item_type')
         if item_type and item_type.lower() != 'all':
             if item_type.lower() == 'service':
                 queryset = queryset.filter(category__is_service=True)
-            elif item_type.lower() == 'product':
+            elif item_type.lower() in ['product', 'item', 'goods']:
                 queryset = queryset.filter(category__is_service=False)
 
         val_min = self.request.query_params.get('valuation_min')
@@ -483,6 +483,16 @@ class BarterItemViewSet(viewsets.ModelViewSet):
             if img.size > max_size:
                 return Response(
                     {"images": ["File too large. Maximum size is 10MB per image."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Run Image Content Moderation checks
+        from .moderation_service import moderate_uploaded_image
+        for img in images:
+            is_allowed, mod_status, confidence, reason, _ = moderate_uploaded_image(request.user, img)
+            if not is_allowed:
+                return Response(
+                    {"images": [f"This image could not be uploaded because it may violate our content guidelines: {reason}"]},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
@@ -683,6 +693,16 @@ class BarterItemViewSet(viewsets.ModelViewSet):
             if img.size > max_size:
                 return Response(
                     {"images": ["File too large. Maximum size is 10MB per image."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Run Image Content Moderation checks on new files
+        from .moderation_service import moderate_uploaded_image
+        for img in new_files:
+            is_allowed, mod_status, confidence, reason, _ = moderate_uploaded_image(request.user, img, item=instance)
+            if not is_allowed:
+                return Response(
+                    {"images": [f"This image could not be uploaded because it may violate our content guidelines: {reason}"]},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
@@ -912,13 +932,56 @@ class UserReviewViewSet(viewsets.ModelViewSet):
         return UserReview.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(reviewer=self.request.user)
+        review = serializer.save(reviewer=self.request.user)
+        target_user = review.reviewed_user
+        profile = getattr(target_user, 'profile', None)
+        if profile:
+            all_reviews = UserReview.objects.filter(reviewed_user=target_user)
+            avg_rating = all_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+            profile.average_rating = round(float(avg_rating), 2)
+            if review.rating >= 4:
+                profile.trust_score = max(0, min(100, profile.trust_score + 5))
+            profile.save(update_fields=['average_rating', 'trust_score'])
 
 
 class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def nearby_traders(self, request):
+        # Get active items from other users
+        active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
+        
+        trader_map = {}
+        for item in active_items:
+            owner = item.owner
+            if owner.id not in trader_map:
+                try:
+                    profile = owner.profile
+                except Exception:
+                    profile = None
+
+                owner_loc = item.location or (profile.location if profile else "") or ""
+                
+                trader_map[owner.id] = {
+                    "id": owner.id,
+                    "name": (profile.display_name if profile else None) or owner.username,
+                    "username": owner.username,
+                    "avatar": profile.profile_picture_url if profile else None,
+                    "location": owner_loc,
+                    "average_rating": profile.average_rating if profile else 0.0,
+                    "items": []
+                }
+                
+            trader_map[owner.id]["items"].append({
+                "id": item.id,
+                "image": item.image_url or (item.image.url if item.image else None)
+            })
+            
+        traders_list = list(trader_map.values())
+        return Response(traders_list[:10])
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
@@ -1181,6 +1244,9 @@ class CreateRazorpayOrderView(generics.GenericAPIView):
         razorpay_key = getattr(settings, 'RAZORPAY_KEY_ID', None)
         razorpay_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
 
+        order_id = f"order_sim_{random.randint(100000, 999999)}"
+        is_simulated = True
+
         if razorpay_key and razorpay_secret:
             try:
                 client = razorpay.Client(auth=(razorpay_key, razorpay_secret))
@@ -1192,29 +1258,31 @@ class CreateRazorpayOrderView(generics.GenericAPIView):
                     "payment_capture": 1
                 }
                 order = client.order.create(data=data)
-                return Response({
-                    "order_id": order["id"],
-                    "amount_inr": price_inr,
-                    "amount_coins": amount,
-                    "currency": "INR",
-                    "key_id": razorpay_key,
-                    "is_simulated": False
-                }, status=status.HTTP_200_OK)
+                order_id = order["id"]
+                is_simulated = False
             except Exception as e:
-                # If Razorpay client fails, fallback to simulated in debug, or raise error in prod
+                # If Razorpay client fails, fallback to simulated in debug
                 if not getattr(settings, 'DEBUG', True):
                     return Response({"detail": f"Razorpay API Error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Fallback simulated order ID
-        simulated_order_id = f"order_sim_{random.randint(100000, 999999)}"
+        # Create a pending WalletTransaction ledger record
+        WalletTransaction.objects.create(
+            user=request.user,
+            amount=amount,
+            transaction_type='PURCHASE',
+            status='PENDING',
+            reference_id=order_id,
+            description=f"Purchase {amount} Barter Coins",
+            metadata={"price_inr": price_inr, "is_simulated": is_simulated}
+        )
 
         return Response({
-            "order_id": simulated_order_id,
+            "order_id": order_id,
             "amount_inr": price_inr,
             "amount_coins": amount,
             "currency": "INR",
-            "key_id": "rzp_test_simulated_key",
-            "is_simulated": True
+            "key_id": razorpay_key or "rzp_test_simulated_key",
+            "is_simulated": is_simulated
         }, status=status.HTTP_200_OK)
 
 
@@ -1229,6 +1297,17 @@ class VerifyRazorpayPaymentView(generics.GenericAPIView):
 
         if not order_id or not payment_id or not signature or amount <= 0:
             return Response({"detail": "Missing payment verification parameters."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve the pending transaction
+        tx = WalletTransaction.objects.filter(
+            user=request.user,
+            reference_id=order_id,
+            transaction_type='PURCHASE',
+            status='PENDING'
+        ).first()
+
+        if not tx:
+            return Response({"detail": "Payment order not found or already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if real Razorpay credentials are set in settings
         razorpay_key = getattr(settings, 'RAZORPAY_KEY_ID', None)
@@ -1246,6 +1325,8 @@ class VerifyRazorpayPaymentView(generics.GenericAPIView):
                 client.utility.verify_payment_signature(params_dict)
                 is_valid = True
             except Exception:
+                tx.status = 'FAILED'
+                tx.save(update_fields=['status'])
                 return Response({"detail": "Razorpay Signature Verification Failed."}, status=status.HTTP_400_BAD_REQUEST)
         else:
             # Simulated check
@@ -1253,17 +1334,39 @@ class VerifyRazorpayPaymentView(generics.GenericAPIView):
                 is_valid = True
 
         if not is_valid:
+            tx.status = 'FAILED'
+            tx.save(update_fields=['status'])
             return Response({"detail": "Invalid payment transaction signature."}, status=status.HTTP_400_BAD_REQUEST)
 
-        profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        profile.add_coins(amount)
+        with transaction.atomic():
+            profile, _ = UserProfile.objects.select_for_update().get_or_create(user=request.user)
+            
+            # Double check transaction status
+            tx_check = WalletTransaction.objects.get(id=tx.id)
+            if tx_check.status == 'SUCCESS':
+                return Response({"detail": "Payment already processed."}, status=status.HTTP_400_BAD_REQUEST)
 
-        CoinTransaction.objects.create(
-            user=request.user,
-            amount=amount,
-            transaction_type='purchased',
-            description=f"Purchased {amount} coins via Razorpay ({payment_id})"
-        )
+            # Credit coins and stats
+            profile.coin_balance += amount
+            profile.total_coins_purchased += amount
+            profile.save(update_fields=['coin_balance', 'total_coins_purchased'])
+
+            # Mark transaction as success
+            tx.status = 'SUCCESS'
+            tx.metadata.update({"razorpay_payment_id": payment_id})
+            tx.save(update_fields=['status', 'metadata'])
+
+            # Record legacy transaction
+            CoinTransaction.objects.create(
+                user=request.user,
+                amount=amount,
+                transaction_type='purchased',
+                description=f"Purchased {amount} coins via Razorpay ({payment_id})"
+            )
+
+        # Broadcast wallet update
+        from .coin_service import broadcast_wallet_update
+        broadcast_wallet_update(request.user)
 
         return Response({
             "message": f"Successfully verified payment. {amount} coins credited.",
@@ -1321,7 +1424,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         requested_item_id = request.data.get('requested_item')
         offered_item_id = request.data.get('offered_item')
         proposal_message = (request.data.get('proposal_message') or '').strip()
-        coins_offered = request.data.get('coins_offered', 0)
+        try:
+            coins_offered = int(request.data.get('coins_offered', 0) or 0)
+        except (ValueError, TypeError):
+            coins_offered = 0
 
         if not requested_item_id:
             return Response({"detail": "requested_item is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1350,6 +1456,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             if offered_item.status not in {'active', 'reserved'}:
                 return Response({"detail": "Offered item is not available."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validation: proposal must have either offered_item OR positive coins_offered
+        if not offered_item and coins_offered <= 0:
+            return Response({"detail": "A proposal must include either an offered item or a positive coin offer (or both)."}, status=status.HTTP_400_BAD_REQUEST)
+
         duplicate_query = BarterInterest.objects.filter(
             requester=request.user,
             requested_item=requested_item,
@@ -1359,17 +1469,20 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         if duplicate_query.exists():
             return Response({"detail": "You already have an active proposal for this swap."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Auto-calculate the valuation gap offset: 1 Coin = 100 units of purchase_price
-        coins_val = 0
+        # Calculate or use provided coins_offered
         if offered_item:
             req_price = float(requested_item.purchase_price or 0)
             off_price = float(offered_item.purchase_price or 0)
             coins_val = int((req_price - off_price) / 100)
+            if coins_offered > 0:
+                coins_val = coins_offered
+        else:
+            coins_val = coins_offered
 
         if coins_val > 0:
             profile = getattr(request.user, 'profile', None)
             if not profile or profile.coin_balance < coins_val:
-                return Response({"detail": f"Insufficient Barter Coins balance. You need {coins_val} coins to bridge the value gap, but you only have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": f"Insufficient Barter Coins balance. You need {coins_val} coins to make this proposal, but you only have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
         elif coins_val < 0:
             receiver_profile = getattr(requested_item.owner, 'profile', None)
             if not receiver_profile or receiver_profile.coin_balance < abs(coins_val):
@@ -1429,8 +1542,11 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
                 )
 
         try:
-            interest.transition_to('accepted')
-        except ValidationError as exc:
+            with transaction.atomic():
+                interest.transition_to('accepted')
+                from .coin_service import reserve_coins_for_proposal
+                reserve_coins_for_proposal(interest)
+        except (ValidationError, ValueError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         from chat.models import Conversation
@@ -1470,7 +1586,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Only the receiver can decline."}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            interest.transition_to('declined')
+            with transaction.atomic():
+                interest.transition_to('declined')
+                from .coin_service import release_coins_for_proposal
+                release_coins_for_proposal(interest)
         except ValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1558,7 +1677,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Proposal already closed."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            interest.transition_to('cancelled')
+            with transaction.atomic():
+                interest.transition_to('cancelled')
+                from .coin_service import release_coins_for_proposal
+                release_coins_for_proposal(interest)
         except ValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1646,6 +1768,11 @@ class ContractViewSet(viewsets.ModelViewSet):
             
         if contract.signed_a and contract.signed_b:
             contract.status = 'signed'
+            trade = contract.barter_interest._ensure_trade_exists()
+            if not trade.handshake_pin:
+                import random
+                trade.handshake_pin = f"{random.randint(1000, 9999)}"
+                trade.save(update_fields=['handshake_pin'])
             
         contract.save()
         return Response(self.get_serializer(contract).data)
@@ -1681,6 +1808,9 @@ class TradeViewSet(viewsets.ModelViewSet):
             logistics_status = request.data.get('logistics_status')
             tracking_number = request.data.get('tracking_number')
             shipping_provider = request.data.get('shipping_provider')
+            meetup_location = request.data.get('meetup_location')
+            meetup_datetime = request.data.get('meetup_datetime')
+            submitted_pin = request.data.get('handshake_pin') or request.data.get('pin')
 
             STAGES = ['preparing', 'shipped', 'out_for_delivery', 'delivered']
             if logistics_status and logistics_status in STAGES:
@@ -1688,53 +1818,54 @@ class TradeViewSet(viewsets.ModelViewSet):
                 new_idx = STAGES.index(logistics_status)
                 if new_idx < current_idx:
                     return Response({"detail": "Cannot revert trade logistics to a previous stage."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check PIN verification if transitioning to 'delivered'
+                if logistics_status == 'delivered':
+                    if not trade.handshake_pin:
+                        import random
+                        trade.handshake_pin = f"{random.randint(1000, 9999)}"
+                        trade.save(update_fields=['handshake_pin'])
+
+                    if not submitted_pin or str(submitted_pin).strip() != str(trade.handshake_pin).strip():
+                        return Response({"detail": "Invalid or missing handshake PIN for delivery verification."}, status=status.HTTP_400_BAD_REQUEST)
+
                 trade.logistics_status = logistics_status
 
             if tracking_number is not None:
                 trade.tracking_number = tracking_number
             if shipping_provider is not None:
                 trade.shipping_provider = shipping_provider
+            if meetup_location is not None:
+                trade.meetup_location = meetup_location
+            if meetup_datetime is not None:
+                trade.meetup_datetime = meetup_datetime
                 
             if logistics_status == 'delivered':
                 trade.status = 'completed'
                 trade.completed_at = timezone.now()
 
                 # Escrow coin settlement
-                if trade.barter_interest and trade.barter_interest.coins_offered != 0:
-                    coins = trade.barter_interest.coins_offered
-                    sender_profile = getattr(trade.barter_interest.requester, 'profile', None)
-                    receiver_profile = getattr(trade.barter_interest.receiver, 'profile', None)
-                    
-                    if sender_profile and receiver_profile:
-                        if coins > 0:
-                            # Requester pays Receiver
-                            if sender_profile.coin_balance < coins:
-                                return Response({"detail": f"Requester has insufficient coin balance ({sender_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
-                            sender_profile.coin_balance -= coins
-                            receiver_profile.coin_balance += coins
-                        else:
-                            # Receiver pays Requester (coins is negative)
-                            abs_coins = abs(coins)
-                            if receiver_profile.coin_balance < abs_coins:
-                                return Response({"detail": f"Receiver has insufficient coin balance ({receiver_profile.coin_balance}) for escrow payout."}, status=status.HTTP_400_BAD_REQUEST)
-                            receiver_profile.coin_balance -= abs_coins
-                            sender_profile.coin_balance += abs_coins
-                        
-                        sender_profile.save(update_fields=['coin_balance'])
-                        receiver_profile.save(update_fields=['coin_balance'])
+                proposal = trade.barter_interest
+                if proposal and proposal.coins_offered != 0:
+                    from .coin_service import transfer_coins_for_trade
+                    transfer_coins_for_trade(trade)
 
-                        CoinTransaction.objects.create(
-                            user=trade.barter_interest.requester,
-                            amount=-coins,
-                            transaction_type='spent' if coins > 0 else 'earned',
-                            description=f"Barter Coins adjustment for Trade #{trade.id}"
-                        )
-                        CoinTransaction.objects.create(
-                            user=trade.barter_interest.receiver,
-                            amount=coins,
-                            transaction_type='earned' if coins > 0 else 'spent',
-                            description=f"Barter Coins adjustment for Trade #{trade.id}"
-                        )
+                # Trigger post-trade review notification
+                if proposal:
+                    _create_notification(
+                        user=proposal.requester,
+                        ntype='deal_completed',
+                        title='Trade Completed!',
+                        message=f'Trade #{trade.id} has been completed. Please rate your trade partner!',
+                        interest=proposal
+                    )
+                    _create_notification(
+                        user=proposal.receiver,
+                        ntype='deal_completed',
+                        title='Trade Completed!',
+                        message=f'Trade #{trade.id} has been completed. Please rate your trade partner!',
+                        interest=proposal
+                    )
 
             trade.save()
             return Response(self.get_serializer(trade).data)
@@ -1767,6 +1898,12 @@ class AIRecommendationViewSet(viewsets.ViewSet):
     def matches(self, request):
         matches = get_ai_matches(request.user)
         return Response(matches)
+
+    @action(detail=False, methods=['get'])
+    def loops(self, request):
+        from .ai_service import find_3_party_loops
+        loops_data = find_3_party_loops(request.user)
+        return Response(loops_data)
 
 
 class SavedItemViewSet(viewsets.ModelViewSet):
@@ -1846,6 +1983,10 @@ class CoinTransferView(generics.GenericAPIView):
             sender_profile.save()
 
             recipient_profile.coin_balance += amount
+            sender_profile.total_coins_spent += amount
+            sender_profile.save()
+
+            recipient_profile.total_coins_earned += amount
             recipient_profile.save()
 
             # Record transactions
@@ -1863,13 +2004,26 @@ class CoinTransferView(generics.GenericAPIView):
                 description=f"Received from {request.user.username}: {description}".strip()
             )
 
+            # Record WalletTransaction ledger entries
+            WalletTransaction.objects.create(
+                user=request.user,
+                amount=-amount,
+                transaction_type='TRADE_PAYMENT',
+                status='SUCCESS',
+                description=f"Transferred to {recipient.username}: {description}".strip()
+            )
+            WalletTransaction.objects.create(
+                user=recipient,
+                amount=amount,
+                transaction_type='TRADE_RECEIPT',
+                status='SUCCESS',
+                description=f"Received from {request.user.username}: {description}".strip()
+            )
+
         try:
-            broadcast_to_group(f"user_{request.user.id}", "wallet.updated", {
-                "balance": sender_profile.coin_balance
-            })
-            broadcast_to_group(f"user_{recipient.id}", "wallet.updated", {
-                "balance": recipient_profile.coin_balance
-            })
+            from .coin_service import broadcast_wallet_update
+            broadcast_wallet_update(request.user)
+            broadcast_wallet_update(recipient)
         except Exception:
             pass
 
@@ -1927,6 +2081,315 @@ class ReverseGeocodeView(generics.GenericAPIView):
                 "state": "",
                 "country": ""
             }, status=status.HTTP_200_OK)
+
+
+COIN_PACKAGES = {
+    "pack_50": {"coins": 50, "price_inr": 250},
+    "pack_100": {"coins": 100, "price_inr": 450},
+    "pack_250": {"coins": 250, "price_inr": 1000},
+    "pack_500": {"coins": 500, "price_inr": 1750},
+    "pack_1000": {"coins": 1000, "price_inr": 3000},
+}
+
+
+class CoinPackagesView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        return Response([
+            {"id": k, **v} for k, v in COIN_PACKAGES.items()
+        ])
+
+
+class WalletOverviewView(generics.GenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        profile = request.user.profile
+        return Response({
+            "coin_balance": profile.coin_balance,
+            "coin_reserved": profile.coin_reserved,
+            "total_coins_earned": profile.total_coins_earned,
+            "total_coins_spent": profile.total_coins_spent,
+            "total_coins_purchased": profile.total_coins_purchased,
+        })
+
+
+class WalletTransactionsView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = WalletTransactionSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        return WalletTransaction.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+class IsAdminUserOrStaff(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+
+
+class AdminDashboardStatsView(generics.GenericAPIView):
+    permission_classes = (IsAdminUserOrStaff,)
+
+    def get(self, request):
+        from django.db.models import Sum
+        from django.contrib.auth.models import User
+        
+        # User Stats
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        new_users = User.objects.filter(date_joined__gte=timezone.now() - timezone.timedelta(days=7)).count()
+        
+        # Listing Stats
+        total_listings = BarterItem.objects.count()
+        active_listings = BarterItem.objects.filter(status='active').count()
+        
+        # Trade Stats
+        completed_trades = Trade.objects.filter(status='completed').count()
+        pending_trades = Trade.objects.filter(status='pending').count()
+        
+        # Platform Revenue (Calculate in memory for SQLite safety)
+        purchase_txs = WalletTransaction.objects.filter(transaction_type='PURCHASE', status='SUCCESS')
+        revenue = sum(tx.metadata.get('price_inr', 0) for tx in purchase_txs)
+
+        # Content Safety Stats
+        flagged_images = ImageModerationResult.objects.filter(status='FLAGGED').count()
+        pending_reviews = ImageModerationResult.objects.filter(status='PENDING_REVIEW').count()
+        active_disputes = Dispute.objects.exclude(status='resolved').count()
+
+        # Audit Logs (Recent 5 logs)
+        recent_logs = AdminActionLog.objects.order_by('-created_at')[:5]
+        from .serializers import AdminActionLogSerializer
+        logs_serializer = AdminActionLogSerializer(recent_logs, many=True)
+
+        return Response({
+            "stats": {
+                "total_users": total_users,
+                "active_users": active_users,
+                "new_users": new_users,
+                "total_listings": total_listings,
+                "active_listings": active_listings,
+                "completed_trades": completed_trades,
+                "pending_trades": pending_trades,
+                "disputed_trades": disputed_trades,
+                "coins_circulation": coins_circulation,
+                "coin_purchases": coin_purchases,
+                "platform_revenue": revenue,
+                "flagged_images": flagged_images,
+                "pending_reviews": pending_reviews,
+                "active_disputes": active_disputes,
+            },
+            "recent_activity": logs_serializer.data
+        })
+
+
+class AdminUserManagementViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUserOrStaff,)
+    serializer_class = UserSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        from django.contrib.auth.models import User
+        queryset = User.objects.all().order_by('-date_joined')
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(Q(username__icontains=search) | Q(email__icontains=search))
+        
+        status_filter = self.request.query_params.get('status')
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'suspended':
+            queryset = queryset.filter(is_active=False)
+            
+        verified_filter = self.request.query_params.get('verified')
+        if verified_filter == 'true':
+            queryset = queryset.filter(profile__is_verified=True)
+        elif verified_filter == 'false':
+            queryset = queryset.filter(profile__is_verified=False)
+
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def manage(self, request, pk=None):
+        from django.contrib.auth.models import User
+        user_to_manage = generics.get_object_or_404(User, pk=pk)
+        action_type = request.data.get('action') # suspend, reactivate, verify, unverify, make_premium
+        notes = request.data.get('notes', '')
+
+        with transaction.atomic():
+            profile = user_to_manage.profile
+            if action_type == 'suspend':
+                user_to_manage.is_active = False
+                user_to_manage.save()
+            elif action_type == 'reactivate':
+                user_to_manage.is_active = True
+                user_to_manage.save()
+            elif action_type == 'verify':
+                profile.is_verified = True
+                profile.save()
+            elif action_type == 'unverify':
+                profile.is_verified = False
+                profile.save()
+            elif action_type == 'make_premium':
+                profile.is_premium = True
+                profile.save()
+            elif action_type == 'revoke_premium':
+                profile.is_premium = False
+                profile.save()
+            else:
+                return Response({"detail": "Invalid action specified."}, status=400)
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                admin=request.user,
+                action=f"USER_{action_type.upper()}",
+                target_user=user_to_manage,
+                notes=notes
+            )
+
+        return Response({"message": f"Successfully performed action '{action_type}' on user {user_to_manage.username}."})
+
+
+class AdminListingManagementViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUserOrStaff,)
+    serializer_class = BarterItemSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = BarterItem.objects.all().order_by('-created_at')
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
+            
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def manage(self, request, pk=None):
+        listing = generics.get_object_or_404(BarterItem, pk=pk)
+        action_type = request.data.get('action') # remove, disable, restore
+        notes = request.data.get('notes', '')
+
+        with transaction.atomic():
+            if action_type == 'remove' or action_type == 'disable':
+                listing.status = 'archived'
+                listing.save()
+            elif action_type == 'restore':
+                listing.status = 'active'
+                listing.save()
+            else:
+                return Response({"detail": "Invalid action specified."}, status=400)
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                admin=request.user,
+                action=f"LISTING_{action_type.upper()}",
+                target_listing=listing,
+                notes=notes
+            )
+
+        return Response({"message": f"Successfully performed action '{action_type}' on listing #{listing.id}."})
+
+
+class AdminDisputeManagementViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUserOrStaff,)
+    serializer_class = DisputeSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = Dispute.objects.all().order_by('-created_at')
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        dispute = generics.get_object_or_404(Dispute, pk=pk)
+        resolution_notes = request.data.get('resolution', '').strip()
+        status_val = request.data.get('status', 'resolved') # resolved, rejected, investigating
+
+        if not resolution_notes:
+            return Response({"detail": "Resolution notes are required."}, status=400)
+
+        with transaction.atomic():
+            dispute.status = status_val
+            dispute.resolution = resolution_notes
+            dispute.save()
+
+            # Release escrow if trade coin reservations exist and dispute was resolved by cancelling trade
+            if status_val == 'resolved' and dispute.trade and dispute.trade.proposal:
+                from .coin_service import release_coins_for_proposal
+                release_coins_for_proposal(dispute.trade.proposal)
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                admin=request.user,
+                action=f"DISPUTE_{status_val.upper()}",
+                target_dispute=dispute,
+                notes=resolution_notes
+            )
+
+        return Response({"message": f"Dispute status updated to {status_val}."})
+
+
+class AdminImageModerationQueueViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUserOrStaff,)
+    serializer_class = ImageModerationResultSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = ImageModerationResult.objects.all().order_by('-created_at')
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        else:
+            queryset = queryset.filter(status__in=['FLAGGED', 'PENDING_REVIEW'])
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def action(self, request, pk=None):
+        result = generics.get_object_or_404(ImageModerationResult, pk=pk)
+        moderation_action = request.data.get('action') # approve, reject, remove_image, suspend_listing
+        notes = request.data.get('notes', '')
+
+        with transaction.atomic():
+            result.reviewed_by = request.user
+            result.reviewed_at = timezone.now()
+            
+            if moderation_action == 'approve':
+                result.status = 'APPROVED'
+                result.save()
+            elif moderation_action == 'reject' or moderation_action == 'remove_image':
+                result.status = 'BLOCKED'
+                result.save()
+                # Clear listing main cover image if it was this image
+                if result.item and result.item.image == result.image:
+                    result.item.image = None
+                    result.item.save()
+            elif moderation_action == 'suspend_listing':
+                result.status = 'BLOCKED'
+                result.save()
+                if result.item:
+                    result.item.status = 'archived'
+                    result.item.save()
+            else:
+                return Response({"detail": "Invalid moderation action."}, status=400)
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                admin=request.user,
+                action=f"MODERATION_{moderation_action.upper()}",
+                target_listing=result.item,
+                target_user=result.user,
+                notes=f"Queue ID: {result.id}. {notes}"
+            )
+
+        return Response({"message": f"Successfully applied action '{moderation_action}'."})
 
 
 

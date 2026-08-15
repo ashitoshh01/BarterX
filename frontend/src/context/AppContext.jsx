@@ -235,6 +235,7 @@ const mapUserProfile = (profile) => ({
   handle: `@${profile.username}`,
   name: profile.display_name || profile.username,
   bio: profile.bio || "",
+  avatar: profile.profile_picture_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
   city: profile.city || "",
   state: profile.state || "",
   country: profile.country || "",
@@ -287,7 +288,7 @@ const mapItemToListing = (item) => {
   } else if (item.image_url) {
     images.push(getAbsoluteUrl(item.image_url));
   } else {
-    images.push("https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800");
+    images.push("https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800");
   }
   if (item.additional_images && item.additional_images.length > 0) {
     item.additional_images.forEach(img => {
@@ -454,13 +455,16 @@ const mapMessage = (msg) => ({
   isRead: msg.read_at !== null
 });
 
-const mapWalletTransaction = (t) => ({
-  id: String(t.id),
-  type: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? 'earn' : 'spend',
-  amount: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? Math.abs(t.amount) : -Math.abs(t.amount),
-  reason: t.description || (t.transaction_type === 'purchased' ? 'Coins purchased' : 'Coins spent'),
-  time: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'recently',
-});
+const mapWalletTransaction = (t) => {
+  const isEarn = ['earned', 'purchased', 'TRADE_RECEIPT', 'PURCHASE', 'REFUND', 'BONUS'].includes(t.transaction_type);
+  return {
+    id: String(t.id),
+    type: isEarn ? 'earn' : 'spend',
+    amount: isEarn ? Math.abs(t.amount) : -Math.abs(t.amount),
+    reason: t.description || (t.transaction_type === 'PURCHASE' ? 'Coins purchased' : 'Coins spent'),
+    time: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'recently',
+  };
+};
 
 const mapReview = (r) => ({
   id: String(r.id),
@@ -536,22 +540,38 @@ export const AppProvider = ({ children }) => {
 
     const wsScheme = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = process.env.REACT_APP_WS_URL || `${window.location.hostname}:8000`;
-    const wsUrl = `${wsScheme}//${host}/ws/chat/?token=${token}`;
+    // NOTE: token is NOT in the URL — it is sent as the first message after
+    // connect to avoid leaking it into server access logs.
+    const wsUrl = `${wsScheme}//${host}/ws/chat/`;
 
-    console.log("Connecting to WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log("WebSocket connected successfully!");
-      setWsConnected(true);
+      // Send auth handshake immediately — server expects this as first message.
+      ws.send(JSON.stringify({ type: "authenticate", token }));
     };
 
     ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
         const { type, data } = payload;
+
+        // Auth confirmation — upgrade state once server confirms identity.
+        if (type === "authenticated") {
+          console.log("WebSocket authenticated, user_id:", data?.user_id);
+          setWsConnected(true);
+          return;
+        }
+
+        if (type === "auth_error") {
+          console.error("WebSocket auth failed:", data?.message);
+          ws.close(4001);
+          return;
+        }
+
         console.log("WS Event received:", type, data);
+
 
         if (type === "chat.message") {
           const conversationId = String(payload.conversation_id || (data && data.conversation) || "");
@@ -680,6 +700,35 @@ export const AppProvider = ({ children }) => {
         else if (type === "wallet.updated") {
           setUser((prev) => ({ ...prev, coins: data.balance }));
         }
+
+        else if (type === "wallet_updated") {
+          setUser((prev) => ({ 
+            ...prev, 
+            coins: data.available_balance,
+            coins_reserved: data.reserved_balance,
+            total_coins_earned: data.total_earned,
+            total_coins_spent: data.total_spent,
+            total_coins_purchased: data.total_purchased
+          }));
+          api.get("/wallet/ledger/").then((res) => {
+            const walletList = res.data.results || res.data;
+            setWallet(walletList.map(mapWalletTransaction));
+          }).catch(console.warn);
+        }
+
+        else if (type === "chat_limit_reached") {
+          toast.error(data.message || "You have reached your chat message limit.");
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { reached: true, data } }));
+        }
+
+        else if (type === "chat_limit_warning") {
+          toast.warning(data.message || "You are approaching your chat message limit.");
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { warning: true, data } }));
+        }
+
+        else if (type === "chat_limit_info") {
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { info: true, data } }));
+        }
       } catch (err) {
         console.error("Error parsing socket message:", err);
       }
@@ -778,7 +827,7 @@ export const AppProvider = ({ children }) => {
 
       // Fetch wallet transactions
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (err) {
@@ -1303,7 +1352,7 @@ export const AppProvider = ({ children }) => {
           toast.error("Failed to send message.");
         });
     }
-  }, [user]);
+  }, [user, loadChatMessages]);
 
   const sendAttachment = useCallback(async (chatId, fileObj) => {
     try {
@@ -1428,7 +1477,7 @@ export const AppProvider = ({ children }) => {
       
       // Refresh wallet transaction logs
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
@@ -1466,7 +1515,7 @@ export const AppProvider = ({ children }) => {
 
       // Refresh wallet transaction logs
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
@@ -1494,7 +1543,7 @@ export const AppProvider = ({ children }) => {
       setUser((prev) => ({ ...prev, coins: res.data.new_balance }));
 
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
@@ -1541,6 +1590,41 @@ export const AppProvider = ({ children }) => {
     return map;
   }, [user, listings, chats]);
 
+  const submitReview = useCallback(async ({ reviewedUserId, rating, comment, tradeId, offerId }) => {
+    try {
+      const payload = {
+        reviewed_user: reviewedUserId,
+        rating: Number(rating),
+        comment: comment || "",
+      };
+      if (tradeId) payload.trade = tradeId;
+      if (offerId) payload.offer = offerId;
+
+      const res = await api.post("/reviews/", payload);
+      setReviewsList((prev) => [res.data, ...prev]);
+
+      const tradesRes = await api.get("/trades/");
+      setTrades(tradesRes.data.results || tradesRes.data || []);
+
+      if (user?.id) {
+        const profileRes = await api.get("/profile/");
+        setUser((prev) => prev ? {
+          ...prev,
+          rating: profileRes.data.average_rating,
+          trustScore: profileRes.data.trust_score,
+        } : prev);
+      }
+
+      toast.success("Review submitted! Thank you for rating your trade partner. ⭐");
+      return res.data;
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      const msg = err.response?.data?.detail || "Failed to submit review.";
+      toast.error(msg);
+      throw err;
+    }
+  }, [user?.id]);
+
   const value = useMemo(() => ({
     user, setUser, isAuthed, login, logout, updateProfile,
     listings, setListings, addListing, editListing, deleteListing, refreshFeed, getNearbyListings,
@@ -1553,9 +1637,9 @@ export const AppProvider = ({ children }) => {
     disputes, setDisputes,
     wallet, setWallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins,
     users: dynamicUsers, categories: categoriesList,
-    aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList,
+    aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList, submitReview,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, getNearbyListings, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, getNearbyListings, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
 
   if (loading) {
     return (

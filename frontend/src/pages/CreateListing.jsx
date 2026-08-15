@@ -371,7 +371,7 @@ const CreateListing = () => {
                   data-testid="create-desc"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-mono2 uppercase font-bold mb-2 block">Condition</label>
                   <select
@@ -517,10 +517,10 @@ const CreateListing = () => {
               <p className="text-sm text-[var(--text-2)] mb-6">Preview below. You can edit anytime.</p>
               <div className="nb-card p-4 bg-[var(--surface-2)] text-left space-y-2 max-w-sm mx-auto">
                 <img
-                  src={coverPreview || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"}
+                  src={coverPreview || "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"}
                   className="w-full h-40 object-cover nb-border-2 rounded-lg"
                   alt=""
-                  onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"; }}
+                  onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
                 />
                 <div className="font-display text-xl">{form.title || "Untitled"}</div>
                 <div className="text-sm text-[var(--text-2)] line-clamp-2">{form.description || "-"}</div>
