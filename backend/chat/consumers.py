@@ -13,7 +13,8 @@ from .services import (
     mark_messages_as_delivered,
     get_room_group_name,
     get_user_group_name,
-    broadcast_to_group
+    broadcast_to_group,
+    check_and_update_chat_limit
 )
 
 logger = logging.getLogger(__name__)
@@ -200,6 +201,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "error", "data": {"message": "Not authorized to send messages here."}}))
             return
 
+        is_allowed, warning_triggered, limit_details = await self.check_user_chat_limit()
+        if not is_allowed:
+            await self.send(text_data=json.dumps({
+                "type": "chat_limit_reached",
+                "message": limit_details.get("error", "You have reached your messaging limit."),
+                "retry_after": limit_details.get("retry_after", 60),
+                "messages_remaining": limit_details.get("messages_remaining", 0),
+                "resets_in": limit_details.get("resets_in_seconds", 3600)
+            }))
+            return
+
+        if warning_triggered:
+            await self.send(text_data=json.dumps({
+                "type": "chat_limit_warning",
+                "message": "Warning: You are approaching your messaging limit.",
+                "messages_remaining": limit_details.get("messages_remaining"),
+                "resets_in": limit_details.get("resets_in_seconds")
+            }))
+
+        await self.send(text_data=json.dumps({
+            "type": "chat_limit_info",
+            "messages_remaining": limit_details.get("messages_remaining"),
+            "resets_in": limit_details.get("resets_in_seconds"),
+            "tier": limit_details.get("tier")
+        }))
+
         await self.create_and_broadcast_message(conversation_id, text, reply_to_id)
 
     async def handle_edit_message(self, message_id, text):
@@ -244,6 +271,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.mark_messages_read_db(conversation_id)
 
     # --- Database Helpers ---
+
+    @database_sync_to_async
+    def check_user_chat_limit(self):
+        return check_and_update_chat_limit(self.user)
 
     @database_sync_to_async
     def is_conversation_member(self, conversation_id):

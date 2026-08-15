@@ -13,6 +13,7 @@ const Profile = () => {
   const { user, listings, setListings, reviews, saved, logout, updateProfile, deleteListing, boostListing } = useApp();
   const [tab, setTab] = useState("overview");
   const [editMode, setEditMode] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
   const navigate = useNavigate();
 
   // Basic Profile Form State (Name, City, State, Profession, Bio)
@@ -51,6 +52,7 @@ const Profile = () => {
         state: profileForm.state,
         profession: profileForm.profession,
         bio: profileForm.bio,
+        avatarFile: avatarFile
       });
       setEditMode(false);
       toast.success("Profile updated (+Trust Score updated)!", { id: tid });
@@ -119,8 +121,12 @@ const Profile = () => {
       <div className="nb-card p-6 bg-[var(--surface-2)] border-2 border-white/10 relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="font-display text-3xl md:text-4xl text-white flex items-center gap-2">
-              <User className="text-[var(--lime)]" size={32} />
+            <div className="font-display text-3xl md:text-4xl text-white flex items-center gap-3">
+              {user.avatar ? (
+                <img src={user.avatar} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-[2px_2px_0_0_#000]" alt="" />
+              ) : (
+                <User className="text-[var(--lime)]" size={32} />
+              )}
               {user.name}
               {user.verified && (
                 <span className="nb-tag tint-lime flex items-center justify-center py-0.5 px-2 text-[10px] font-bold">
@@ -166,6 +172,16 @@ const Profile = () => {
             <button type="button" onClick={() => setEditMode(false)} className="text-white/60 hover:text-white">
               <X size={18} />
             </button>
+          </div>
+
+          <div className="space-y-1 pb-2 border-b border-white/5">
+            <label className="text-[10px] font-mono2 uppercase font-bold text-[var(--text-3)]">Profile Picture</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAvatarFile(e.target.files[0])}
+              className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2 text-sm text-white focus:border-[var(--lime)] outline-none"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

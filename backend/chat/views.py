@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsConversationParticipant
-from .services import create_message, mark_messages_as_read, broadcast_to_group
+from .services import create_message, mark_messages_as_read, broadcast_to_group, check_and_update_chat_limit
 from .utils import validate_chat_attachment
 from api.models import BarterItem, BarterInterest, DealConfirmation
 from api.serializers import DealConfirmationSerializer
@@ -48,6 +48,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
         text = request.data.get('message', '').strip()
         media_file = request.FILES.get('media', None)
         reply_to_id = request.data.get('reply_to', None)
+
+        # Check chat rate-limiting limits
+        is_allowed, warning_triggered, limit_details = check_and_update_chat_limit(request.user)
+        if not is_allowed:
+            return Response({
+                "detail": limit_details.get("error", "You have reached your messaging limit."),
+                "chat_limit_reached": True,
+                "retry_after": limit_details.get("retry_after", 60),
+                "messages_remaining": limit_details.get("messages_remaining", 0),
+                "resets_in": limit_details.get("resets_in_seconds", 3600),
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         if not text and not media_file:
             return Response({"detail": "Message text or attachment is required."}, status=status.HTTP_400_BAD_REQUEST)

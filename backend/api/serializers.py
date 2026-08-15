@@ -13,7 +13,8 @@ from django.db.models import Q
 from .models import (
     UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
     UserReview, TradeTransaction, OTPVerification,
-    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, DisputeEvidence, SavedItem
+    BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, DisputeEvidence, SavedItem,
+    WalletTransaction, ImageModerationResult, AdminActionLog
 )
 
 
@@ -473,4 +474,27 @@ class SavedItemSerializer(serializers.ModelSerializer):
         model = SavedItem
         fields = ('id', 'user', 'item', 'created_at')
         read_only_fields = ('user', 'created_at')
+
+
+class WalletTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalletTransaction
+        fields = '__all__'
+
+
+class ImageModerationResultSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    item_title = serializers.ReadOnlyField(source='item.title')
+    class Meta:
+        model = ImageModerationResult
+        fields = '__all__'
+
+
+class AdminActionLogSerializer(serializers.ModelSerializer):
+    admin_username = serializers.ReadOnlyField(source='admin.username')
+    target_username = serializers.ReadOnlyField(source='target_user.username')
+    target_listing_title = serializers.ReadOnlyField(source='target_listing.title')
+    class Meta:
+        model = AdminActionLog
+        fields = '__all__'
 

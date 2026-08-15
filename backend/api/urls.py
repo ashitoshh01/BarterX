@@ -27,6 +27,14 @@ from .views import (
     SimpleRegisterView,
     GoogleOAuthView,
     CoinTransferView,
+    CoinPackagesView,
+    WalletOverviewView,
+    WalletTransactionsView,
+    AdminDashboardStatsView,
+    AdminUserManagementViewSet,
+    AdminListingManagementViewSet,
+    AdminDisputeManagementViewSet,
+    AdminImageModerationQueueViewSet,
 )
 
 from chat.views import ConversationViewSet
@@ -48,6 +56,10 @@ router.register(r'trades', TradeViewSet, basename='trade')
 router.register(r'disputes', DisputeViewSet, basename='dispute')
 router.register(r'recommendations', AIRecommendationViewSet, basename='recommendation')
 router.register(r'saved-items', SavedItemViewSet, basename='saved-item')
+router.register(r'admin/users', AdminUserManagementViewSet, basename='admin-users')
+router.register(r'admin/listings', AdminListingManagementViewSet, basename='admin-listings')
+router.register(r'admin/disputes', AdminDisputeManagementViewSet, basename='admin-disputes')
+router.register(r'admin/moderation', AdminImageModerationQueueViewSet, basename='admin-moderation')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -64,4 +76,8 @@ urlpatterns = [
     path('wallet/create-razorpay-order/', CreateRazorpayOrderView.as_view(), name='create-razorpay-order'),
     path('wallet/verify-razorpay-payment/', VerifyRazorpayPaymentView.as_view(), name='verify-razorpay-payment'),
     path('wallet/transfer/', CoinTransferView.as_view(), name='transfer-coins'),
+    path('wallet/packages/', CoinPackagesView.as_view(), name='coin-packages'),
+    path('wallet/overview/', WalletOverviewView.as_view(), name='wallet-overview'),
+    path('wallet/ledger/', WalletTransactionsView.as_view(), name='wallet-ledger'),
+    path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-stats'),
 ]

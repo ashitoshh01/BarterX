@@ -9,6 +9,22 @@ const ChatThread = () => {
   const { id } = useParams();
   const { chats, users, user, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, sendAttachment, transferCoins } = useApp();
   const [text, setText] = useState("");
+  const [limitInfo, setLimitInfo] = useState(null);
+  const [isLimitBlocked, setIsLimitBlocked] = useState(false);
+
+  useEffect(() => {
+    const handleLimitEvent = (e) => {
+      const { reached, warning, info, data } = e.detail;
+      if (reached) {
+        setIsLimitBlocked(true);
+        setLimitInfo(data);
+      } else if (warning || info) {
+        setLimitInfo(data);
+      }
+    };
+    window.addEventListener('chat_limit_event', handleLimitEvent);
+    return () => window.removeEventListener('chat_limit_event', handleLimitEvent);
+  }, []);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -176,6 +192,22 @@ const ChatThread = () => {
         )}
       </div>
 
+      {/* Chat Limits Info Bar */}
+      {limitInfo && (
+        <div className={`px-4 py-2 border-t-2 border-black flex justify-between items-center text-xs font-mono uppercase ${isLimitBlocked ? 'bg-red-400 text-black' : 'bg-yellow-300 text-black'}`}>
+          <span>
+            {isLimitBlocked 
+              ? `🚫 Messaging Limit Reached (Tier: ${limitInfo.tier || 'FREE'})` 
+              : `⚡ Messages remaining today: ${limitInfo.messages_remaining}`}
+          </span>
+          {limitInfo.resets_in !== undefined && (
+            <span>
+              Resets in: {Math.floor(limitInfo.resets_in / 3600)}h {Math.floor((limitInfo.resets_in % 3600) / 60)}m
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Footer / Input */}
       <div className="p-3 border-t-[3px] border-white/10 bg-[var(--surface)] flex gap-2 items-center">
         <input
@@ -183,23 +215,25 @@ const ChatThread = () => {
           ref={fileInputRef}
           onChange={handleFileChange}
           className="hidden"
+          disabled={isLimitBlocked}
           accept="image/*,application/pdf,application/zip,application/msword"
         />
-        <NbButton onClick={() => fileInputRef.current?.click()} className="px-3 py-2.5 h-full" title="Attach file">
+        <NbButton onClick={() => fileInputRef.current?.click()} disabled={isLimitBlocked} className="px-3 py-2.5 h-full" title="Attach file">
           <Paperclip size={16} strokeWidth={3} />
         </NbButton>
-        <NbButton onClick={() => setShowCoinModal(true)} className="px-3 py-2.5 h-full tint-pink" title="Send Coins" data-testid="chat-send-coins-btn">
+        <NbButton onClick={() => setShowCoinModal(true)} disabled={isLimitBlocked} className="px-3 py-2.5 h-full tint-pink" title="Send Coins" data-testid="chat-send-coins-btn">
           <Coins size={16} strokeWidth={3} />
         </NbButton>
         <input
           value={text}
           onChange={handleInputChange}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Say something..."
+          onKeyDown={(e) => e.key === "Enter" && !isLimitBlocked && send()}
+          placeholder={isLimitBlocked ? "Messaging restricted due to limit cooldown..." : "Say something..."}
+          disabled={isLimitBlocked}
           className="nb-input flex-1"
           data-testid="chat-input"
         />
-        <NbButton onClick={send} className="px-4" data-testid="chat-send">
+        <NbButton onClick={send} disabled={isLimitBlocked || !text.trim()} className="px-4" data-testid="chat-send">
           <Send size={16} strokeWidth={3} />
         </NbButton>
       </div>

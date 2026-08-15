@@ -13,9 +13,22 @@ class UserProfile(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     profession = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(max_length=150, default="Remote")
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+    location_privacy = models.CharField(
+        max_length=20,
+        choices=[
+            ('EXACT', 'Exact'),
+            ('APPROXIMATE', 'Approximate'),
+            ('CITY_ONLY', 'City Only'),
+            ('HIDDEN', 'Hidden')
+        ],
+        default='APPROXIMATE'
+    )
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     profile_picture_url = models.URLField(max_length=500, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    is_premium = models.BooleanField(default=False)
     average_rating = models.FloatField(default=0.0)
     
     account_type = models.CharField(
@@ -51,6 +64,10 @@ class UserProfile(models.Model):
     
     # BarterX Coin System
     coin_balance = models.IntegerField(default=100)
+    coin_reserved = models.IntegerField(default=0)
+    total_coins_earned = models.IntegerField(default=0)
+    total_coins_spent = models.IntegerField(default=0)
+    total_coins_purchased = models.IntegerField(default=0)
 
     # Real-Time Chat Presence fields
     online_status = models.CharField(
@@ -131,6 +148,11 @@ class BarterItem(models.Model):
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='not_applicable')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
     location = models.CharField(max_length=150, default="Remote")
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True, default="India")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     
     # New listing calculator & detail fields
@@ -518,6 +540,101 @@ class SavedItem(models.Model):
 
     def __str__(self):
         return f"{self.user.username} saved item {self.item_id}"
+
+
+class WalletTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ('PURCHASE', 'Purchase'),
+        ('TRADE_PAYMENT', 'Trade Payment'),
+        ('TRADE_RECEIPT', 'Trade Receipt'),
+        ('REFUND', 'Refund'),
+        ('LISTING_BOOST', 'Listing Boost'),
+        ('ADMIN_ADJUSTMENT', 'Admin Adjustment'),
+        ('BONUS', 'Bonus'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('REFUNDED', 'Refunded'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wallet_transactions')
+    amount = models.IntegerField()  # positive/negative or credit/debit
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUCCESS')
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
+    description = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.transaction_type} ({self.amount} Coins) - {self.status}"
+
+
+class TradeCoinReservation(models.Model):
+    STATUS_CHOICES = [
+        ('RESERVED', 'Reserved'),
+        ('RELEASED', 'Released'),
+        ('TRANSFERRED', 'Transferred'),
+    ]
+    trade = models.ForeignKey('Trade', on_delete=models.CASCADE, related_name='coin_reservations', null=True, blank=True)
+    proposal = models.ForeignKey('BarterInterest', on_delete=models.CASCADE, related_name='coin_reservations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='coin_reservations')
+    amount = models.IntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RESERVED')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Reservation #{self.id}: {self.amount} coins for proposal #{self.proposal.id} ({self.status})"
+
+
+class ChatUsage(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='chat_usage')
+    messages_sent_today = models.IntegerField(default=0)
+    messages_sent_this_minute = models.IntegerField(default=0)
+    last_message_sent_at = models.DateTimeField(default=timezone.now)
+    minute_reset_at = models.DateTimeField(default=timezone.now)
+    day_reset_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"ChatUsage for {self.user.username}"
+
+
+class ImageModerationResult(models.Model):
+    STATUS_CHOICES = [
+        ('APPROVED', 'Approved'),
+        ('FLAGGED', 'Flagged'),
+        ('BLOCKED', 'Blocked'),
+        ('PENDING_REVIEW', 'Pending Review'),
+    ]
+    image_url = models.URLField(max_length=500, blank=True, null=True)
+    image = models.ImageField(upload_to='moderation_images/', blank=True, null=True)
+    item = models.ForeignKey('BarterItem', on_delete=models.CASCADE, null=True, blank=True, related_name='moderations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='moderations')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING_REVIEW')
+    confidence = models.FloatField(default=0.0)
+    detected_categories = models.JSONField(default=list, blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_moderations')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Moderation: {self.user.username} - {self.status}"
+
+
+class AdminActionLog(models.Model):
+    admin = models.ForeignKey(User, on_delete=models.CASCADE, related_name='admin_action_logs')
+    action = models.CharField(max_length=100)
+    target_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='targeted_admin_logs')
+    target_listing = models.ForeignKey('BarterItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='targeted_admin_logs')
+    target_dispute = models.ForeignKey('Dispute', on_delete=models.SET_NULL, null=True, blank=True, related_name='targeted_admin_logs')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"AdminAction: {self.admin.username} - {self.action} at {self.created_at}"
 
 
 

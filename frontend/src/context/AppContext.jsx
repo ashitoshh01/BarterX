@@ -235,6 +235,7 @@ const mapUserProfile = (profile) => ({
   handle: `@${profile.username}`,
   name: profile.display_name || profile.username,
   bio: profile.bio || "",
+  avatar: profile.profile_picture_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
   city: profile.city || "",
   state: profile.state || "",
   profession: profile.profession || "",
@@ -442,13 +443,16 @@ const mapMessage = (msg) => ({
   isRead: msg.read_at !== null
 });
 
-const mapWalletTransaction = (t) => ({
-  id: String(t.id),
-  type: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? 'earn' : 'spend',
-  amount: (t.transaction_type === 'earned' || t.transaction_type === 'purchased') ? Math.abs(t.amount) : -Math.abs(t.amount),
-  reason: t.description || (t.transaction_type === 'purchased' ? 'Coins purchased' : 'Coins spent'),
-  time: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'recently',
-});
+const mapWalletTransaction = (t) => {
+  const isEarn = ['earned', 'purchased', 'TRADE_RECEIPT', 'PURCHASE', 'REFUND', 'BONUS'].includes(t.transaction_type);
+  return {
+    id: String(t.id),
+    type: isEarn ? 'earn' : 'spend',
+    amount: isEarn ? Math.abs(t.amount) : -Math.abs(t.amount),
+    reason: t.description || (t.transaction_type === 'PURCHASE' ? 'Coins purchased' : 'Coins spent'),
+    time: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'recently',
+  };
+};
 
 const mapReview = (r) => ({
   id: String(r.id),
@@ -668,6 +672,35 @@ export const AppProvider = ({ children }) => {
         else if (type === "wallet.updated") {
           setUser((prev) => ({ ...prev, coins: data.balance }));
         }
+
+        else if (type === "wallet_updated") {
+          setUser((prev) => ({ 
+            ...prev, 
+            coins: data.available_balance,
+            coins_reserved: data.reserved_balance,
+            total_coins_earned: data.total_earned,
+            total_coins_spent: data.total_spent,
+            total_coins_purchased: data.total_purchased
+          }));
+          api.get("/wallet/ledger/").then((res) => {
+            const walletList = res.data.results || res.data;
+            setWallet(walletList.map(mapWalletTransaction));
+          }).catch(console.warn);
+        }
+
+        else if (type === "chat_limit_reached") {
+          toast.error(data.message || "You have reached your chat message limit.");
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { reached: true, data } }));
+        }
+
+        else if (type === "chat_limit_warning") {
+          toast.warning(data.message || "You are approaching your chat message limit.");
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { warning: true, data } }));
+        }
+
+        else if (type === "chat_limit_info") {
+          window.dispatchEvent(new CustomEvent('chat_limit_event', { detail: { info: true, data } }));
+        }
       } catch (err) {
         console.error("Error parsing socket message:", err);
       }
@@ -766,7 +799,7 @@ export const AppProvider = ({ children }) => {
 
       // Fetch wallet transactions
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (err) {
@@ -1373,7 +1406,7 @@ export const AppProvider = ({ children }) => {
       
       // Refresh wallet transaction logs
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
@@ -1411,7 +1444,7 @@ export const AppProvider = ({ children }) => {
 
       // Refresh wallet transaction logs
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
@@ -1439,7 +1472,7 @@ export const AppProvider = ({ children }) => {
       setUser((prev) => ({ ...prev, coins: res.data.new_balance }));
 
       try {
-        const walletRes = await api.get("/wallet/transactions/");
+        const walletRes = await api.get("/wallet/ledger/");
         const walletList = walletRes.data.results || walletRes.data;
         setWallet(walletList.map(mapWalletTransaction));
       } catch (e) {
