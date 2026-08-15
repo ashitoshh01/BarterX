@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from api.models import UserProfile, Category, BarterItem
 
 def seed_data():
-    print("Starting large dataset seeding with correct, relevant images...")
+    print("Starting large dataset seeding with realistic Indian names...")
     
     # 1. Create or get default categories
     categories_data = [
@@ -35,7 +35,7 @@ def seed_data():
         categories.append(cat)
     print(f"Seeded {len(categories)} categories.")
 
-    # 2. Seed 55 diverse users
+    # 2. Seed 55 diverse users with Indian names
     cities = [
         {"city": "Mumbai", "state": "Maharashtra", "lat": 19.0760, "lon": 72.8777},
         {"city": "Delhi", "state": "Delhi", "lat": 28.7041, "lon": 77.1025},
@@ -43,6 +43,20 @@ def seed_data():
         {"city": "Pune", "state": "Maharashtra", "lat": 18.5204, "lon": 73.8567},
         {"city": "Chennai", "state": "Tamil Nadu", "lat": 13.0827, "lon": 80.2707},
         {"city": "Hyderabad", "state": "Telangana", "lat": 17.3850, "lon": 78.4867},
+    ]
+
+    indian_names = [
+        "Aarav Mehta", "Aanya Sharma", "Aditya Patel", "Ananya Iyer", "Arjun Verma",
+        "Anika Rao", "Atharva Joshi", "Avani Deshmukh", "Kabir Gupta", "Diya Sen",
+        "Reyansh Das", "Isha Nair", "Shaurya Choudhury", "Kavya Reddy", "Vihaan Saxena",
+        "Kiara Mishra", "Krishna Trivedi", "Myra Kapoor", "Sai Pillai", "Pari Bhatt",
+        "Rohan Kulkarni", "Riya Malhotra", "Dev Adhikari", "Saanvi Dubey", "Neil Fernandes",
+        "Prisha Singhal", "Ranveer Goel", "Tanvi Bhatia", "Vikram Rathore", "Shruti Hegde",
+        "Sanjay Menon", "Sneha Rao", "Arjun Banerjee", "Pooja Hegde", "Amit Shah",
+        "Priya Swaminathan", "Yash Wardhan", "Divya Pillai", "Rahul Dravid", "Simran Kaur",
+        "Raj Malhotra", "Ritu Phogat", "Rohit Sharma", "Komal Pandey", "Suresh Kumar",
+        "Manish Sisodia", "Ramesh Babu", "Neha Dhupia", "Shikha Pandey", "Jyoti Singh",
+        "Deepak Chahar", "Sandhya Raju", "Alok Pandey", "Geeta Phogat", "Abhishek Sen"
     ]
 
     professions = ["Software Engineer", "Design Student", "Civil Engineer", "MBA Candidate", "Music Producer", "Content Creator", "Freelance Writer", "Architect"]
@@ -98,19 +112,22 @@ def seed_data():
 
     # Delete all previously seeded listings to avoid duplicate name collisions
     BarterItem.objects.filter(owner__username__startswith="swapper_").delete()
-    print("Deleted old seeded listings.")
+    # Also delete users created previously under swapper_username prefix
+    User.objects.filter(username__startswith="swapper_").delete()
+    print("Deleted old seeded users and listings.")
 
     user_count = 0
     item_count = 0
 
-    for i in range(1, 56):
-        username = f"swapper_{i:02d}"
-        email = f"swapper{i}@example.com"
+    for idx, name in enumerate(indian_names):
+        first_name = name.split(" ")[0]
+        username = f"swapper_{first_name.lower()}_{idx}"
+        email = f"{first_name.lower()}{idx}@example.com"
         
         # Create user
         user, created = User.objects.get_or_create(
             username=username,
-            defaults={"email": email, "first_name": f"Swapper {i}"}
+            defaults={"email": email, "first_name": name}
         )
         if created:
             user.set_password("barterpass123")
@@ -122,7 +139,7 @@ def seed_data():
         
         # Populate realistic details
         loc_data = random.choice(cities)
-        profile.display_name = f"Swapper {i}"
+        profile.display_name = name
         profile.city = loc_data["city"]
         profile.state = loc_data["state"]
         profile.location = f"{loc_data['city']}, {loc_data['state']}"
@@ -132,7 +149,7 @@ def seed_data():
         profile.bio = random.choice(bios)
         profile.trust_score = random.randint(45, 95)
         profile.coin_balance = random.randint(100, 1000)
-        profile.profile_picture_url = f"https://images.unsplash.com/photo-{1500000000000 + i * 10000}?w=150&h=150&fit=crop"
+        profile.profile_picture_url = f"https://images.unsplash.com/photo-{1500000000000 + idx * 10000}?w=150&h=150&fit=crop"
         profile.save()
 
         # Seed 2 random listings for this user
@@ -142,7 +159,7 @@ def seed_data():
             if pool:
                 title, desc, offering, wanting, img_url = random.choice(pool)
                 # Ensure unique title per user
-                title_full = f"{title} (Swapper {i})"
+                title_full = f"{title} ({first_name})"
                 
                 item, item_created = BarterItem.objects.get_or_create(
                     owner=user,
@@ -166,7 +183,7 @@ def seed_data():
                 if item_created:
                     item_count += 1
 
-    print(f"Seeding complete! Added {user_count} new users (Total 55 swappers now) and {item_count} new active listings!")
+    print(f"Seeding complete! Added {user_count} new users with realistic Indian names and {item_count} new active listings!")
 
 if __name__ == "__main__":
     seed_data()
