@@ -31,7 +31,12 @@ export const ListingCard = ({ listing, compact = false }) => {
   const isSaved = saved.has(listing.id);
   const tint = conditionTint[listing.condition] || "tint-amber";
 
-  if (imageError) return null;
+  const fallbackImage = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800";
+  const [imgSrc, setImgSrc] = React.useState(listing.images?.[0] || fallbackImage);
+
+  React.useEffect(() => {
+    setImgSrc(listing.images?.[0] || fallbackImage);
+  }, [listing.images]);
 
   return (
     <Link
@@ -42,11 +47,11 @@ export const ListingCard = ({ listing, compact = false }) => {
       <div className="nb-card overflow-hidden flex flex-col h-full">
         <div className="relative aspect-[4/3] overflow-hidden bg-[var(--surface-2)]">
           <img
-            src={listing.images[0]}
+            src={imgSrc}
             alt={listing.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             loading="lazy"
-            onError={() => setImageError(true)}
+            onError={() => setImgSrc(fallbackImage)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap max-w-[70%]">

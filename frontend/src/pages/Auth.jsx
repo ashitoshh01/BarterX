@@ -5,7 +5,7 @@ import { ArrowRight, Mail, Lock, User, Eye, EyeOff, AtSign, CheckCircle2, AlertC
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { LogoWordmark } from "@/components/Logo";
 import { NbButton } from "@/components/UI";
-import { useApp } from "@/context/AppContext";
+import { useApp, parseBackendError } from "@/context/AppContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
@@ -199,7 +199,7 @@ const Auth = () => {
         nav("/app/feed");
       }
     } catch (err) {
-      const msg = err.response?.data?.detail || "Google sign-in failed. Try again.";
+      const msg = parseBackendError(err, "Google sign-in failed. Try again.");
       toast.error(msg);
     } finally {
       setGoogleLoading(false);

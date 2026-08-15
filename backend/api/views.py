@@ -11,8 +11,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
-from django.db import transaction
-from django.db.models import Q, Avg, Count
+from django.db import models, transaction
+from django.db.models import Q, Avg, Count, Sum
 from django.http import HttpResponse
 import random
 import re
@@ -1104,7 +1104,11 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         score += min(20, int(profile.average_rating * 4))
         
         profile.trust_score = min(100, score)
-        profile.save()
+        profile.save(update_fields=[
+            'display_name', 'bio', 'city', 'state', 'country', 'location', 'location_name',
+            'profession', 'latitude', 'longitude', 'phone_number', 'profile_picture_url',
+            'cover_picture_url', 'is_verified', 'trust_score'
+        ])
         
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
@@ -2148,10 +2152,13 @@ class AdminDashboardStatsView(generics.GenericAPIView):
         # Trade Stats
         completed_trades = Trade.objects.filter(status='completed').count()
         pending_trades = Trade.objects.filter(status='pending').count()
+        disputed_trades = Trade.objects.filter(status='disputed').count()
         
-        # Platform Revenue (Calculate in memory for SQLite safety)
+        # Platform Revenue & Coins (Calculate in memory for SQLite safety)
         purchase_txs = WalletTransaction.objects.filter(transaction_type='PURCHASE', status='SUCCESS')
-        revenue = sum(tx.metadata.get('price_inr', 0) for tx in purchase_txs)
+        revenue = sum((tx.metadata or {}).get('price_inr', 0) for tx in purchase_txs)
+        coins_circulation = UserProfile.objects.aggregate(total=Sum('coin_balance'))['total'] or 0
+        coin_purchases = sum(tx.amount for tx in purchase_txs)
 
         # Content Safety Stats
         flagged_images = ImageModerationResult.objects.filter(status='FLAGGED').count()
