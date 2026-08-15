@@ -9,20 +9,27 @@ import ListingCard from "@/components/ListingCard";
 import { NbButton } from "@/components/UI";
 import { toast } from "sonner";
 
+import { reverseGeocode } from "@/lib/geocoding";
+
 const Profile = () => {
   const { user, listings, setListings, reviews, saved, logout, updateProfile, deleteListing, boostListing } = useApp();
   const [tab, setTab] = useState("overview");
   const [editMode, setEditMode] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const navigate = useNavigate();
 
-  // Basic Profile Form State (Name, City, State, Profession, Bio)
+  // Basic Profile Form State (Name, City, State, Country, Profession, Bio, Location)
   const [profileForm, setProfileForm] = useState({
     name: "",
     city: "",
     state: "",
+    country: "",
     profession: "",
-    bio: ""
+    bio: "",
+    location_name: "",
+    latitude: null,
+    longitude: null,
   });
 
   useEffect(() => {
@@ -31,8 +38,12 @@ const Profile = () => {
         name: user.name || "",
         city: user.city || "",
         state: user.state || "",
+        country: user.country || "",
         profession: user.profession || "",
-        bio: user.bio || ""
+        bio: user.bio || "",
+        location_name: user.location_name || user.location || "",
+        latitude: user.latitude ?? null,
+        longitude: user.longitude ?? null,
       });
     }
   }, [user, editMode]);
@@ -40,6 +51,46 @@ const Profile = () => {
   const handleLogout = () => {
     logout();
     navigate("/auth");
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    const tid = toast.loading("Detecting your current location...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const geo = await reverseGeocode(lat, lng);
+        setProfileForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          location_name: geo.location_name,
+          city: geo.city || prev.city,
+          state: geo.state || prev.state,
+          country: geo.country || prev.country,
+        }));
+        setLocating(false);
+        toast.success(`Location updated: ${geo.location_name}`, { id: tid });
+      },
+      (err) => {
+        setLocating(false);
+        let msg = "Failed to capture location.";
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = "Location permission was denied.";
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          msg = "Location information is unavailable.";
+        } else if (err.code === err.TIMEOUT) {
+          msg = "Location request timed out.";
+        }
+        toast.error(msg, { id: tid });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleSaveProfile = async (e) => {
@@ -50,9 +101,13 @@ const Profile = () => {
         name: profileForm.name,
         city: profileForm.city,
         state: profileForm.state,
+        country: profileForm.country,
         profession: profileForm.profession,
         bio: profileForm.bio,
-        avatarFile: avatarFile
+        location_name: profileForm.location_name,
+        latitude: profileForm.latitude,
+        longitude: profileForm.longitude,
+        avatarFile: avatarFile,
       });
       setEditMode(false);
       toast.success("Profile updated (+Trust Score updated)!", { id: tid });
@@ -231,6 +286,27 @@ const Profile = () => {
                 className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-sm font-bold text-white focus:border-[var(--lime)] outline-none"
                 placeholder="e.g. Student, Designer, Developer, Trader"
               />
+            </div>
+
+            <div className="space-y-2 md:col-span-2 nb-border-2 rounded-xl p-3 bg-black/20 tint-amber">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <div>
+                  <label className="text-[10px] font-mono2 uppercase font-bold text-[var(--text-3)] block">Geographic Location</label>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                    <MapPin size={13} className="text-[var(--lime)] shrink-0" />
+                    {profileForm.location_name || (profileForm.city && profileForm.state ? `${profileForm.city}, ${profileForm.state}` : "No GPS coordinates set")}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={locating}
+                  className="nb-btn text-xs px-3 py-1.5 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1.5 shadow-[2px_2px_0_0_#000]"
+                  data-testid="profile-use-location"
+                >
+                  <MapPin size={12} /> {locating ? "Detecting..." : "Use My Current Location"}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1 md:col-span-2">

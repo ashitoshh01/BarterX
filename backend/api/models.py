@@ -3,6 +3,7 @@ from django.db import models
 # pyrefly: ignore [missing-import]
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 # 1. User Profile Model
@@ -11,10 +12,20 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
     profession = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(max_length=150, default="Remote")
-    latitude = models.FloatField(blank=True, null=True)
-    longitude = models.FloatField(blank=True, null=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.FloatField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-90.0), MaxValueValidator(90.0)]
+    )
+    longitude = models.FloatField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)]
+    )
     location_privacy = models.CharField(
         max_length=20,
         choices=[
@@ -148,11 +159,20 @@ class BarterItem(models.Model):
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='not_applicable')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
     location = models.CharField(max_length=150, default="Remote")
-    latitude = models.FloatField(blank=True, null=True)
-    longitude = models.FloatField(blank=True, null=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True, default="India")
+    latitude = models.FloatField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-90.0), MaxValueValidator(90.0)]
+    )
+    longitude = models.FloatField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)]
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     
     # New listing calculator & detail fields

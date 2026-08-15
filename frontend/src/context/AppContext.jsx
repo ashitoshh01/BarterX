@@ -238,8 +238,12 @@ const mapUserProfile = (profile) => ({
   avatar: profile.profile_picture_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
   city: profile.city || "",
   state: profile.state || "",
+  country: profile.country || "",
   profession: profile.profession || "",
-  location: (profile.city && profile.state) ? `${profile.city}, ${profile.state}` : (profile.location || "Location not set"),
+  location: profile.location_name || (profile.city && profile.state ? `${profile.city}, ${profile.state}` : (profile.location || "Location not set")),
+  location_name: profile.location_name || "",
+  latitude: profile.latitude ?? null,
+  longitude: profile.longitude ?? null,
   coins: profile.coin_balance ?? 0,
   trustScore: profile.trust_score ?? 20,
   swapsCompleted: profile.reward_points ? Math.floor(profile.reward_points / 50) : 0,
@@ -334,7 +338,15 @@ const mapItemToListing = (item) => {
     estValue: parseFloat(item.purchase_price) || 0,
     wants: item.wanting ? item.wanting.split(",").map(x => x.trim()) : ["anything"],
     tags: [item.category_name].filter(Boolean),
-    location: item.location,
+    location: item.location_name || item.location,
+    location_name: item.location_name || "",
+    city: item.city || "",
+    state: item.state || "",
+    country: item.country || "",
+    latitude: item.latitude ?? null,
+    longitude: item.longitude ?? null,
+    distance_km: item.distance_km ?? null,
+    distance_formatted: item.distance_formatted || (item.distance_km !== null && item.distance_km !== undefined ? `${item.distance_km} km away` : null),
     posted: item.created_at ? new Date(item.created_at).toLocaleDateString() : "recently",
     views: item.views_count ?? 0,
     saves: 0,
@@ -870,7 +882,12 @@ export const AppProvider = ({ children }) => {
             id: m.id,
             yourItem: userItemId,
             theirItem: matchItemId,
-            score: m.confidence || 85,
+            score: m.final_score || m.confidence || 85,
+            aiScore: m.ai_score || 85,
+            proximityScore: m.proximity_score ?? null,
+            trustScore: m.trust_score ?? 50,
+            distanceKm: m.distance_km ?? null,
+            distanceFormatted: m.distance_formatted || null,
             reason: m.reason || "AI-powered match",
           };
         });
@@ -1021,6 +1038,12 @@ export const AppProvider = ({ children }) => {
       formData.append("category", listing.category);
       formData.append("condition", conditionMap[listing.condition] || "used");
       formData.append("location", listing.location || "Remote");
+      if (listing.latitude !== undefined && listing.latitude !== null) formData.append("latitude", listing.latitude);
+      if (listing.longitude !== undefined && listing.longitude !== null) formData.append("longitude", listing.longitude);
+      if (listing.location_name) formData.append("location_name", listing.location_name);
+      if (listing.city) formData.append("city", listing.city);
+      if (listing.state) formData.append("state", listing.state);
+      if (listing.country) formData.append("country", listing.country);
       formData.append("age_months", listing.age_months || 0);
       formData.append("purchase_price", listing.estValue || 0.0);
 
@@ -1070,6 +1093,12 @@ export const AppProvider = ({ children }) => {
       formData.append("category", listingData.category);
       formData.append("condition", conditionMap[listingData.condition] || "used");
       formData.append("location", listingData.location || "Remote");
+      if (listingData.latitude !== undefined && listingData.latitude !== null) formData.append("latitude", listingData.latitude);
+      if (listingData.longitude !== undefined && listingData.longitude !== null) formData.append("longitude", listingData.longitude);
+      if (listingData.location_name) formData.append("location_name", listingData.location_name);
+      if (listingData.city) formData.append("city", listingData.city);
+      if (listingData.state) formData.append("state", listingData.state);
+      if (listingData.country) formData.append("country", listingData.country);
       formData.append("purchase_price", listingData.estValue || 0.0);
       formData.append("status", listingData.status || "active");
 
@@ -1131,6 +1160,26 @@ export const AppProvider = ({ children }) => {
       setError("Failed to refresh feed listings.");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const getNearbyListings = useCallback(async (params = {}) => {
+    try {
+      setError(null);
+      const res = await api.get("/items/nearby/", { params });
+      const rawList = res.data.results || [];
+      const mapped = rawList.map(mapItemToListing);
+      return {
+        count: res.data.count || mapped.length,
+        radiusKm: res.data.radius_km || params.radius || 10,
+        userLatitude: res.data.user_latitude,
+        userLongitude: res.data.user_longitude,
+        listings: mapped
+      };
+    } catch (err) {
+      console.error("Failed to fetch nearby listings:", err);
+      const msg = parseBackendError(err, "Location is not available. Please set your location first.");
+      throw new Error(msg);
     }
   }, []);
 
@@ -1385,6 +1434,12 @@ export const AppProvider = ({ children }) => {
             name: "display_name",
             bio: "bio",
             location: "location",
+            location_name: "location_name",
+            latitude: "latitude",
+            longitude: "longitude",
+            country: "country",
+            city: "city",
+            state: "state",
             phone: "phone_number",
             coverPicture: "cover_picture_url",
             college: "college_organization",
@@ -1572,7 +1627,7 @@ export const AppProvider = ({ children }) => {
 
   const value = useMemo(() => ({
     user, setUser, isAuthed, login, logout, updateProfile,
-    listings, setListings, addListing, editListing, deleteListing, refreshFeed,
+    listings, setListings, addListing, editListing, deleteListing, refreshFeed, getNearbyListings,
     proposals, respondProposal, createProposal,
     chats, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment,
     notifications, markAllRead,
@@ -1584,7 +1639,7 @@ export const AppProvider = ({ children }) => {
     users: dynamicUsers, categories: categoriesList,
     aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList, submitReview,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, getNearbyListings, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
 
   if (loading) {
     return (

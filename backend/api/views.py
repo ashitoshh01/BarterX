@@ -372,12 +372,22 @@ class BarterItemViewSet(viewsets.ModelViewSet):
                 models.Q(owner=self.request.user) | ~models.Q(status='archived')
             )
         # Query parameter filters
+        search_query = self.request.query_params.get('q') or self.request.query_params.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search_query) |
+                models.Q(description__icontains=search_query) |
+                models.Q(offering__icontains=search_query) |
+                models.Q(wanting__icontains=search_query) |
+                models.Q(category__name__icontains=search_query)
+            )
+
         category = self.request.query_params.get('category')
         if category and category != 'all':
-            if category.isdigit():
+            if str(category).isdigit():
                 queryset = queryset.filter(models.Q(category_id=int(category)) | models.Q(category__name__iexact=category))
             else:
-                queryset = queryset.filter(category__name__iexact=category)
+                queryset = queryset.filter(models.Q(category__slug__iexact=category) | models.Q(category__name__iexact=category))
 
         condition = self.request.query_params.get('condition')
         if condition and condition != 'all':
@@ -407,7 +417,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
                 pass
 
         item_type = self.request.query_params.get('item_type')
-        if item_type and item_type != 'all':
+        if item_type and item_type.lower() != 'all':
             if item_type.lower() == 'service':
                 queryset = queryset.filter(category__is_service=True)
             elif item_type.lower() in ['product', 'item', 'goods']:
@@ -430,7 +440,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'nearby']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
@@ -548,6 +558,99 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         items = BarterItem.objects.filter(owner=request.user).order_by('-created_at')
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def nearby(self, request):
+        """
+        GET /api/items/nearby/?latitude=18.5204&longitude=73.8567&radius=10
+        Returns active listings within radius_km of coordinates, sorted nearest -> farthest.
+        Uses authenticated user profile coordinates if latitude/longitude are omitted.
+        """
+        from .distance_service import haversine_distance_km, format_distance
+
+        lat_param = request.query_params.get('latitude')
+        lng_param = request.query_params.get('longitude')
+        radius_param = request.query_params.get('radius', 10.0)
+
+        user_lat = None
+        user_lng = None
+
+        # Resolve user coordinates: query params OR user profile coordinates
+        if lat_param is not None and lng_param is not None and lat_param != '' and lng_param != '':
+            try:
+                user_lat = float(lat_param)
+                user_lng = float(lng_param)
+            except (ValueError, TypeError):
+                return Response(
+                    {"detail": "Latitude and longitude must be valid floating point numbers."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        elif request.user.is_authenticated:
+            profile = getattr(request.user, 'profile', None)
+            if profile and profile.latitude is not None and profile.longitude is not None:
+                user_lat = float(profile.latitude)
+                user_lng = float(profile.longitude)
+
+        if user_lat is None or user_lng is None:
+            return Response(
+                {"detail": "Location is not available. Please set your location first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate coordinate ranges
+        if user_lat < -90.0 or user_lat > 90.0:
+            return Response(
+                {"detail": "Latitude must be between -90 and 90."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if user_lng < -180.0 or user_lng > 180.0:
+            return Response(
+                {"detail": "Longitude must be between -180 and 180."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate radius
+        try:
+            radius_km = float(radius_param)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "Radius must be a valid number between 1 and 100 km."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if radius_km < 1.0 or radius_km > 100.0:
+            return Response(
+                {"detail": "Radius must be between 1 and 100 km."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Base queryset with standard filters (category, search, condition, status, etc.)
+        queryset = self.get_queryset().filter(latitude__isnull=False, longitude__isnull=False)
+
+        matching_items = []
+        for item in queryset:
+            if item.latitude is None or item.longitude is None:
+                continue
+            try:
+                dist = haversine_distance_km(user_lat, user_lng, item.latitude, item.longitude)
+                if dist <= radius_km:
+                    item.distance_km = dist
+                    item.distance_formatted = format_distance(dist)
+                    matching_items.append(item)
+            except Exception:
+                continue
+
+        # Sort nearest to farthest while prioritizing boosted items
+        matching_items.sort(key=lambda x: (not getattr(x, 'is_boosted', False), getattr(x, 'distance_km', 999999.0)))
+
+        serializer = self.get_serializer(matching_items, many=True)
+        return Response({
+            "count": len(matching_items),
+            "radius_km": radius_km,
+            "user_latitude": user_lat,
+            "user_longitude": user_lng,
+            "results": serializer.data
+        }, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         import json
@@ -931,9 +1034,37 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         profile.bio = request.data.get('bio', profile.bio)
         profile.city = request.data.get('city', profile.city)
         profile.state = request.data.get('state', profile.state)
+        profile.country = request.data.get('country', profile.country)
+        profile.location_name = request.data.get('location_name', profile.location_name)
         profile.profession = request.data.get('profession', profile.profession)
+
+        latitude = request.data.get('latitude')
+        if latitude is not None and latitude != '':
+            try:
+                lat_val = float(latitude)
+                if lat_val < -90.0 or lat_val > 90.0:
+                    return Response({"latitude": ["Latitude must be between -90 and 90."]}, status=status.HTTP_400_BAD_REQUEST)
+                profile.latitude = lat_val
+            except (ValueError, TypeError):
+                return Response({"latitude": ["Invalid latitude format."]}, status=status.HTTP_400_BAD_REQUEST)
+        elif 'latitude' in request.data and request.data.get('latitude') is None:
+            profile.latitude = None
+
+        longitude = request.data.get('longitude')
+        if longitude is not None and longitude != '':
+            try:
+                lng_val = float(longitude)
+                if lng_val < -180.0 or lng_val > 180.0:
+                    return Response({"longitude": ["Longitude must be between -180 and 180."]}, status=status.HTTP_400_BAD_REQUEST)
+                profile.longitude = lng_val
+            except (ValueError, TypeError):
+                return Response({"longitude": ["Invalid longitude format."]}, status=status.HTTP_400_BAD_REQUEST)
+        elif 'longitude' in request.data and request.data.get('longitude') is None:
+            profile.longitude = None
         
-        if profile.city and profile.state:
+        if profile.location_name:
+            profile.location = profile.location_name
+        elif profile.city and profile.state:
             profile.location = f"{profile.city}, {profile.state}"
         elif request.data.get('location'):
             profile.location = request.data.get('location')
@@ -1902,6 +2033,56 @@ class CoinTransferView(generics.GenericAPIView):
         }, status=status.HTTP_200_OK)
 
 
+class ReverseGeocodeView(generics.GenericAPIView):
+    """
+    Authenticated API view for backend reverse geocoding.
+    POST /api/geocode/reverse/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        latitude = request.data.get('latitude')
+        longitude = request.data.get('longitude')
+
+        if latitude is None or longitude is None or latitude == '' or longitude == '':
+            return Response(
+                {"error": "Both latitude and longitude are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            lat = float(latitude)
+            lng = float(longitude)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Latitude and longitude must be valid floating point numbers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        errors = {}
+        if lat < -90.0 or lat > 90.0:
+            errors["latitude"] = ["Latitude must be between -90 and 90."]
+        if lng < -180.0 or lng > 180.0:
+            errors["longitude"] = ["Longitude must be between -180 and 180."]
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        from .geocoding_service import reverse_geocode
+        try:
+            result = reverse_geocode(lat, lng)
+            return Response(result, status=status.HTTP_200_OK)
+        except ValueError as ve:
+            return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "location_name": "Coordinates captured",
+                "city": "",
+                "state": "",
+                "country": ""
+            }, status=status.HTTP_200_OK)
+
+
 COIN_PACKAGES = {
     "pack_50": {"coins": 50, "price_inr": 250},
     "pack_100": {"coins": 100, "price_inr": 450},
@@ -1967,11 +2148,6 @@ class AdminDashboardStatsView(generics.GenericAPIView):
         # Trade Stats
         completed_trades = Trade.objects.filter(status='completed').count()
         pending_trades = Trade.objects.filter(status='pending').count()
-        disputed_trades = Dispute.objects.count()
-        
-        # Coin Stats
-        coins_circulation = UserProfile.objects.aggregate(Sum('coin_balance'))['coin_balance__sum'] or 0
-        coin_purchases = WalletTransaction.objects.filter(transaction_type='PURCHASE', status='SUCCESS').count()
         
         # Platform Revenue (Calculate in memory for SQLite safety)
         purchase_txs = WalletTransaction.objects.filter(transaction_type='PURCHASE', status='SUCCESS')

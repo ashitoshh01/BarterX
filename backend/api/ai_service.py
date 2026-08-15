@@ -3,26 +3,24 @@ import json
 import math
 from django.utils import timezone
 from .models import BarterItem
+from .distance_service import haversine_distance_km, format_distance
 import google.generativeai as genai
 
 # Try to configure the Gemini API key from the environment
 gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_API_KEY")
 if gemini_api_key:
-    genai.configure(api_key=gemini_api_key)
+    try:
+        genai.configure(api_key=gemini_api_key)
+    except Exception:
+        pass
+
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Haversine formula to compute distance in km between two coordinate points."""
     if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
         return None
-    try:
-        R = 6371.0  # Earth radius in km
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
-    except Exception:
-        return None
+    return haversine_distance_km(lat1, lon1, lat2, lon2)
+
 
 def is_interested_in(item_from, item_to):
     """Simple semantic check to see if owner of item_from would want item_to."""
@@ -30,75 +28,110 @@ def is_interested_in(item_from, item_to):
         return False
     wants = (item_from.wanting or '').lower()
     offering = ((item_to.title or '') + ' ' + (item_to.description or '')).lower()
-    
+
     if not wants or wants == 'anything':
         return True
-        
+
     keywords = [kw.strip() for kw in wants.split(',') if kw.strip()]
     for kw in keywords:
         if kw in offering:
             return True
     return False
 
+
 def get_ai_matches(user):
     """
-    Find matches incorporating geographic relevance, trade compatibility, and trust score.
-    Returns: list of matches with calculated scores.
+    Finds barter matches using Gemini AI / NLP keyword fallback, then enhances
+    each match with Location Proximity Scoring and User Trust Scoring.
+
+    Final Recommendation Score Weighting:
+    - With Location: AI Score (60%) + Location Proximity Score (25%) + Trust Score (15%)
+    - Without Location: AI Score (80%) + Trust Score (20%)
     """
     user_items = BarterItem.objects.filter(owner=user, status='active')
     other_items = BarterItem.objects.exclude(owner=user).filter(status='active')
-    
+
     if not user_items.exists() or not other_items.exists():
         return []
 
-    # Get raw matches
     if gemini_api_key:
         raw_matches = _get_gemini_matches(user_items, other_items)
     else:
         raw_matches = _get_fallback_matches(user_items, other_items)
 
-    # Enhance with location scoring & weights
-    # recommendation_score = interest_score * 0.40 + location_score * 0.40 + trust_score * 0.20
+    # Get user profile coordinates
     user_profile = getattr(user, 'profile', None)
-    user_lat = user_profile.latitude if user_profile else None
-    user_lon = user_profile.longitude if user_profile else None
+    user_lat = float(user_profile.latitude) if (user_profile and user_profile.latitude is not None) else None
+    user_lng = float(user_profile.longitude) if (user_profile and user_profile.longitude is not None) else None
+    has_user_coords = user_lat is not None and user_lng is not None
 
     enhanced_matches = []
-    for match in raw_matches:
-        match_item = other_items.filter(id=match["match_item_id"]).first()
+
+    for m in raw_matches:
+        match_item_id = m.get('match_item_id') or m.get('item_id')
+        match_item = other_items.filter(id=match_item_id).first() if match_item_id else None
+
         if not match_item:
             continue
 
-        # 1. Location score (radius of 100km max limit)
-        location_score = 0.5  # default neutral
-        distance = None
-        if user_lat is not None and user_lon is not None and match_item.latitude is not None and match_item.longitude is not None:
-            distance = calculate_distance(user_lat, user_lon, match_item.latitude, match_item.longitude)
-            if distance is not None:
-                # 0km distance = 1.0 score, 100km or more = 0.0 score
-                location_score = max(0.0, min(1.0, 1.0 - (distance / 100.0)))
+        owner_profile = getattr(match_item.owner, 'profile', None)
+        ai_score = float(m.get('confidence', 85.0))
+        trust_score = float(owner_profile.trust_score if owner_profile else 50.0)
 
-        # 2. Trust score (0-100 normalized to 0.0-1.0)
-        match_owner_profile = getattr(match_item.owner, 'profile', None)
-        trust_score = (match_owner_profile.trust_score / 100.0) if match_owner_profile else 0.2
+        dist_km = None
+        prox_score = None
+        dist_formatted = None
+        has_location_match = False
 
-        # 3. Base interest compatibility (represented by raw match confidence)
-        interest_score = match.get("confidence", 85) / 100.0
+        if has_user_coords and match_item.latitude is not None and match_item.longitude is not None:
+            try:
+                item_lat = float(match_item.latitude)
+                item_lng = float(match_item.longitude)
+                dist_km = haversine_distance_km(user_lat, user_lng, item_lat, item_lng)
+                # Proximity score decay: 100 at 0km, ~67 at 10km, ~36.8 at 25km, ~13.5 at 50km
+                prox_score = max(0.0, min(100.0, 100.0 * math.exp(-dist_km / 25.0)))
+                dist_formatted = format_distance(dist_km)
+                has_location_match = True
+            except Exception:
+                pass
 
-        # Calculate weighted recommendation score
-        final_score = int((interest_score * 0.40 + location_score * 0.40 + trust_score * 0.20) * 100)
+        if has_location_match and prox_score is not None:
+            final_score = int(round((ai_score * 0.60) + (prox_score * 0.25) + (trust_score * 0.15)))
+        else:
+            final_score = int(round((ai_score * 0.80) + (trust_score * 0.20)))
 
-        enhanced_matches.append({
-            **match,
-            "distance_km": round(distance, 1) if distance is not None else None,
-            "recommendation_score": final_score,
-            "location_relevance": "Near You" if (distance is not None and distance <= 25.0) else "Worth Traveling For",
-            "trust_score": match_owner_profile.trust_score if match_owner_profile else 20
-        })
+        final_score = max(1, min(99, final_score))
 
-    # Sort matches by recommendation score descending
-    enhanced_matches.sort(key=lambda x: x["recommendation_score"], reverse=True)
+        # Generate clear, natural reason for match
+        if has_location_match and dist_formatted:
+            if ai_score >= 85 and dist_km <= 5.0:
+                reason = f"Excellent match ({int(ai_score)}% compatibility) and only {dist_formatted} from your location."
+            elif ai_score >= 85:
+                reason = f"Strong match ({int(ai_score)}% compatibility) located {dist_formatted}."
+            elif dist_km <= 5.0:
+                reason = f"Good match with a swapper only {dist_formatted}."
+            else:
+                reason = f"Barter match located {dist_formatted}."
+        else:
+            reason = m.get("reason") or f"Good barter compatibility ({int(ai_score)}% match) with a trusted swapper."
+
+        m_copy = dict(m)
+        m_copy["confidence"] = final_score
+        m_copy["score"] = final_score
+        m_copy["final_score"] = final_score
+        m_copy["recommendation_score"] = final_score
+        m_copy["ai_score"] = int(round(ai_score))
+        m_copy["proximity_score"] = round(prox_score, 1) if prox_score is not None else None
+        m_copy["trust_score"] = int(round(trust_score))
+        m_copy["distance_km"] = dist_km
+        m_copy["distance_formatted"] = dist_formatted
+        m_copy["reason"] = reason
+
+        enhanced_matches.append(m_copy)
+
+    enhanced_matches.sort(key=lambda x: x["final_score"], reverse=True)
     return enhanced_matches
+
 
 def find_3_party_loops(user):
     """
@@ -107,7 +140,7 @@ def find_3_party_loops(user):
     """
     user_items = BarterItem.objects.filter(owner=user, status='active')
     all_active_items = BarterItem.objects.filter(status='active')
-    
+
     loops = []
     seen_loops = set()
 
@@ -149,23 +182,24 @@ def find_3_party_loops(user):
                                 })
     return loops
 
+
 def _get_gemini_matches(user_items, other_items):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
+
         user_catalog = [{"id": item.id, "title": item.title, "wants": item.wanting} for item in user_items]
         market_catalog = [{"id": item.id, "title": item.title, "wants": item.wanting} for item in other_items]
-        
+
         prompt = f"""
         You are an AI matching engine for a barter marketplace.
         Given the current user's items and their wants, find the best matches from the market catalog.
-        
+
         User's items:
         {json.dumps(user_catalog, indent=2)}
-        
+
         Market items:
         {json.dumps(market_catalog, indent=2)}
-        
+
         A match is good if the user wants what the market item offers, AND the market item owner wants what the user offers.
         Return a JSON array of objects with the following structure. Do NOT include markdown code blocks, just raw JSON:
         [
@@ -176,19 +210,19 @@ def _get_gemini_matches(user_items, other_items):
           }}
         ]
         """
-        
+
         response = model.generate_content(prompt)
         text = response.text.strip()
         if text.startswith("```json"):
             text = text[7:-3]
-            
+
         matches_data = json.loads(text)
-        
+
         results = []
         for match in matches_data:
             user_item = user_items.filter(id=match.get('user_item_id')).first()
             match_item = other_items.filter(id=match.get('match_item_id')).first()
-            
+
             if user_item and match_item:
                 results.append({
                     "id": f"ai_match_{user_item.id}_{match_item.id}",
@@ -204,43 +238,54 @@ def _get_gemini_matches(user_items, other_items):
         print("Gemini API Error:", e)
         return _get_fallback_matches(user_items, other_items)
 
+
+STOP_WORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'to', 'in', 'on', 'with', 'of', 'at', 'by', 'from', 'similar', 'anything', 'any', 'preferred', 'combo', 'like'}
+
+
+def _extract_keywords(text):
+    if not text:
+        return set()
+    words = text.lower().replace('/', ' ').replace('-', ' ').replace('(', ' ').replace(')', ' ').replace('"', ' ').split()
+    return {w.strip() for w in words if len(w.strip()) > 2 and w.strip() not in STOP_WORDS}
+
+
 def _get_fallback_matches(user_items, other_items):
     matches = []
+
     for u_item in user_items:
-        u_wants = u_item.wanting.lower().split(',') if u_item.wanting else []
-        u_wants = [w.strip() for w in u_wants if w.strip() and w.strip() != 'anything']
-        
+        u_wants = _extract_keywords(u_item.wanting)
+        u_offers = _extract_keywords(f"{u_item.title} {u_item.offering} {u_item.description or ''}")
+
         for m_item in other_items:
-            m_wants = m_item.wanting.lower().split(',') if m_item.wanting else []
-            m_wants = [w.strip() for w in m_wants if w.strip() and w.strip() != 'anything']
-            
-            user_likes = False
-            if not u_wants:
-                user_likes = True
-            else:
-                for w in u_wants:
-                    if w in m_item.title.lower() or w in m_item.description.lower():
-                        user_likes = True
-                        break
-                        
-            market_likes = False
-            if not m_wants:
-                market_likes = True
-            else:
-                for w in m_wants:
-                    if w in u_item.title.lower() or w in u_item.description.lower():
-                        market_likes = True
-                        break
-                        
+            m_wants = _extract_keywords(m_item.wanting)
+            m_offers = _extract_keywords(f"{m_item.title} {m_item.offering} {m_item.description or ''}")
+
+            user_likes = bool(u_wants & m_offers)
+            market_likes = bool(m_wants & u_offers)
+
+            confidence = 0
             if user_likes and market_likes:
+                confidence = 90
+                reason = f"Mutual match! You are looking for '{m_item.title}' and they offer what you want."
+            elif user_likes:
+                confidence = 82
+                reason = f"Strong match! '{m_item.title}' matches your desired items."
+            elif market_likes:
+                confidence = 78
+                reason = f"Good match! They are looking for items like your '{u_item.title}'."
+            elif not u_wants or not m_wants:
+                confidence = 70
+                reason = f"Barter match candidate with an active marketplace item."
+
+            if confidence > 0:
                 matches.append({
                     "id": f"ai_match_{u_item.id}_{m_item.id}",
                     "user_item_id": u_item.id,
                     "match_item_id": m_item.id,
                     "item_id": m_item.id,
                     "title": m_item.title,
-                    "reason": f"Match! You want '{m_item.title}' and they are looking for what you offer.",
-                    "confidence": 85
+                    "reason": reason,
+                    "confidence": confidence
                 })
-                
+
     return matches
