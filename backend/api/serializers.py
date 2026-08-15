@@ -29,12 +29,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('bio', 'city', 'state', 'profession', 'location', 'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
+        fields = ('bio', 'city', 'state', 'country', 'profession', 'location', 'location_name', 'latitude', 'longitude',
+                  'phone_number', 'profile_picture_url', 'is_verified', 'average_rating',
                   'account_type', 'display_name', 'business_category', 'username', 'email', 'member_since',
                   'trust_score', 'trust_level', 'reward_points', 'coin_balance',
                   'cover_picture_url', 'college_organization', 'department_branch', 'year_of_study',
                   'github_profile', 'linkedin_profile', 'portfolio_website', 'resume_url', 'proof_of_work')
         read_only_fields = ('is_verified', 'average_rating', 'account_type', 'trust_score', 'reward_points', 'coin_balance')
+
+    def validate_latitude(self, value):
+        if value is not None and (value < -90.0 or value > 90.0):
+            raise serializers.ValidationError("Latitude must be between -90 and 90.")
+        return value
+
+    def validate_longitude(self, value):
+        if value is not None and (value < -180.0 or value > 180.0):
+            raise serializers.ValidationError("Longitude must be between -180 and 180.")
+        return value
 
     def get_member_since(self, obj):
         return obj.user.date_joined.strftime('%B %Y') if obj.user.date_joined else ""
@@ -205,11 +216,30 @@ class BarterItemSerializer(serializers.ModelSerializer):
     history_logs = ListingHistorySerializer(many=True, read_only=True)
     proposal_count = serializers.SerializerMethodField()
     chat_count = serializers.SerializerMethodField()
+    distance_km = serializers.SerializerMethodField()
+    distance_formatted = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterItem
         fields = '__all__'
         read_only_fields = ('owner', 'item_score', 'is_boosted', 'boosted_at', 'boost_expires_at', 'views_count')
+
+    def get_distance_km(self, obj):
+        val = getattr(obj, 'distance_km', None)
+        return float(val) if val is not None else None
+
+    def get_distance_formatted(self, obj):
+        return getattr(obj, 'distance_formatted', None)
+
+    def validate_latitude(self, value):
+        if value is not None and (value < -90.0 or value > 90.0):
+            raise serializers.ValidationError("Latitude must be between -90 and 90.")
+        return value
+
+    def validate_longitude(self, value):
+        if value is not None and (value < -180.0 or value > 180.0):
+            raise serializers.ValidationError("Longitude must be between -180 and 180.")
+        return value
 
     def get_owner(self, obj):
         profile = getattr(obj.owner, 'profile', None)

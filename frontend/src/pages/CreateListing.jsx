@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, Plus, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Plus, X, MapPin } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { NbButton, SectionTitle } from "@/components/UI";
 import { toast } from "sonner";
 import ImageUploader from "@/components/ImageUploader";
+import { reverseGeocode } from "@/lib/geocoding";
 
 const steps = ["Basics", "Photos", "Details", "Wants", "Publish"];
 
@@ -18,6 +19,8 @@ const CreateListing = () => {
 
   const existingListing = id ? listings.find((l) => String(l.id) === String(id)) : null;
 
+  const [locating, setLocating] = useState(false);
+
   const [form, setForm] = useState({
     type: "product",
     title: "",
@@ -26,6 +29,12 @@ const CreateListing = () => {
     condition: "Good",
     estValue: "",
     location: "",
+    location_name: "",
+    city: "",
+    state: "",
+    country: "",
+    latitude: null,
+    longitude: null,
     tags: [],
     tagInput: "",
     wants: [],
@@ -48,6 +57,12 @@ const CreateListing = () => {
         condition: existingListing.condition || "Good",
         estValue: existingListing.estValue || "",
         location: existingListing.location || "",
+        location_name: existingListing.location_name || existingListing.location || "",
+        city: existingListing.city || "",
+        state: existingListing.state || "",
+        country: existingListing.country || "",
+        latitude: existingListing.latitude ?? null,
+        longitude: existingListing.longitude ?? null,
         tags: existingListing.tags || [],
         tagInput: "",
         wants: existingListing.wants || [],
@@ -57,6 +72,47 @@ const CreateListing = () => {
       isInitializedRef.current = true;
     }
   }, [id, existingListing]);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    const tid = toast.loading("Detecting listing location...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const geo = await reverseGeocode(lat, lng);
+        setForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          location_name: geo.location_name,
+          city: geo.city,
+          state: geo.state,
+          country: geo.country,
+          location: geo.location_name || prev.location,
+        }));
+        setLocating(false);
+        toast.success(`Location set: ${geo.location_name}`, { id: tid });
+      },
+      (err) => {
+        setLocating(false);
+        let msg = "Failed to capture location.";
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = "Location permission denied. You can still publish without coordinates.";
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          msg = "Location position unavailable.";
+        } else if (err.code === err.TIMEOUT) {
+          msg = "Location request timed out.";
+        }
+        toast.error(msg, { id: tid });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Draft recovery prompt
   useEffect(() => {
@@ -164,6 +220,12 @@ const CreateListing = () => {
           condition: form.condition,
           estValue: Number(form.estValue) || 0,
           location: form.location,
+          location_name: form.location_name,
+          city: form.city,
+          state: form.state,
+          country: form.country,
+          latitude: form.latitude,
+          longitude: form.longitude,
           wants: form.wants,
           images: form.images,
           status: form.status,
@@ -178,6 +240,12 @@ const CreateListing = () => {
           condition: form.condition,
           estValue: Number(form.estValue) || 0,
           location: form.location || "Somewhere",
+          location_name: form.location_name,
+          city: form.city,
+          state: form.state,
+          country: form.country,
+          latitude: form.latitude,
+          longitude: form.longitude,
           tags: form.tags,
           wants: form.wants,
           images: form.images,
@@ -327,15 +395,31 @@ const CreateListing = () => {
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-mono2 uppercase font-bold mb-2 block">Location</label>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <label className="text-xs font-mono2 uppercase font-bold block">Location</label>
+                  <button
+                    type="button"
+                    onClick={handleGetLocation}
+                    disabled={locating}
+                    className="nb-btn text-xs px-2.5 py-1 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1 shadow-[2px_2px_0_0_#000]"
+                    data-testid="create-use-location"
+                  >
+                    <MapPin size={12} /> {locating ? "Detecting..." : "Use My Current Location"}
+                  </button>
+                </div>
                 <input
                   value={form.location}
                   onChange={(e) => upd("location", e.target.value)}
-                  placeholder="e.g. Hostel Block A, Room 204"
+                  placeholder="e.g. Hostel Block A, Room 204, Pune"
                   className="nb-input"
                   data-testid="create-location"
                 />
+                {form.latitude !== null && form.longitude !== null && (
+                  <div className="text-[11px] font-mono2 text-[var(--lime)] flex items-center gap-1">
+                    <MapPin size={10} /> Attached Coordinates: {Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)}
+                  </div>
+                )}
               </div>
 
               {id && (

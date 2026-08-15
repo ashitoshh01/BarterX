@@ -11,11 +11,16 @@ import { toast } from "sonner";
 
 const rawClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_ID = rawClientId.replace(/["']/g, "").trim();
-const isGoogleAuthEnabled = Boolean(
-  GOOGLE_CLIENT_ID &&
-  GOOGLE_CLIENT_ID !== "your-google-client-id-here.apps.googleusercontent.com" &&
-  GOOGLE_CLIENT_ID !== "your_google_client_id_here.apps.googleusercontent.com"
-);
+const isPlaceholder = (id) => {
+  const lower = id.toLowerCase();
+  return (
+    lower.includes("your-google-client-id") ||
+    lower.includes("your_google_client_id") ||
+    lower.includes("your-client-id") ||
+    lower.includes("your_client_id")
+  );
+};
+const isGoogleAuthEnabled = Boolean(GOOGLE_CLIENT_ID && !isPlaceholder(GOOGLE_CLIENT_ID));
 
 // ─── Input Field Component ─────────────────────────────────────────────────
 const AuthInput = ({ label, icon: Icon, error, ...props }) => (
@@ -207,7 +212,7 @@ const Auth = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "disabled-google-client-id"}>
       <div className="min-h-screen grid md:grid-cols-2 relative overflow-hidden" style={{ background: "var(--bg)" }}>
 
         {/* Left decorative panel */}

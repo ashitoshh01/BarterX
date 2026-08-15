@@ -27,6 +27,7 @@ from .views import (
     SimpleRegisterView,
     GoogleOAuthView,
     CoinTransferView,
+    ReverseGeocodeView,
 )
 
 from chat.views import ConversationViewSet
@@ -52,6 +53,7 @@ router.register(r'saved-items', SavedItemViewSet, basename='saved-item')
 urlpatterns = [
     path('', include(router.urls)),
     path('profile/', UserProfileViewSet.as_view({'get': 'me', 'put': 'update_me', 'patch': 'update_me'}), name='profile-me'),
+    path('geocode/reverse/', ReverseGeocodeView.as_view(), name='reverse-geocode'),
     path('register/send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('register/verify-otp/', VerifyOTPAndRegisterView.as_view(), name='verify-otp'),
     path('register/', RegisterView.as_view(), name='register'),

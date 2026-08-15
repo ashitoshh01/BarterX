@@ -106,8 +106,15 @@ export const ListingCard = ({ listing, compact = false }) => {
           </h3>
           <p className="text-xs text-[var(--text-2)] line-clamp-2 mb-3">{listing.description}</p>
           {!compact && (
-            <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-3)] font-mono2 mb-3 uppercase tracking-wider">
-              <MapPin size={10} strokeWidth={2} /> {listing.location}
+            <div className="flex items-center justify-between text-[10px] text-[var(--text-3)] font-mono2 mb-3 uppercase tracking-wider flex-wrap gap-1">
+              <span className="flex items-center gap-1 truncate max-w-[140px]">
+                <MapPin size={10} strokeWidth={2} /> {listing.location}
+              </span>
+              {(listing.distance_formatted || listing.distance_km !== null) && (
+                <span className="nb-tag tint-lime py-0 px-1.5 text-[9px] font-bold text-black border-none" data-testid={`listing-distance-${listing.id}`}>
+                  📍 {listing.distance_formatted || `${listing.distance_km} km away`}
+                </span>
+              )}
             </div>
           )}
           <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-white/5">
