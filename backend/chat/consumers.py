@@ -1,12 +1,12 @@
 import json
 import logging
-from django.conf import settings
 from django.utils import timezone
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AnonymousUser, User
 from .models import Conversation, Message
 from .serializers import MessageSerializer
+from .middleware import get_user_from_token
 from .services import (
     create_message,
     mark_messages_as_read,
@@ -54,33 +54,12 @@ def get_online_status(user_id):
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.user = self.scope.get('user')
-
-        # Do NOT allow anonymous connections
-        if not self.user or self.user.is_anonymous:
-            await self.close(code=4001)  # Custom close code for unauthorized
-            return
-
-        self.user_group = get_user_group_name(self.user.id)
+        # Accept ALL connections initially — auth is completed via the first
+        # "authenticate" message so the JWT never touches the query string / logs.
+        self.user = AnonymousUser()
+        self.user_group = None
         self.active_room = None
-
-        # Add to personal user group (to receive notifications, wallet/proposal updates, and previews)
-        await self.channel_layer.group_add(self.user_group, self.channel_name)
-
-        # Mark user as online in memory
-        if redis_client:
-            try:
-                redis_client.sadd(ONLINE_USERS_KEY, self.user.id)
-            except Exception as e:
-                logger.error(f"Redis sadd failed: {e}")
-                LOCAL_ONLINE_USERS.add(self.user.id)
-        else:
-            LOCAL_ONLINE_USERS.add(self.user.id)
-
         await self.accept()
-
-        # Broadcast presence change to user's partners
-        await self.broadcast_presence_change("online")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'user') and not self.user.is_anonymous:
@@ -107,6 +86,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Broadcast presence change to partners
             await self.broadcast_presence_change("offline")
 
+    async def _setup_authenticated_user(self):
+        """Called once after a successful authenticate message. Sets up groups and presence."""
+        self.user_group = get_user_group_name(self.user.id)
+        await self.channel_layer.group_add(self.user_group, self.channel_name)
+        if redis_client:
+            try:
+                redis_client.sadd(ONLINE_USERS_KEY, self.user.id)
+            except Exception as e:
+                logger.error(f"Redis sadd failed: {e}")
+                LOCAL_ONLINE_USERS.add(self.user.id)
+        else:
+            LOCAL_ONLINE_USERS.add(self.user.id)
+        await self.broadcast_presence_change("online")
+
     async def receive(self, text_data):
         try:
             payload = json.loads(text_data)
@@ -116,6 +109,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         event_type = payload.get("type")
         event_data = payload.get("data", {})
+
+        # ── Authentication handshake (must be first message) ──────────────────
+        if event_type == "authenticate":
+            token = payload.get("token", "")
+            if not token:
+                await self.send(text_data=json.dumps({"type": "auth_error", "data": {"message": "Token required."}}))
+                await self.close(code=4001)
+                return
+            resolved = await get_user_from_token(token)
+            if isinstance(resolved, AnonymousUser) or not resolved.is_active:
+                await self.send(text_data=json.dumps({"type": "auth_error", "data": {"message": "Invalid or expired token."}}))
+                await self.close(code=4001)
+                return
+            self.user = resolved
+            await self._setup_authenticated_user()
+            await self.send(text_data=json.dumps({"type": "authenticated", "data": {"user_id": self.user.id}}))
+            return
+
+        # ── Guard: all subsequent events require authentication ────────────────
+        if self.user.is_anonymous:
+            await self.send(text_data=json.dumps({"type": "auth_error", "data": {"message": "Not authenticated. Send authenticate message first."}}))
+            return
 
         if event_type == "ping":
             await self.send(text_data=json.dumps({"type": "pong", "data": {}}))
@@ -248,6 +263,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def handle_typing(self, conversation_id, is_typing):
         is_member = await self.is_conversation_member(conversation_id)
         if is_member:
+            display_name = await self.get_user_display_name()
             room_group = get_room_group_name(conversation_id)
             # Send typing status, excluding the sender via channel layer direct filtering (or in frontend client filtering)
             await self.channel_layer.group_send(
@@ -259,7 +275,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         "data": {
                             "conversation_id": conversation_id,
                             "username": self.user.username,
-                            "display_name": self.user.profile.display_name or self.user.username
+                            "display_name": display_name
                         }
                     }
                 }
@@ -275,6 +291,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def check_user_chat_limit(self):
         return check_and_update_chat_limit(self.user)
+
+    def get_user_display_name(self):
+        try:
+            return self.user.profile.display_name or self.user.username
+        except Exception:
+            return self.user.username
 
     @database_sync_to_async
     def is_conversation_member(self, conversation_id):

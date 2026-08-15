@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 const ChatThread = () => {
   const { id } = useParams();
-  const { chats, users, user, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, sendAttachment, transferCoins } = useApp();
+  const { chats, users, user, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, sendAttachment, transferCoins, wsConnected } = useApp();
   const [text, setText] = useState("");
   const [limitInfo, setLimitInfo] = useState(null);
   const [isLimitBlocked, setIsLimitBlocked] = useState(false);
@@ -72,17 +72,18 @@ const ChatThread = () => {
       loadChatMessages(id);
       joinChatRoom(id);
 
-      // Fast polling interval (every 3s) for real-time sync
-      const interval = setInterval(() => {
-        loadChatMessages(id);
-      }, 3000);
-
       return () => {
-        clearInterval(interval);
         leaveChatRoom(id);
       };
     }
   }, [id, loadChatMessages, joinChatRoom, leaveChatRoom]);
+
+  // Refetch chat messages upon WS connection/reconnection as a safety net
+  useEffect(() => {
+    if (id && wsConnected) {
+      loadChatMessages(id);
+    }
+  }, [id, wsConnected, loadChatMessages]);
 
   useEffect(() => {
     // Keep scrolled to bottom

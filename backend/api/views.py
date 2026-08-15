@@ -1,5 +1,6 @@
 from rest_framework import viewsets, generics, permissions, filters, status
 from rest_framework.decorators import action
+from rest_framework.throttling import AnonRateThrottle
 from django.conf import settings
 import razorpay
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Avg, Count
 from django.http import HttpResponse
 import random
 import re
@@ -24,7 +25,7 @@ from .models import (
     Dispute, DisputeEvidence, WalletTransaction, TradeCoinReservation, ChatUsage, ImageModerationResult, AdminActionLog
 )
 from .serializers import (
-    BarterItemSerializer, CategorySerializer, BarterOfferSerializer,
+    BarterItemSerializer, BarterItemListSerializer, CategorySerializer, BarterOfferSerializer,
     UserReviewSerializer, UserSerializer, UserProfileSerializer,
     TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
     DealConfirmationSerializer, BarterItemCompactSerializer, CoinTransactionSerializer,
@@ -56,9 +57,22 @@ class EmailOrUsernameTokenSerializer(TokenObtainPairSerializer):
                 pass  # Let the default validator raise the error
         return super().validate(attrs)
 
+# ─── Auth rate throttles ──────────────────────────────────────────────────────
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login'
+
+class RegisterRateThrottle(AnonRateThrottle):
+    scope = 'register'
+
+class OTPRateThrottle(AnonRateThrottle):
+    scope = 'otp'
+
+
 class FlexLoginView(TokenObtainPairView):
     """Endpoint: POST /api/login/  — accepts username or email."""
     serializer_class = EmailOrUsernameTokenSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class SimpleRegisterView(generics.CreateAPIView):
@@ -69,6 +83,7 @@ class SimpleRegisterView(generics.CreateAPIView):
     No OTP required — straightforward signup.
     """
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -200,6 +215,7 @@ class GoogleOAuthView(generics.GenericAPIView):
 
 class SendOTPView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [OTPRateThrottle]
 
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
@@ -327,51 +343,6 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = (permissions.AllowAny,)
 
-
-    @action(detail=False, methods=['get'])
-    def nearby_traders(self, request):
-        user_profile = request.user.profile
-        my_location = user_profile.location or ""
-        my_city = my_location.split(',')[0].strip().lower() if my_location else ""
-        
-        # Get active items from other users
-        active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
-        
-        trader_map = {}
-        for item in active_items:
-            owner = item.owner
-            if owner.id not in trader_map:
-                owner_loc = item.location or owner.profile.location or ""
-                owner_city = owner_loc.split(',')[0].strip().lower() if owner_loc else ""
-                
-                # Deterministic pseudo-distance
-                if not my_city or not owner_city:
-                    distance_km = hash(owner.username) % 20 + 10 # 10-29 km
-                elif my_city == owner_city:
-                    distance_km = hash(owner.username) % 5 + 1 # 1-5 km
-                else:
-                    distance_km = hash(owner.username) % 15 + 5 # 5-19 km
-                    
-                trader_map[owner.id] = {
-                    "id": owner.id,
-                    "name": owner.profile.display_name or owner.username,
-                    "username": owner.username,
-                    "avatar": owner.profile.profile_picture_url,
-                    "distance": f"{distance_km} km away",
-                    "mutual_friends": hash(owner.username) % 5,
-                    "items": []
-                }
-                
-            trader_map[owner.id]["items"].append({
-                "id": item.id,
-                "image": item.image_url or (item.image.url if item.image else None)
-            })
-            
-        # Return only traders that have at least 1 item, sorted by distance
-        traders_list = list(trader_map.values())
-        traders_list.sort(key=lambda x: int(x["distance"].split(' ')[0]))
-        return Response(traders_list[:10])
-
 class BarterItemViewSet(viewsets.ModelViewSet):
     serializer_class = BarterItemSerializer
     pagination_class = StandardResultsSetPagination
@@ -379,13 +350,22 @@ class BarterItemViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'offering', 'wanting', 'location']
     ordering_fields = ['created_at', 'title']
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BarterItemListSerializer
+        return BarterItemSerializer
+
     def get_queryset(self):
         from django.utils import timezone
         from django.db import models
+        from django.db.models import Count
         # Deactivate expired boosts
         BarterItem.objects.filter(is_boosted=True, boost_expires_at__lt=timezone.now()).update(is_boosted=False)
         
-        queryset = BarterItem.objects.all()
+        queryset = BarterItem.objects.select_related('owner__profile', 'category').prefetch_related('additional_images', 'history_logs').annotate(
+            annotated_proposal_count=Count('interest_requests', distinct=True) + Count('interest_offers', distinct=True),
+            annotated_chat_count=Count('conversations', distinct=True)
+        )
         # Exclude archived items from general public feed, but let owners see their own archived listings.
         if self.request.user.is_authenticated:
             queryset = queryset.filter(
@@ -394,7 +374,10 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         # Query parameter filters
         category = self.request.query_params.get('category')
         if category and category != 'all':
-            queryset = queryset.filter(models.Q(category__slug__iexact=category) | models.Q(category__name__iexact=category))
+            if category.isdigit():
+                queryset = queryset.filter(models.Q(category_id=int(category)) | models.Q(category__name__iexact=category))
+            else:
+                queryset = queryset.filter(category__name__iexact=category)
 
         condition = self.request.query_params.get('condition')
         if condition and condition != 'all':
@@ -425,19 +408,22 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
         item_type = self.request.query_params.get('item_type')
         if item_type and item_type != 'all':
-            queryset = queryset.filter(item_type__iexact=item_type)
+            if item_type.lower() == 'service':
+                queryset = queryset.filter(category__is_service=True)
+            elif item_type.lower() in ['product', 'item', 'goods']:
+                queryset = queryset.filter(category__is_service=False)
 
         val_min = self.request.query_params.get('valuation_min')
         if val_min:
             try:
-                queryset = queryset.filter(estimated_value__gte=float(val_min))
+                queryset = queryset.filter(purchase_price__gte=float(val_min))
             except ValueError:
                 pass
 
         val_max = self.request.query_params.get('valuation_max')
         if val_max:
             try:
-                queryset = queryset.filter(estimated_value__lte=float(val_max))
+                queryset = queryset.filter(purchase_price__lte=float(val_max))
             except ValueError:
                 pass
 
@@ -843,13 +829,56 @@ class UserReviewViewSet(viewsets.ModelViewSet):
         return UserReview.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(reviewer=self.request.user)
+        review = serializer.save(reviewer=self.request.user)
+        target_user = review.reviewed_user
+        profile = getattr(target_user, 'profile', None)
+        if profile:
+            all_reviews = UserReview.objects.filter(reviewed_user=target_user)
+            avg_rating = all_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+            profile.average_rating = round(float(avg_rating), 2)
+            if review.rating >= 4:
+                profile.trust_score = max(0, min(100, profile.trust_score + 5))
+            profile.save(update_fields=['average_rating', 'trust_score'])
 
 
 class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def nearby_traders(self, request):
+        # Get active items from other users
+        active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
+        
+        trader_map = {}
+        for item in active_items:
+            owner = item.owner
+            if owner.id not in trader_map:
+                try:
+                    profile = owner.profile
+                except Exception:
+                    profile = None
+
+                owner_loc = item.location or (profile.location if profile else "") or ""
+                
+                trader_map[owner.id] = {
+                    "id": owner.id,
+                    "name": (profile.display_name if profile else None) or owner.username,
+                    "username": owner.username,
+                    "avatar": profile.profile_picture_url if profile else None,
+                    "location": owner_loc,
+                    "average_rating": profile.average_rating if profile else 0.0,
+                    "items": []
+                }
+                
+            trader_map[owner.id]["items"].append({
+                "id": item.id,
+                "image": item.image_url or (item.image.url if item.image else None)
+            })
+            
+        traders_list = list(trader_map.values())
+        return Response(traders_list[:10])
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
@@ -1264,7 +1293,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         requested_item_id = request.data.get('requested_item')
         offered_item_id = request.data.get('offered_item')
         proposal_message = (request.data.get('proposal_message') or '').strip()
-        coins_offered = request.data.get('coins_offered', 0)
+        try:
+            coins_offered = int(request.data.get('coins_offered', 0) or 0)
+        except (ValueError, TypeError):
+            coins_offered = 0
 
         if not requested_item_id:
             return Response({"detail": "requested_item is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1293,6 +1325,10 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             if offered_item.status not in {'active', 'reserved'}:
                 return Response({"detail": "Offered item is not available."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validation: proposal must have either offered_item OR positive coins_offered
+        if not offered_item and coins_offered <= 0:
+            return Response({"detail": "A proposal must include either an offered item or a positive coin offer (or both)."}, status=status.HTTP_400_BAD_REQUEST)
+
         duplicate_query = BarterInterest.objects.filter(
             requester=request.user,
             requested_item=requested_item,
@@ -1302,17 +1338,20 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
         if duplicate_query.exists():
             return Response({"detail": "You already have an active proposal for this swap."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Auto-calculate the valuation gap offset: 1 Coin = 100 units of purchase_price
-        coins_val = 0
+        # Calculate or use provided coins_offered
         if offered_item:
             req_price = float(requested_item.purchase_price or 0)
             off_price = float(offered_item.purchase_price or 0)
             coins_val = int((req_price - off_price) / 100)
+            if coins_offered > 0:
+                coins_val = coins_offered
+        else:
+            coins_val = coins_offered
 
         if coins_val > 0:
             profile = getattr(request.user, 'profile', None)
             if not profile or profile.coin_balance < coins_val:
-                return Response({"detail": f"Insufficient Barter Coins balance. You need {coins_val} coins to bridge the value gap, but you only have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": f"Insufficient Barter Coins balance. You need {coins_val} coins to make this proposal, but you only have {profile.coin_balance if profile else 0} coins."}, status=status.HTTP_400_BAD_REQUEST)
         elif coins_val < 0:
             receiver_profile = getattr(requested_item.owner, 'profile', None)
             if not receiver_profile or receiver_profile.coin_balance < abs(coins_val):
@@ -1598,6 +1637,11 @@ class ContractViewSet(viewsets.ModelViewSet):
             
         if contract.signed_a and contract.signed_b:
             contract.status = 'signed'
+            trade = contract.barter_interest._ensure_trade_exists()
+            if not trade.handshake_pin:
+                import random
+                trade.handshake_pin = f"{random.randint(1000, 9999)}"
+                trade.save(update_fields=['handshake_pin'])
             
         contract.save()
         return Response(self.get_serializer(contract).data)
@@ -1633,6 +1677,9 @@ class TradeViewSet(viewsets.ModelViewSet):
             logistics_status = request.data.get('logistics_status')
             tracking_number = request.data.get('tracking_number')
             shipping_provider = request.data.get('shipping_provider')
+            meetup_location = request.data.get('meetup_location')
+            meetup_datetime = request.data.get('meetup_datetime')
+            submitted_pin = request.data.get('handshake_pin') or request.data.get('pin')
 
             STAGES = ['preparing', 'shipped', 'out_for_delivery', 'delivered']
             if logistics_status and logistics_status in STAGES:
@@ -1640,21 +1687,54 @@ class TradeViewSet(viewsets.ModelViewSet):
                 new_idx = STAGES.index(logistics_status)
                 if new_idx < current_idx:
                     return Response({"detail": "Cannot revert trade logistics to a previous stage."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check PIN verification if transitioning to 'delivered'
+                if logistics_status == 'delivered':
+                    if not trade.handshake_pin:
+                        import random
+                        trade.handshake_pin = f"{random.randint(1000, 9999)}"
+                        trade.save(update_fields=['handshake_pin'])
+
+                    if not submitted_pin or str(submitted_pin).strip() != str(trade.handshake_pin).strip():
+                        return Response({"detail": "Invalid or missing handshake PIN for delivery verification."}, status=status.HTTP_400_BAD_REQUEST)
+
                 trade.logistics_status = logistics_status
 
             if tracking_number is not None:
                 trade.tracking_number = tracking_number
             if shipping_provider is not None:
                 trade.shipping_provider = shipping_provider
+            if meetup_location is not None:
+                trade.meetup_location = meetup_location
+            if meetup_datetime is not None:
+                trade.meetup_datetime = meetup_datetime
                 
             if logistics_status == 'delivered':
                 trade.status = 'completed'
                 trade.completed_at = timezone.now()
 
                 # Escrow coin settlement
-                if trade.barter_interest and trade.barter_interest.coins_offered != 0:
+                proposal = trade.barter_interest
+                if proposal and proposal.coins_offered != 0:
                     from .coin_service import transfer_coins_for_trade
                     transfer_coins_for_trade(trade)
+
+                # Trigger post-trade review notification
+                if proposal:
+                    _create_notification(
+                        user=proposal.requester,
+                        ntype='deal_completed',
+                        title='Trade Completed!',
+                        message=f'Trade #{trade.id} has been completed. Please rate your trade partner!',
+                        interest=proposal
+                    )
+                    _create_notification(
+                        user=proposal.receiver,
+                        ntype='deal_completed',
+                        title='Trade Completed!',
+                        message=f'Trade #{trade.id} has been completed. Please rate your trade partner!',
+                        interest=proposal
+                    )
 
             trade.save()
             return Response(self.get_serializer(trade).data)

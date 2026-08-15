@@ -9,7 +9,13 @@ import { useApp } from "@/context/AppContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+const rawClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_ID = rawClientId.replace(/["']/g, "").trim();
+const isGoogleAuthEnabled = Boolean(
+  GOOGLE_CLIENT_ID &&
+  GOOGLE_CLIENT_ID !== "your-google-client-id-here.apps.googleusercontent.com" &&
+  GOOGLE_CLIENT_ID !== "your_google_client_id_here.apps.googleusercontent.com"
+);
 
 // ─── Input Field Component ─────────────────────────────────────────────────
 const AuthInput = ({ label, icon: Icon, error, ...props }) => (
@@ -273,7 +279,7 @@ const Auth = () => {
             {mode === "login" || signupStep === "form" ? (
               <>
                 <div className="mb-6">
-                  {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "your-google-client-id-here.apps.googleusercontent.com" ? (
+                  {isGoogleAuthEnabled ? (
                     <div className="w-full">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess}

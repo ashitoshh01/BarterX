@@ -297,7 +297,13 @@ class BarterInterest(models.Model):
 
     def _ensure_trade_exists(self):
         if hasattr(self, 'trade'):
+            if not self.trade.handshake_pin:
+                import random
+                self.trade.handshake_pin = f"{random.randint(1000, 9999)}"
+                self.trade.save(update_fields=['handshake_pin'])
             return self.trade
+        import random
+        pin = f"{random.randint(1000, 9999)}"
         return Trade.objects.create(
             proposal=self,
             requested_listing=self.requested_item,
@@ -305,6 +311,7 @@ class BarterInterest(models.Model):
             requester=self.requester,
             receiver=self.receiver,
             status='pending',
+            handshake_pin=pin,
         )
 
     def _ensure_contract_exists(self):
@@ -342,6 +349,9 @@ class Trade(models.Model):
     tracking_number = models.CharField(max_length=100, blank=True)
     shipping_provider = models.CharField(max_length=50, blank=True)
     logistics_status = models.CharField(max_length=50, default='preparing') # preparing, shipped, out_for_delivery, delivered
+    meetup_location = models.CharField(max_length=255, blank=True, null=True)
+    meetup_datetime = models.DateTimeField(null=True, blank=True)
+    handshake_pin = models.CharField(max_length=4, blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -410,6 +420,7 @@ class UserReview(models.Model):
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
     reviewed_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
     offer = models.ForeignKey(BarterOffer, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviews')
+    trade = models.ForeignKey('Trade', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviews')
     rating = models.IntegerField()  # 1 to 5 scale
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -528,22 +528,38 @@ export const AppProvider = ({ children }) => {
 
     const wsScheme = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = process.env.REACT_APP_WS_URL || `${window.location.hostname}:8000`;
-    const wsUrl = `${wsScheme}//${host}/ws/chat/?token=${token}`;
+    // NOTE: token is NOT in the URL — it is sent as the first message after
+    // connect to avoid leaking it into server access logs.
+    const wsUrl = `${wsScheme}//${host}/ws/chat/`;
 
-    console.log("Connecting to WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log("WebSocket connected successfully!");
-      setWsConnected(true);
+      // Send auth handshake immediately — server expects this as first message.
+      ws.send(JSON.stringify({ type: "authenticate", token }));
     };
 
     ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
         const { type, data } = payload;
+
+        // Auth confirmation — upgrade state once server confirms identity.
+        if (type === "authenticated") {
+          console.log("WebSocket authenticated, user_id:", data?.user_id);
+          setWsConnected(true);
+          return;
+        }
+
+        if (type === "auth_error") {
+          console.error("WebSocket auth failed:", data?.message);
+          ws.close(4001);
+          return;
+        }
+
         console.log("WS Event received:", type, data);
+
 
         if (type === "chat.message") {
           const conversationId = String(payload.conversation_id || (data && data.conversation) || "");
@@ -1287,7 +1303,7 @@ export const AppProvider = ({ children }) => {
           toast.error("Failed to send message.");
         });
     }
-  }, [user]);
+  }, [user, loadChatMessages]);
 
   const sendAttachment = useCallback(async (chatId, fileObj) => {
     try {
@@ -1519,6 +1535,41 @@ export const AppProvider = ({ children }) => {
     return map;
   }, [user, listings, chats]);
 
+  const submitReview = useCallback(async ({ reviewedUserId, rating, comment, tradeId, offerId }) => {
+    try {
+      const payload = {
+        reviewed_user: reviewedUserId,
+        rating: Number(rating),
+        comment: comment || "",
+      };
+      if (tradeId) payload.trade = tradeId;
+      if (offerId) payload.offer = offerId;
+
+      const res = await api.post("/reviews/", payload);
+      setReviewsList((prev) => [res.data, ...prev]);
+
+      const tradesRes = await api.get("/trades/");
+      setTrades(tradesRes.data.results || tradesRes.data || []);
+
+      if (user?.id) {
+        const profileRes = await api.get("/profile/");
+        setUser((prev) => prev ? {
+          ...prev,
+          rating: profileRes.data.average_rating,
+          trustScore: profileRes.data.trust_score,
+        } : prev);
+      }
+
+      toast.success("Review submitted! Thank you for rating your trade partner. ⭐");
+      return res.data;
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      const msg = err.response?.data?.detail || "Failed to submit review.";
+      toast.error(msg);
+      throw err;
+    }
+  }, [user?.id]);
+
   const value = useMemo(() => ({
     user, setUser, isAuthed, login, logout, updateProfile,
     listings, setListings, addListing, editListing, deleteListing, refreshFeed,
@@ -1531,9 +1582,9 @@ export const AppProvider = ({ children }) => {
     disputes, setDisputes,
     wallet, setWallet, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins,
     users: dynamicUsers, categories: categoriesList,
-    aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList,
+    aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList, submitReview,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
 
   if (loading) {
     return (
