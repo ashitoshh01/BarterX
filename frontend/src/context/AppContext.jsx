@@ -203,7 +203,10 @@ const getAbsoluteUrl = (path) => {
     return path;
   }
   const backendBase = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
-  const slashPath = path.startsWith("/") ? path : `/${path}`;
+  let slashPath = path.startsWith("/") ? path : `/${path}`;
+  if (!slashPath.startsWith("/media/") && !slashPath.startsWith("/static/")) {
+    slashPath = `/media${slashPath}`;
+  }
   return `${backendBase}${slashPath}`;
 };
 
