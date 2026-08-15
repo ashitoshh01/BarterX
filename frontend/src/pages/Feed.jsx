@@ -156,7 +156,7 @@ const Feed = () => {
             initial="hidden"
             animate="show"
             variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4"
           >
             {forYou.map((l) => (
               <motion.div key={l.id} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
@@ -177,7 +177,7 @@ const Feed = () => {
         {trending.length === 0 ? (
           <EmptyState emoji="🔥" title="No trending items" subtitle="Post a listing to get the marketplace started." />
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {trending.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
         )}
@@ -191,7 +191,7 @@ const Feed = () => {
         {local.length === 0 ? (
           <EmptyState emoji="📍" title="No local swaps" subtitle="Update your location in profile settings to find nearby swappers." />
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {local.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
         )}

@@ -213,7 +213,7 @@ const Wallet = () => {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: "Earned", value: `+${stats.earned}`, icon: TrendingUp, tint: "tint-lime" },
           { label: "Spent", value: `-${stats.spent}`, icon: TrendingDown, tint: "tint-pink" },
@@ -311,7 +311,7 @@ const Wallet = () => {
           <div>
             <div className="font-display text-2xl mb-2">⚡ Buy Coins Store</div>
             <p className="text-xs font-mono2 uppercase text-[var(--text-3)] mb-4">Get coins at student prices to cover trade valuation gaps</p>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
               {[
                 { coins: 50, price: 250, label: "Starter Pack" },
                 { coins: 100, price: 450, label: "Trader Choice (10% Off)" },
@@ -564,7 +564,7 @@ const Wallet = () => {
                 Select a coin pack or enter a custom amount. Purchased coins are added to your wallet balance immediately.
               </p>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { coins: 50, price: "₹250", label: "Starter" },
                   { coins: 200, price: "₹900", label: "Pro Trader" },

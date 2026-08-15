@@ -303,7 +303,7 @@ const CreateListing = () => {
                   data-testid="create-desc"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-mono2 uppercase font-bold mb-2 block">Condition</label>
                   <select

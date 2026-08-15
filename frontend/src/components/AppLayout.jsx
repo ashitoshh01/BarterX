@@ -27,7 +27,7 @@ const TopBar = () => {
       className="sticky top-0 z-40 backdrop-blur-xl bg-[var(--bg)]/70 border-b border-white/5"
       data-testid="top-bar"
     >
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
+      <div className="app-container h-16 flex items-center justify-between gap-4">
         <Link to="/app/feed" className="flex items-center gap-2" data-testid="top-logo">
           <LogoWordmark size="text-lg" />
         </Link>
@@ -211,7 +211,7 @@ export const AppLayout = ({ children }) => {
   return (
     <div className="min-h-screen text-white flex flex-col overflow-x-hidden w-full max-w-full relative" style={{ background: "var(--bg)" }}>
       <TopBar />
-      <div className="max-w-7xl w-full mx-auto flex-1 flex gap-8 px-4 md:px-6 py-6 pb-24 md:pb-8">
+      <div className="app-container w-full flex-1 flex gap-8 py-6 pb-24 md:pb-8">
         <SideRail />
         <main className="flex-1 min-w-0">{children}</main>
       </div>

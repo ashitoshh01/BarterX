@@ -116,7 +116,7 @@ const Explore = () => {
           action={<NbButton onClick={() => { setQuery(""); setCat("all"); setType("all"); }} data-testid="explore-clear">Clear filters</NbButton>}
         />
       ) : view === "grid" ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
         </div>
       ) : (
