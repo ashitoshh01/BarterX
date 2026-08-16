@@ -1571,16 +1571,33 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             message=f"{receiver_name} accepted your swap proposal for {interest.requested_item.title}.",
             interest=interest
         )
+
+        # Determine the trade and contract IDs for frontend navigation
+        trade_id = None
+        contract_id = None
+        try:
+            trade_id = interest.trade.id
+        except Exception:
+            pass
+        try:
+            contract_id = interest.contract.id
+        except Exception:
+            pass
+
         broadcast_to_group(f"user_{interest.requester.id}", "proposal.updated", {
             "id": interest.id,
             "status": interest.status,
+            "trade_id": trade_id,
+            "contract_id": contract_id,
         })
         broadcast_to_group(f"user_{interest.receiver.id}", "proposal.updated", {
             "id": interest.id,
             "status": interest.status,
+            "trade_id": trade_id,
+            "contract_id": contract_id,
         })
 
-        return Response({"detail": "Proposal accepted.", "chat_room_id": room.id, "status": interest.status})
+        return Response({"detail": "Proposal accepted.", "chat_room_id": room.id, "status": interest.status, "trade_id": trade_id, "contract_id": contract_id})
 
     @action(detail=True, methods=['post'])
     def decline(self, request, pk=None):

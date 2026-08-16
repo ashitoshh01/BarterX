@@ -410,6 +410,7 @@ class BarterInterestSerializer(serializers.ModelSerializer):
     can_accept = serializers.SerializerMethodField()
     can_counter = serializers.SerializerMethodField()
     can_decline = serializers.SerializerMethodField()
+    trade_id = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterInterest
@@ -418,7 +419,7 @@ class BarterInterestSerializer(serializers.ModelSerializer):
                   'requested_item', 'offered_item',
                   'requested_item_detail', 'offered_item_detail',
                   'proposal_message', 'coins_offered', 'metadata',
-                  'status', 'chat_room_id', 'is_read_only', 'can_cancel', 'can_accept', 'can_counter', 'can_decline',
+                  'status', 'chat_room_id', 'trade_id', 'is_read_only', 'can_cancel', 'can_accept', 'can_counter', 'can_decline',
                   'created_at', 'updated_at')
         read_only_fields = ('requester', 'receiver', 'status')
 
@@ -463,6 +464,12 @@ class BarterInterestSerializer(serializers.ModelSerializer):
 
     def get_can_decline(self, obj):
         return obj.status in {'pending', 'negotiating', 'countered'}
+
+    def get_trade_id(self, obj):
+        try:
+            return obj.trade.id
+        except Exception:
+            return None
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -528,6 +535,11 @@ class ContractSerializer(serializers.ModelSerializer):
 class TradeSerializer(serializers.ModelSerializer):
     handshake_pin = serializers.SerializerMethodField()
     pending_review = serializers.SerializerMethodField()
+    contract_id = serializers.SerializerMethodField()
+    requester_username = serializers.ReadOnlyField(source='requester.username')
+    receiver_username = serializers.ReadOnlyField(source='receiver.username')
+    requester_display_name = serializers.SerializerMethodField()
+    receiver_display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Trade
@@ -535,10 +547,12 @@ class TradeSerializer(serializers.ModelSerializer):
         read_only_fields = ('proposal', 'requested_listing', 'offered_listing', 'requester', 'receiver', 'created_at')
 
     def get_handshake_pin(self, obj):
+        """Only the REQUESTER (shipper) sees the PIN so they can share it with receiver on handoff."""
         request = self.context.get('request')
         if not request or not request.user:
             return None
-        if request.user.id == obj.receiver_id or request.user == obj.receiver:
+        # Requester is the person who INITIATED the proposal (the shipper)
+        if request.user == obj.requester or request.user.id == obj.requester_id:
             return obj.handshake_pin
         return None
 
@@ -553,6 +567,24 @@ class TradeSerializer(serializers.ModelSerializer):
             trade=obj
         ).exists()
         return not already_reviewed
+
+    def get_contract_id(self, obj):
+        try:
+            return obj.proposal.contract.id
+        except Exception:
+            return None
+
+    def get_requester_display_name(self, obj):
+        try:
+            return obj.requester.profile.display_name or obj.requester.username
+        except Exception:
+            return obj.requester.username
+
+    def get_receiver_display_name(self, obj):
+        try:
+            return obj.receiver.profile.display_name or obj.receiver.username
+        except Exception:
+            return obj.receiver.username
 
 class DisputeEvidenceSerializer(serializers.ModelSerializer):
     class Meta:

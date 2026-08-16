@@ -390,6 +390,7 @@ const mapInterestToProposal = (interest, currentUserUsername) => {
     canCancel: Boolean(interest.can_cancel),
     isReadOnly: Boolean(interest.is_read_only),
     chatRoomId: interest.chat_room_id,
+    tradeId: interest.trade_id || null,
     requestedItemDetail: interest.requested_item_detail,
     offeredItemDetail: interest.offered_item_detail,
     coinsOffered: interest.coins_offered || 0,
@@ -685,12 +686,17 @@ export const AppProvider = ({ children }) => {
         }
 
         else if (type === "proposal.updated") {
+          const updatedId = data.id;
+          const newTradeId = data.trade_id || null;
+          const newContractId = data.contract_id || null;
           setProposals((prev) => prev.map((p) => {
-            if (p.id !== data.id) return p;
+            if (p.id !== updatedId) return p;
             const nextStatus = data.status || p.status;
             return {
               ...p,
               status: nextStatus,
+              tradeId: newTradeId !== null ? newTradeId : p.tradeId,
+              contractId: newContractId !== null ? newContractId : p.contractId,
               canAccept: nextStatus === "pending",
               canCounter: nextStatus === "pending" || nextStatus === "negotiating",
               canDecline: ["pending", "negotiating", "countered"].includes(nextStatus),
@@ -698,6 +704,20 @@ export const AppProvider = ({ children }) => {
               isReadOnly: ["accepted", "declined", "cancelled"].includes(nextStatus),
             };
           }));
+          // On counter, re-fetch the specific proposal to get updated coins/item
+          if (data.status === "countered") {
+            api.get(`/interests/${updatedId}/`).then((res) => {
+              const currentUsername = userRef.current?.id;
+              const refreshed = mapInterestToProposal(res.data, currentUsername);
+              setProposals((prev) => prev.map((p) => p.id === updatedId ? refreshed : p));
+            }).catch(console.warn);
+          }
+          // After accept, refresh trades list so tracker works
+          if (data.status === "accepted") {
+            api.get("/trades/").then((res) => {
+              setTrades(res.data.results || res.data || []);
+            }).catch(console.warn);
+          }
         }
 
         else if (type === "wallet.updated") {
@@ -1189,31 +1209,54 @@ export const AppProvider = ({ children }) => {
   const respondProposal = useCallback(async (id, action, payload = {}) => {
     try {
       setError(null);
+      let res;
       if (action === "accept") {
-        await api.post(`/interests/${id}/accept/`);
+        res = await api.post(`/interests/${id}/accept/`);
       } else if (action === "decline") {
-        await api.post(`/interests/${id}/decline/`);
+        res = await api.post(`/interests/${id}/decline/`);
       } else if (action === "counter") {
-        await api.post(`/interests/${id}/counter/`, payload);
+        res = await api.post(`/interests/${id}/counter/`, payload);
       } else if (action === "cancel") {
-        await api.post(`/interests/${id}/cancel/`);
+        res = await api.post(`/interests/${id}/cancel/`);
       } else {
         throw new Error(`Unsupported proposal action: ${action}`);
       }
 
       const nextStatus = action === "accept" ? "accepted" : action === "decline" ? "declined" : action === "counter" ? "countered" : action === "cancel" ? "cancelled" : null;
+      const tradeIdFromResponse = res?.data?.trade_id || null;
+      const contractIdFromResponse = res?.data?.contract_id || null;
+
       if (nextStatus) {
         setProposals((prev) => prev.map((p) => p.id === id ? {
           ...p,
           status: nextStatus,
+          tradeId: tradeIdFromResponse !== null ? tradeIdFromResponse : p.tradeId,
+          contractId: contractIdFromResponse !== null ? contractIdFromResponse : p.contractId,
           canAccept: false,
-          canCounter: false,
+          canCounter: nextStatus === "countered",
           canDecline: false,
-          canCancel: false,
-          isReadOnly: true,
+          canCancel: !['declined', 'cancelled'].includes(nextStatus),
+          isReadOnly: ['accepted', 'declined', 'cancelled'].includes(nextStatus),
         } : p));
       }
-      toast.success(`Proposal ${action}!`);
+
+      // After accept: refresh both proposals (to get trade_id) and trades list
+      if (action === "accept") {
+        try {
+          const [interestsRes, tradesRes] = await Promise.all([
+            api.get("/interests/"),
+            api.get("/trades/")
+          ]);
+          const currentUsername = userRef.current?.id;
+          const interestsList = interestsRes.data.results || interestsRes.data;
+          setProposals(interestsList.map((i) => mapInterestToProposal(i, currentUsername)));
+          setTrades(tradesRes.data.results || tradesRes.data || []);
+        } catch (refreshErr) {
+          console.warn("Failed to refresh after accept:", refreshErr);
+        }
+      }
+
+      toast.success(`Proposal ${action}ed!`);
     } catch (err) {
       console.error("Failed to respond to proposal:", err);
       const msg = err.response?.data?.detail || "Failed to update proposal status.";
