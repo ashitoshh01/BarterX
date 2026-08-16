@@ -215,7 +215,7 @@ const Landing = () => {
             </div>
 
             {/* Visual */}
-            <div className="lg:col-span-5 relative h-[560px] hidden lg:block">
+            <div className="lg:col-span-5 relative h-[560px] hidden lg:block lg:-mt-14">
               {/* 3D Hero Graphic Container */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -237,15 +237,15 @@ const Landing = () => {
               {liveItems[0] && <FloatCard listing={liveItems[0]} rotate={4} delay={0.5} className="-top-4 -right-4 shadow-2xl border-lime-500/30" />}
               {liveItems[1] && <FloatCard listing={liveItems[1]} rotate={-6} delay={0.7} className="bottom-12 -left-6 shadow-2xl border-pink-500/30" />}
 
-              {/* Central Swap Ring Overlay */}
+              {/* Swap Ring Badge (Positioned outside image frame) */}
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full flex items-center justify-center pointer-events-none"
-                style={{ background: "conic-gradient(from 0deg, var(--lime), var(--pink), var(--blue), var(--lime))", boxShadow: "0 0 70px 10px rgba(184, 255, 0, 0.4)" }}
+                className="absolute -bottom-10 right-12 w-24 h-24 rounded-full flex items-center justify-center pointer-events-none z-20"
+                style={{ background: "conic-gradient(from 0deg, var(--lime), var(--pink), var(--blue), var(--lime))", boxShadow: "0 0 50px 8px rgba(184, 255, 0, 0.4)" }}
               >
-                <div className="w-24 h-24 rounded-full bg-[var(--bg)]/90 backdrop-blur-md flex items-center justify-center border border-white/20">
-                  <Repeat size={36} strokeWidth={2} className="text-[var(--lime)] animate-pulse" />
+                <div className="w-20 h-20 rounded-full bg-[var(--bg)]/90 backdrop-blur-md flex items-center justify-center border border-white/20">
+                  <Repeat size={30} strokeWidth={2} className="text-[var(--lime)] animate-pulse" />
                 </div>
               </motion.div>
 
@@ -638,19 +638,96 @@ const Landing = () => {
 
       {/* ─────── FINAL CTA ─────── */}
       <section className="max-w-7xl mx-auto px-4 md:px-6 py-24">
-        <div className="nb-card p-10 md:p-20 text-center relative overflow-hidden">
+        <div className="nb-card p-10 md:p-20 text-center relative overflow-hidden group">
           <div className="aurora" style={{ opacity: 0.3 }} />
-          <div className="grid-bg absolute inset-0" />
-          <div className="relative">
-            <LogoMark size={64} className="mx-auto mb-6" />
-            <h2 className="font-display text-5xl md:text-8xl leading-[0.9]">
+          <div className="grid-bg absolute inset-0 opacity-40" />
+
+          {/* Ambient Glow Orbs */}
+          <div className="absolute -top-20 -left-20 w-80 h-80 bg-[var(--lime)]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-[var(--pink)]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Floating Visual Badges (Extra Large Screens - Non-overlapping) */}
+          {/* Top Left: Live Swap Visual */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="hidden xl:flex absolute top-6 left-6 items-center gap-2.5 bg-white/5 border border-white/15 rounded-xl p-2.5 px-3.5 backdrop-blur-xl shadow-2xl z-10 text-left transition-transform hover:scale-105"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-lime-500 to-emerald-400 flex items-center justify-center text-black font-bold shrink-0 shadow-lg">
+              <Repeat size={16} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Featured Swap</div>
+              <div className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
+                <span>DSLR</span>
+                <span className="text-[var(--lime)]">↔</span>
+                <span>Skateboard</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Top Right: Signup Bonus */}
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+            className="hidden xl:flex absolute top-6 right-6 items-center gap-2.5 bg-white/5 border border-white/15 rounded-xl p-2.5 px-3.5 backdrop-blur-xl shadow-2xl z-10 text-left transition-transform hover:scale-105"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-black font-bold shrink-0 shadow-lg">
+              <Coins size={16} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Signup Bonus</div>
+              <div className="text-xs font-bold font-mono2 text-[var(--lime)] mt-0.5">+500 Coins</div>
+            </div>
+          </motion.div>
+
+          {/* Bottom Left: Trust Badge */}
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            className="hidden xl:flex absolute bottom-6 left-6 items-center gap-2 tint-lime border border-lime-400/30 rounded-xl px-3 py-2 backdrop-blur-xl shadow-2xl z-10 text-left transition-transform hover:scale-105"
+          >
+            <Shield size={16} className="text-[var(--lime)] shrink-0" />
+            <div>
+              <div className="text-[9px] font-mono2 uppercase tracking-wider text-[var(--text-3)]">Verified</div>
+              <div className="text-xs font-mono2 font-bold text-white">100% Cash-Free</div>
+            </div>
+          </motion.div>
+
+          {/* Bottom Right: Community Social Proof */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+            className="hidden xl:flex absolute bottom-6 right-6 items-center gap-2.5 bg-white/5 border border-white/15 rounded-xl p-2.5 px-3.5 backdrop-blur-xl shadow-2xl z-10 text-left transition-transform hover:scale-105"
+          >
+            <div className="flex -space-x-1.5">
+              {SOCIAL_PROOF_AVATARS.slice(0, 3).map((src, i) => (
+                <img key={i} src={src} alt="Swapper" className="w-6 h-6 rounded-full border border-[var(--bg)] object-cover" />
+              ))}
+            </div>
+            <div>
+              <div className="text-[9px] font-mono2 uppercase text-[var(--text-3)]">Community</div>
+              <div className="text-xs font-bold text-white">12.4k+ Swappers</div>
+            </div>
+          </motion.div>
+
+          {/* Main Content */}
+          <div className="relative z-10 max-w-3xl mx-auto py-4">
+            <div className="relative inline-block mb-6">
+              <LogoMark size={64} className="mx-auto" />
+              <Sparkles size={20} className="absolute -top-1 -right-2 text-[var(--lime)] animate-bounce" />
+            </div>
+            <h2 className="font-display text-5xl md:text-8xl leading-[0.9] tracking-tight">
               Ready to <span className="font-serif-i italic text-[var(--lime)]">swap</span><br />
               the whole game?
             </h2>
-            <p className="mt-6 text-[var(--text-2)] text-lg max-w-lg mx-auto">Join thousands trading stuff, skills, and services — no money required.</p>
-            <div className="mt-10 flex flex-wrap gap-3 justify-center">
+            <p className="mt-6 text-[var(--text-2)] text-lg max-w-lg mx-auto leading-relaxed">
+              Join thousands trading stuff, skills, and services — no money required.
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3 justify-center items-center">
               <Link to="/auth" data-testid="final-cta">
-                <NbButton variant="primary" className="text-base px-6 py-4">
+                <NbButton variant="primary" className="text-base px-7 py-4 shadow-lg shadow-lime-500/20">
                   Claim your account <ArrowRight size={18} strokeWidth={2.5} />
                 </NbButton>
               </Link>

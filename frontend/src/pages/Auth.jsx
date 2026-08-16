@@ -220,20 +220,47 @@ const Auth = () => {
           <div className="aurora" style={{ opacity: 0.5 }} />
           <div className="grid-bg absolute inset-0" />
           <Link to="/" className="relative z-10"><LogoWordmark size="text-lg" /></Link>
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="relative z-10"
+            className="relative z-10 space-y-6 my-auto py-4"
           >
-            <h1 className="font-display text-6xl lg:text-7xl leading-[0.9] text-white">
-              Trade<br />like it's<br />
-              <span className="font-serif-i italic text-[var(--lime)]">1892.</span>
-            </h1>
-            <p className="mt-5 max-w-md text-[var(--text-2)] text-lg">
-              Money-free marketplace. Real people. Real swaps. Gamified for you.
-            </p>
+            <div>
+              <h1 className="font-display text-5xl lg:text-6xl leading-[0.9] text-white">
+                Trade<br />like it's<br />
+                <span className="font-serif-i italic text-[var(--lime)]">1892.</span>
+              </h1>
+              <p className="mt-3 max-w-md text-[var(--text-2)] text-base">
+                Money-free marketplace. Real people. Real swaps. Gamified for you.
+              </p>
+            </div>
+
+            {/* Visual Image Card in the free space */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative rounded-2xl overflow-hidden border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl group max-w-md"
+            >
+              <div className="relative w-full h-48 lg:h-60 rounded-xl overflow-hidden">
+                <img
+                  src="/match_visual.png"
+                  alt="Barter AI Match Visual"
+                  className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent opacity-60" />
+
+                {/* Floating Badge on Image */}
+                <div className="absolute bottom-3 left-3 tint-lime border border-lime-400/40 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-lg flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[var(--lime)] animate-ping" />
+                  <span className="text-[10px] font-mono2 font-bold text-white uppercase tracking-wider">AI Swap Engine · 98% Match Rate</span>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
+
           <div className="relative z-10 flex gap-2 flex-wrap">
             <span className="nb-tag tint-lime">◆ SKATE</span>
             <span className="nb-tag tint-amber">◆ CAMERAS</span>
@@ -372,7 +399,7 @@ const Auth = () => {
                     {loading ? "Signing in..." : "Log in"} <ArrowRight size={18} strokeWidth={2.5} />
                   </NbButton>
 
-                  <div className="pt-2">
+                  <div className="pt-2 text-center">
                     <button
                       type="button"
                       onClick={() => {
@@ -380,7 +407,7 @@ const Auth = () => {
                         toast.success("Welcome to Demo Mode! 🎉");
                         window.location.href = "/app/feed";
                       }}
-                      className="w-full py-3.5 px-4 rounded-xl bg-[var(--yellow)] text-black font-bold text-sm hover:brightness-105 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                      className="text-amber-400 hover:text-amber-300 text-xs font-mono2 font-semibold hover:underline transition-all inline-flex items-center gap-1.5 cursor-pointer py-1"
                     >
                       ⚡ Quick Demo Mode (Explore All Products)
                     </button>
