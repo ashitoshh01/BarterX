@@ -451,7 +451,7 @@ class UserReview(models.Model):
 class OTPVerification(models.Model):
     email = models.EmailField(db_index=True)
     otp_hash = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     attempts = models.IntegerField(default=0)
 
     def is_expired(self):

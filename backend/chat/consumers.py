@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 from django.utils import timezone
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -60,6 +61,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.user_group = None
         self.active_room = None
         await self.accept()
+
+        # Start a timeout task to close connection if not authenticated quickly
+        self.auth_timeout_task = asyncio.create_task(self.auth_timeout())
+
+    async def auth_timeout(self):
+        try:
+            await asyncio.sleep(10)
+            if hasattr(self, 'user') and self.user.is_anonymous:
+                await self.send(text_data=json.dumps({"type": "auth_error", "data": {"message": "Authentication timeout."}}))
+                await self.close(code=4008)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in auth_timeout: {e}")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'user') and not self.user.is_anonymous:
@@ -123,6 +138,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.close(code=4001)
                 return
             self.user = resolved
+            if hasattr(self, 'auth_timeout_task'):
+                self.auth_timeout_task.cancel()
             await self._setup_authenticated_user()
             await self.send(text_data=json.dumps({"type": "authenticated", "data": {"user_id": self.user.id}}))
             return

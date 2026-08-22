@@ -236,8 +236,7 @@ class BarterItemListSerializer(serializers.ModelSerializer):
                 "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
                 "verified": profile.is_verified,
                 "trust_score": profile.trust_score,
-                "rating": profile.average_rating,
-                "coin_balance": profile.coin_balance
+                "rating": profile.average_rating
             }
         return {
             "id": obj.owner.id,
@@ -246,8 +245,7 @@ class BarterItemListSerializer(serializers.ModelSerializer):
             "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
             "verified": False,
             "trust_score": 50,
-            "rating": 0.0,
-            "coin_balance": 0
+            "rating": 0.0
         }
 
 
@@ -293,8 +291,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
                 "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
                 "verified": profile.is_verified,
                 "trust_score": profile.trust_score,
-                "rating": profile.average_rating,
-                "coin_balance": profile.coin_balance
+                "rating": profile.average_rating
             }
         return {
             "id": obj.owner.id,
@@ -303,8 +300,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
             "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
             "verified": False,
             "trust_score": 50,
-            "rating": 0.0,
-            "coin_balance": 0
+            "rating": 0.0
         }
 
     def get_proposal_count(self, obj):

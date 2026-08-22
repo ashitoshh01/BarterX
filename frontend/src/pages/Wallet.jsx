@@ -21,11 +21,11 @@ const Wallet = () => {
     }
     try {
       setPurchasing(true);
-      await purchaseCoins(coinsNum);
       setBuyModalOpen(false);
       setCustomAmount("");
+      await handleInitiatePayment(coinsNum);
     } catch (err) {
-      // toast error handled in purchaseCoins
+      // toast error handled
     } finally {
       setPurchasing(false);
     }

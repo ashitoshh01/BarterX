@@ -448,8 +448,10 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         viewed_session_key = f'viewed_item_{instance.id}'
         if not request.session.get(viewed_session_key):
+            from django.db.models import F
+            BarterItem.objects.filter(pk=instance.pk).update(views_count=F('views_count') + 1)
+            # Manually increment the in-memory object so the serializer below returns the fresh value
             instance.views_count += 1
-            instance.save(update_fields=['views_count'])
             request.session[viewed_session_key] = True
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -851,35 +853,36 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         if instance.owner != request.user:
             return Response({"detail": "You do not have permission to boost this listing."}, status=status.HTTP_403_FORBIDDEN)
             
-        # Get profile of user
-        profile = getattr(request.user, 'profile', None)
-        if not profile:
-            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
-            
         cost = getattr(settings, 'BOOST_COST', 100)
         duration = getattr(settings, 'BOOST_DURATION_DAYS', 7)
         
-        if profile.coin_balance < cost:
-            return Response({"detail": f"Insufficient coins. Boosting costs {cost} coins."}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            try:
+                profile = UserProfile.objects.select_for_update().get(user=request.user)
+            except UserProfile.DoesNotExist:
+                return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            if profile.coin_balance < cost:
+                return Response({"detail": f"Insufficient coins. Boosting costs {cost} coins."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            # Deduct coins
+            profile.coin_balance -= cost
+            profile.save(update_fields=['coin_balance'])
             
-        # Deduct coins
-        profile.coin_balance -= cost
-        profile.save(update_fields=['coin_balance'])
-        
-        # Boost listing
-        instance.is_boosted = True
-        instance.boosted_at = timezone.now()
-        instance.boost_expires_at = timezone.now() + timedelta(days=duration)
-        instance.save(update_fields=['is_boosted', 'boosted_at', 'boost_expires_at'])
-        
-        # Create history log
-        from .models import ListingHistory
-        ListingHistory.objects.create(
-            listing=instance,
-            performed_by=request.user,
-            action='BOOSTED',
-            metadata={"cost": cost, "duration_days": duration}
-        )
+            # Boost listing
+            instance.is_boosted = True
+            instance.boosted_at = timezone.now()
+            instance.boost_expires_at = timezone.now() + timedelta(days=duration)
+            instance.save(update_fields=['is_boosted', 'boosted_at', 'boost_expires_at'])
+            
+            # Create history log
+            from .models import ListingHistory
+            ListingHistory.objects.create(
+                listing=instance,
+                performed_by=request.user,
+                action='BOOSTED',
+                metadata={"cost": cost, "duration_days": duration}
+            )
         
         return Response({
             "message": "Listing boosted successfully!",
@@ -1079,10 +1082,6 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             file_name = default_storage.save(f'profile_pics/{request.user.id}_{profile_pic.name}', profile_pic)
             profile.profile_picture_url = request.build_absolute_uri(default_storage.url(file_name))
 
-        is_verified = request.data.get('is_verified', profile.is_verified)
-        if isinstance(is_verified, str):
-            is_verified = is_verified.lower() == 'true'
-        profile.is_verified = is_verified
         
         # Calculate updated trust score dynamically
         completed_interests = BarterInterest.objects.filter(
@@ -1107,7 +1106,7 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
         profile.save(update_fields=[
             'display_name', 'bio', 'city', 'state', 'country', 'location', 'location_name',
             'profession', 'latitude', 'longitude', 'phone_number', 'profile_picture_url',
-            'cover_picture_url', 'is_verified', 'trust_score'
+            'cover_picture_url', 'trust_score'
         ])
         
         serializer = UserProfileSerializer(profile)
@@ -1207,10 +1206,34 @@ class PurchaseCoinsView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         amount = int(request.data.get('amount', 0))
+        order_id = request.data.get('order_id')
+        payment_id = request.data.get('payment_id')
+        signature = request.data.get('signature')
+        
         if amount <= 0:
             return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Simulate payment gateway success
+        if not order_id or not payment_id or not signature:
+            return Response({"detail": "Missing payment verification parameters."}, status=status.HTTP_400_BAD_REQUEST)
+
+        razorpay_key = getattr(settings, 'RAZORPAY_KEY_ID', None)
+        razorpay_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
+        
+        if not razorpay_key or not razorpay_secret:
+            return Response({"detail": "Payment gateway not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            client = razorpay.Client(auth=(razorpay_key, razorpay_secret))
+            params_dict = {
+                'razorpay_order_id': order_id,
+                'razorpay_payment_id': payment_id,
+                'razorpay_signature': signature
+            }
+            client.utility.verify_payment_signature(params_dict)
+        except Exception:
+            return Response({"detail": "Razorpay Signature Verification Failed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Payment successful
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         profile.add_coins(amount)
         
@@ -1218,7 +1241,7 @@ class PurchaseCoinsView(generics.GenericAPIView):
             user=request.user,
             amount=amount,
             transaction_type='purchased',
-            description=f"Purchased {amount} coins"
+            description=f"Purchased {amount} coins via Razorpay ({payment_id})"
         )
         
         return Response({"message": f"Successfully purchased {amount} coins.", "new_balance": profile.coin_balance})
@@ -1387,21 +1410,22 @@ class RedeemCoinsView(generics.GenericAPIView):
         if amount <= 0:
             return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
 
-        profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        
-        if profile.coin_balance < amount:
-            return Response({"detail": "Insufficient coin balance."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Deduct coins
-        profile.coin_balance -= amount
-        profile.save()
-        
-        CoinTransaction.objects.create(
-            user=request.user,
-            amount=amount,
-            transaction_type='spent',
-            description=description
-        )
+        with transaction.atomic():
+            profile, _ = UserProfile.objects.select_for_update().get_or_create(user=request.user)
+            
+            if profile.coin_balance < amount:
+                return Response({"detail": "Insufficient coin balance."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Deduct coins
+            profile.coin_balance -= amount
+            profile.save()
+            
+            CoinTransaction.objects.create(
+                user=request.user,
+                amount=amount,
+                transaction_type='spent',
+                description=description
+            )
         
         return Response({"message": f"Successfully redeemed {amount} coins.", "new_balance": profile.coin_balance})
 
@@ -1771,9 +1795,24 @@ class ContractViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
         contract = self.get_object()
-        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
-        if ',' in client_ip:
-            client_ip = client_ip.split(',')[0].strip()
+        # Secure IP parsing: only trust X-Forwarded-For based on configured proxy hops
+        from django.conf import settings
+        trusted_proxies = getattr(settings, 'TRUSTED_PROXIES', 0)
+        
+        if trusted_proxies > 0:
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            if x_forwarded_for:
+                ips = [ip.strip() for ip in x_forwarded_for.split(',') if ip.strip()]
+                # Nginx/proxies append to the end. Client IP is at index -(trusted_proxies)
+                if len(ips) >= trusted_proxies:
+                    client_ip = ips[-trusted_proxies]
+                else:
+                    client_ip = ips[0]
+            else:
+                client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        else:
+            # Fall back strictly to REMOTE_ADDR if we don't control the proxy hops
+            client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
 
         now = timezone.now()
         if request.user == contract.party_a:
@@ -1899,8 +1938,23 @@ class DisputeViewSet(viewsets.ModelViewSet):
         return Dispute.objects.filter(Q(raised_by=self.request.user) | Q(against=self.request.user)).order_by('-created_at')
 
     def perform_create(self, serializer):
-        dispute = serializer.save(raised_by=self.request.user)
+        from rest_framework.exceptions import ValidationError
+        
         files = self.request.FILES.getlist('evidence_files') or self.request.FILES.getlist('evidence')
+        
+        # Pre-validate all files before saving the dispute
+        for f in files:
+            if f.size > 5 * 1024 * 1024:  # 5MB limit
+                raise ValidationError({"evidence_files": f"File '{f.name}' exceeds the 5MB size limit."})
+                
+            ext = f.name.lower().split('.')[-1]
+            if ext not in ['jpg', 'jpeg', 'png', 'pdf']:
+                raise ValidationError({"evidence_files": f"File '{f.name}' has an invalid extension. Only JPG, PNG, and PDF are allowed."})
+                
+            if f.content_type not in ['image/jpeg', 'image/png', 'application/pdf']:
+                raise ValidationError({"evidence_files": f"File '{f.name}' has an invalid MIME type."})
+                
+        dispute = serializer.save(raised_by=self.request.user)
         for f in files:
             DisputeEvidence.objects.create(dispute=dispute, file=f)
 
@@ -2001,14 +2055,12 @@ class CoinTransferView(generics.GenericAPIView):
                 return Response({"detail": "Insufficient coin balance."}, status=status.HTTP_400_BAD_REQUEST)
 
             sender_profile.coin_balance -= amount
-            sender_profile.save()
+            sender_profile.total_coins_spent += amount
+            sender_profile.save(update_fields=['coin_balance', 'total_coins_spent'])
 
             recipient_profile.coin_balance += amount
-            sender_profile.total_coins_spent += amount
-            sender_profile.save()
-
             recipient_profile.total_coins_earned += amount
-            recipient_profile.save()
+            recipient_profile.save(update_fields=['coin_balance', 'total_coins_earned'])
 
             # Record transactions
             CoinTransaction.objects.create(
@@ -2238,6 +2290,13 @@ class AdminUserManagementViewSet(viewsets.ModelViewSet):
     def manage(self, request, pk=None):
         from django.contrib.auth.models import User
         user_to_manage = generics.get_object_or_404(User, pk=pk)
+        
+        if user_to_manage == request.user:
+            return Response({"detail": "You cannot perform admin actions on your own account."}, status=403)
+            
+        if (user_to_manage.is_staff or user_to_manage.is_superuser) and not request.user.is_superuser:
+            return Response({"detail": "Only superusers can modify other staff or admin accounts."}, status=403)
+            
         action_type = request.data.get('action') # suspend, reactivate, verify, unverify, make_premium
         notes = request.data.get('notes', '')
 
