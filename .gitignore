@@ -47,3 +47,9 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Development Scratch Files
+todo.txt
+agent.md
+recommendation_algorithm_design.md
+backend/test_recommendations.py
