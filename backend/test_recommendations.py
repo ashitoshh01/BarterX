@@ -7,9 +7,9 @@ django.setup()
 from rest_framework.test import APIRequestFactory, force_authenticate
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from api.models import BarterItem, Category, UserItemInteraction, UserProfile
+from api.models import BarterItem, Category, UserItemInteraction, UserProfile, UserCategoryAffinityHistory
 from api.views import BarterItemViewSet
-from api.tasks import refresh_user_recommendations
+from api.tasks import refresh_user_recommendations, archive_old_interactions
 from django.utils import timezone
 from datetime import timedelta
 
@@ -65,6 +65,25 @@ def run_tests():
     assert item2.id in ids, "Fresh item missing."
     
     print("   [OK] Endpoint correctly pulls from cache and applies dynamic re-ranking.")
+    
+    print("3. Testing Archive Task...")
+    UserCategoryAffinityHistory.objects.all().delete()
+    # Create an old interaction > 180 days
+    old_time = timezone.now() - timedelta(days=200)
+    UserItemInteraction.objects.create(user=user_viewer, item=item1, interaction_type='view', weight=1.0, created_at=old_time)
+    # The created_at field has auto_now_add=True, so we must force update the time
+    UserItemInteraction.objects.filter(user=user_viewer, item=item1, interaction_type='view', weight=1.0).update(created_at=old_time)
+    
+    archive_old_interactions()
+    
+    # Verify raw row is deleted
+    assert not UserItemInteraction.objects.filter(created_at__lt=timezone.now() - timedelta(days=180)).exists(), "Old interaction was not deleted."
+    # Verify rollup exists
+    rollup = UserCategoryAffinityHistory.objects.filter(user=user_viewer, category=cat1).first()
+    assert rollup is not None, "Rollup was not created."
+    assert rollup.interaction_score == 1.0, f"Expected score 1.0, got {rollup.interaction_score}"
+    print("   [OK] Archive task successfully rolls up data and cleans old rows.")
+    
     print("\n--- All Tests Passed! ---")
 
 if __name__ == "__main__":

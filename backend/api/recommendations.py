@@ -44,7 +44,8 @@ def generate_candidates(user):
     category_affinity_items = []
     if user.is_authenticated:
         # Find top 5 categories the user interacts with most based on interaction weights
-        top_categories = UserItemInteraction.objects.filter(user=user)\
+        cutoff = timezone.now() - timedelta(days=180)
+        top_categories = UserItemInteraction.objects.filter(user=user, created_at__gte=cutoff)\
             .values('item__category')\
             .annotate(score=Sum('weight'))\
             .order_by('-score')[:5]

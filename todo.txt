@@ -1,0 +1,28 @@
+Add a collaborative_score(user, candidate_item) function to backend/api/recommendations.py
+implementing item-based collaborative filtering:
+
+def collaborative_score(user, candidate_item):
+    user_liked_items = UserItemInteraction.objects.filter(
+        user=user, interaction_type__in=['save', 'offer_sent', 'traded']
+    ).values_list('item_id', flat=True)
+
+    if not user_liked_items:
+        return 0.0
+
+    co_occurrence_users = UserItemInteraction.objects.filter(
+        item_id__in=user_liked_items,
+        interaction_type__in=['save', 'offer_sent', 'traded']
+    ).exclude(user=user).values_list('user_id', flat=True).distinct()
+
+    overlap = UserItemInteraction.objects.filter(
+        user_id__in=co_occurrence_users,
+        item=candidate_item,
+        interaction_type__in=['save', 'offer_sent', 'traded']
+    ).count()
+
+    return min(overlap / 10, 1.0)  # normalize; tune the divisor based on actual data distribution
+
+This is expensive to run live — it should ONLY be called inside refresh_user_recommendations
+(the Celery task from Phase C), never in the synchronous request path. Add it into the
+score_item_for_user formula with a weight of 2.5. Show me the diff, and confirm it's
+only reachable from the async task, not the live view.

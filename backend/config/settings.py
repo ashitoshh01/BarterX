@@ -306,5 +306,9 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'api.tasks.refresh_all_active_users_recommendations',
         'schedule': crontab(minute='0', hour='*'), # Run every hour
     },
+    'archive-old-interactions': {
+        'task': 'api.tasks.archive_old_interactions',
+        'schedule': crontab(day_of_month='1', minute='0', hour='0'), # 1st of every month
+    },
 }
 

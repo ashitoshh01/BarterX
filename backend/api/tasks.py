@@ -59,3 +59,37 @@ def refresh_all_active_users_recommendations():
             
     return f"Triggered recommendation refresh for {len(active_user_ids)} active users."
 
+@shared_task
+def archive_old_interactions():
+    """
+    Rolls up interactions older than 180 days into UserCategoryAffinityHistory and deletes them.
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+    from django.db.models.functions import TruncMonth
+    from django.db.models import Sum
+    from api.models import UserItemInteraction, UserCategoryAffinityHistory
+    
+    cutoff = timezone.now() - timedelta(days=180)
+    old = UserItemInteraction.objects.filter(created_at__lt=cutoff)
+    
+    rollups = old.annotate(month=TruncMonth('created_at')).values(
+        'user', 'item__category', 'month'
+    ).annotate(total_weight=Sum('weight'))
+    
+    for r in rollups:
+        if r['item__category'] is None:
+            continue
+            
+        obj, created = UserCategoryAffinityHistory.objects.get_or_create(
+            user_id=r['user'], category_id=r['item__category'], month=r['month'],
+            defaults={'interaction_score': r['total_weight']}
+        )
+        if not created:
+            obj.interaction_score += r['total_weight']
+            obj.save(update_fields=['interaction_score'])
+            
+    count = old.count()
+    old.delete()
+    return f"Archived {count} old interactions."
+

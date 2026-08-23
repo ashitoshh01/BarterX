@@ -702,5 +702,15 @@ class UserItemInteraction(models.Model):
             models.Index(fields=['item', 'interaction_type']),
         ]
 
+class UserCategoryAffinityHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey('Category', on_delete=models.CASCADE)
+    month = models.DateField()
+    interaction_score = models.FloatField()
+
+    class Meta:
+        unique_together = ('user', 'category', 'month')
+
+
     def __str__(self):
         return f"{self.user.username} - {self.interaction_type} - {self.item.title}"
