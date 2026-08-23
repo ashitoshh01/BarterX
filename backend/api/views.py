@@ -436,6 +436,30 @@ class BarterItemViewSet(viewsets.ModelViewSet):
             return BarterItemListSerializer
         return BarterItemSerializer
 
+    def list(self, request, *args, **kwargs):
+        # We only personalize the main feed (i.e. no search/filter parameters are present)
+        is_search = any(param in request.query_params for param in [
+            'q', 'search', 'category', 'condition', 'location', 'item_type', 'valuation_min', 'valuation_max'
+        ])
+        
+        if request.user.is_authenticated and not is_search:
+            # FLAG: Running candidate generation, scoring, and sorting synchronously per-request
+            # will become a significant performance bottleneck at scale. In a future phase,
+            # this should be moved to a background worker (e.g. Celery) and cached per-user.
+            from .recommendations import get_recommendations
+            recommended_items = get_recommendations(request.user)
+            
+            page = self.paginate_queryset(recommended_items)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+                
+            serializer = self.get_serializer(recommended_items, many=True)
+            return Response(serializer.data)
+
+        # Fallback to default behavior for anonymous users or search queries
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         from django.utils import timezone
         from django.db import models
