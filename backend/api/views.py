@@ -443,19 +443,35 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         ])
         
         if request.user.is_authenticated and not is_search:
-            # FLAG: Running candidate generation, scoring, and sorting synchronously per-request
-            # will become a significant performance bottleneck at scale. In a future phase,
-            # this should be moved to a background worker (e.g. Celery) and cached per-user.
-            from .recommendations import get_recommendations
-            recommended_items = get_recommendations(request.user)
+            from django.core.cache import cache
+            from .tasks import refresh_user_recommendations
             
-            page = self.paginate_queryset(recommended_items)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
+            cached_ids = cache.get(f"recs:{request.user.id}")
+            if cached_ids:
+                items_qs = BarterItem.objects.select_related('owner__profile', 'category')\
+                    .prefetch_related('additional_images')\
+                    .filter(id__in=cached_ids)
                 
-            serializer = self.get_serializer(recommended_items, many=True)
-            return Response(serializer.data)
+                # Fetch into python list to preserve cached ranking order
+                items_dict = {i.id: i for i in items_qs}
+                items = [items_dict[pk] for pk in cached_ids if pk in items_dict]
+                
+                # Apply light re-ranking on top of the cached list for anything that 
+                # changes faster than the 30-min cache TTL (e.g. re-check proximity)
+                from .recommendations import proximity_score
+                items.sort(key=lambda i: cached_ids.index(i.id) - 10 * proximity_score(request.user, i))
+                
+                page = self.paginate_queryset(items)
+                if page is not None:
+                    serializer = self.get_serializer(page, many=True)
+                    return self.get_paginated_response(serializer.data)
+                    
+                serializer = self.get_serializer(items, many=True)
+                return Response(serializer.data)
+            else:
+                # Cache miss — trigger a background refresh and fall back to default feed for now
+                refresh_user_recommendations.delay(request.user.id)
+                # Let it fall through to super().list() for the default feed
 
         # Fallback to default behavior for anonymous users or search queries
         return super().list(request, *args, **kwargs)
@@ -2114,9 +2130,14 @@ class TradeViewSet(viewsets.ModelViewSet):
                 trade.completed_at = timezone.now()
 
                 from .services import log_interaction
+                from .tasks import refresh_user_recommendations
+                
                 log_interaction(trade.requester, trade.requested_listing, 'traded')
+                refresh_user_recommendations.delay(trade.requester.id)
+                
                 if trade.offered_listing:
                     log_interaction(trade.receiver, trade.offered_listing, 'traded')
+                    refresh_user_recommendations.delay(trade.receiver.id)
 
                 # Escrow coin settlement
                 proposal = trade.proposal
@@ -2217,9 +2238,11 @@ class SavedItemViewSet(viewsets.ModelViewSet):
             return Response({"saved": False, "item_id": item_id})
 
         from .services import log_interaction
+        from .tasks import refresh_user_recommendations
         try:
             item = BarterItem.objects.get(id=item_id)
             log_interaction(request.user, item, 'save')
+            refresh_user_recommendations.delay(request.user.id)
         except BarterItem.DoesNotExist:
             pass
 

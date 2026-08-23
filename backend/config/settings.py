@@ -302,4 +302,9 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'api.tasks.deactivate_expired_boosts',
         'schedule': crontab(minute='*/5'),
     },
+    'refresh-recommendations': {
+        'task': 'api.tasks.refresh_all_active_users_recommendations',
+        'schedule': crontab(minute='0', hour='*'), # Run every hour
+    },
 }
+
