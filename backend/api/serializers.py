@@ -11,8 +11,8 @@ from django.db import models
 from django.db.models import Q
 
 from .models import (
-    UserProfile, Category, BarterItem, BarterItemImage, BarterOffer,
-    UserReview, TradeTransaction, OTPVerification,
+    UserProfile, Category, BarterItem, BarterItemImage,
+    UserReview, OTPVerification,
     BarterInterest, Notification, DealConfirmation, ListingHistory, CoinTransaction, Contract, Trade, Dispute, DisputeEvidence, SavedItem,
     WalletTransaction, ImageModerationResult, AdminActionLog
 )
@@ -317,15 +317,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
             Q(barter_interest__offered_item=obj)
         ).count()
 
-class BarterOfferSerializer(serializers.ModelSerializer):
-    sender_username = serializers.ReadOnlyField(source='sender.username')
-    receiver_username = serializers.ReadOnlyField(source='receiver.username')
-    offered_item_title = serializers.ReadOnlyField(source='offered_item.title')
-    requested_item_title = serializers.ReadOnlyField(source='requested_item.title')
 
-    class Meta:
-        model = BarterOffer
-        fields = '__all__'
 
 # ChatMessageSerializer is replaced by MessageSerializer in the chat app.
 
@@ -338,15 +330,7 @@ class UserReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('reviewer',)
 
-class TradeTransactionSerializer(serializers.ModelSerializer):
-    user_1_username = serializers.ReadOnlyField(source='user_1.username')
-    user_2_username = serializers.ReadOnlyField(source='user_2.username')
-    item_1_title = serializers.ReadOnlyField(source='item_1.title')
-    item_2_title = serializers.ReadOnlyField(source='item_2.title')
 
-    class Meta:
-        model = TradeTransaction
-        fields = '__all__'
 
 
 # ============================================================

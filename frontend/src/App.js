@@ -8,6 +8,7 @@ import Auth from "@/pages/Auth";
 import Onboarding from "@/pages/Onboarding";
 import Feed from "@/pages/Feed";
 import Explore from "@/pages/Explore";
+import MapView from "@/pages/MapView";
 import ListingDetail from "@/pages/ListingDetail";
 import CreateListing from "@/pages/CreateListing";
 import AIMatches from "@/pages/AIMatches";
@@ -58,6 +59,7 @@ function App() {
 
           <Route path="/app/feed" element={<Shell><Feed /></Shell>} />
           <Route path="/app/explore" element={<Shell><Explore /></Shell>} />
+          <Route path="/app/map" element={<Shell><MapView /></Shell>} />
           <Route path="/app/listing/:id" element={<Shell><ListingDetail /></Shell>} />
           <Route path="/app/create" element={<Shell><CreateListing /></Shell>} />
           <Route path="/app/edit/:id" element={<Shell><CreateListing /></Shell>} />

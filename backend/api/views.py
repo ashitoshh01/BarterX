@@ -19,15 +19,15 @@ import re
 import requests as http_requests
 
 from .models import (
-    BarterItem, BarterItemImage, Category, BarterOffer, UserReview,
-    UserProfile, OTPVerification, TradeTransaction, CoinTransaction,
+    BarterItem, BarterItemImage, Category, UserReview,
+    UserProfile, OTPVerification, CoinTransaction,
     BarterInterest, Notification, DealConfirmation, Trade, Contract, SavedItem,
     Dispute, DisputeEvidence, WalletTransaction, TradeCoinReservation, ChatUsage, ImageModerationResult, AdminActionLog
 )
 from .serializers import (
-    BarterItemSerializer, BarterItemListSerializer, CategorySerializer, BarterOfferSerializer,
+    BarterItemSerializer, BarterItemListSerializer, CategorySerializer,
     UserReviewSerializer, UserSerializer, UserProfileSerializer,
-    TradeTransactionSerializer, BarterInterestSerializer, NotificationSerializer,
+    BarterInterestSerializer, NotificationSerializer,
     DealConfirmationSerializer, BarterItemCompactSerializer, CoinTransactionSerializer,
     ContractSerializer, TradeSerializer, DisputeSerializer, SavedItemSerializer,
     WalletTransactionSerializer, ImageModerationResultSerializer, AdminActionLogSerializer
@@ -330,6 +330,84 @@ class VerifyOTPAndRegisterView(generics.GenericAPIView):
             'username': user.username,
             'message': 'Account created and email verified successfully!',
         }, status=status.HTTP_201_CREATED)
+class RequestPasswordResetView(generics.GenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+    throttle_classes = [OTPRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+
+        if not email:
+            return Response({"email": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Security: Do not reveal if email exists, just proceed. But we only create OTP if it exists.
+        user = User.objects.filter(email=email).first()
+        if user:
+            otp = str(random.randint(100000, 999999))
+            otp_hash = make_password(otp)
+
+            OTPVerification.objects.update_or_create(
+                email=email,
+                defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
+            )
+
+            send_otp_email(email, otp)
+        
+        return Response({"message": "If an account with that email exists, we have sent a password reset code."}, status=status.HTTP_200_OK)
+
+
+class VerifyAndSetNewPasswordView(generics.GenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        otp = str(request.data.get('otp', '')).strip()
+        new_password = request.data.get('new_password', '')
+
+        errors = {}
+        if not email:
+            errors['email'] = 'Email is required.'
+        if not otp or len(otp) != 6 or not otp.isdigit():
+            errors['otp'] = 'A valid 6-digit OTP is required.'
+        if len(new_password) < 8:
+            errors['new_password'] = 'Password must be at least 8 characters.'
+        elif not re.search(r'[A-Z]', new_password):
+            errors['new_password'] = 'Password must contain at least 1 uppercase letter.'
+        elif not re.search(r'[a-z]', new_password):
+            errors['new_password'] = 'Password must contain at least 1 lowercase letter.'
+        elif not re.search(r'\d', new_password):
+            errors['new_password'] = 'Password must contain at least 1 numeric digit.'
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "Invalid request."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve OTP record
+        try:
+            otp_record = OTPVerification.objects.get(email=email)
+        except OTPVerification.DoesNotExist:
+            return Response({'otp': 'No OTP requested for this email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.is_expired():
+            return Response({'otp': 'OTP code has expired (valid for 5 mins). Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.attempts >= 5:
+            return Response({'otp': 'Too many failed attempts. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(otp, otp_record.otp_hash):
+            otp_record.attempts += 1
+            otp_record.save(update_fields=['attempts'])
+            return Response({'otp': 'Invalid verification code. Please check your email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Valid OTP and new password, set it
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        otp_record.delete()
+
+        return Response({"message": "Password has been successfully reset."}, status=status.HTTP_200_OK)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -574,6 +652,10 @@ class BarterItemViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def my_items(self, request):
         items = BarterItem.objects.filter(owner=request.user).order_by('-created_at')
+        page = self.paginate_queryset(items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(items, many=True)
         return Response(serializer.data)
 
@@ -918,37 +1000,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 
-class BarterOfferViewSet(viewsets.ModelViewSet):
-    serializer_class = BarterOfferSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
-    def get_queryset(self):
-        user = self.request.user
-        return BarterOffer.objects.filter(Q(sender=user) | Q(receiver=user))
-
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
-
-    def perform_update(self, serializer):
-        offer = serializer.save()
-        if offer.status == 'accepted':
-            TradeTransaction.objects.get_or_create(
-                offer=offer,
-                defaults={
-                    'item_1': offer.offered_item, 'item_2': offer.requested_item,
-                    'user_1': offer.sender, 'user_2': offer.receiver,
-                }
-            )
-            offer.offered_item.status = 'traded'
-            offer.offered_item.save()
-            offer.requested_item.status = 'traded'
-            offer.requested_item.save()
-
-
-class TradeTransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TradeTransaction.objects.all().order_by('-completed_at')
-    serializer_class = TradeTransactionSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
 
 # ChatMessageViewSet is replaced by ConversationViewSet actions.
@@ -978,6 +1030,60 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def request_email_change(self, request):
+        new_email = request.data.get('new_email', '').strip().lower()
+        if not new_email or not re.match(r'[^@]+@[^@]+\.[^@]+', new_email):
+            return Response({"new_email": ["A valid email address is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if User.objects.filter(email=new_email).exists():
+            return Response({"new_email": ["This email is already in use by another account."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = str(random.randint(100000, 999999))
+        otp_hash = make_password(otp)
+
+        OTPVerification.objects.update_or_create(
+            email=new_email,
+            defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
+        )
+        send_otp_email(new_email, otp)
+        
+        return Response({"message": "Verification OTP sent to your new email."})
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def verify_email_change(self, request):
+        new_email = request.data.get('new_email', '').strip().lower()
+        otp = str(request.data.get('otp', '')).strip()
+
+        if not new_email or not otp:
+            return Response({"detail": "New email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            otp_record = OTPVerification.objects.get(email=new_email)
+        except OTPVerification.DoesNotExist:
+            return Response({'otp': 'No OTP requested for this email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.is_expired():
+            return Response({'otp': 'OTP code has expired (valid for 5 mins).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_record.attempts >= 5:
+            return Response({'otp': 'Too many failed attempts.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(otp, otp_record.otp_hash):
+            otp_record.attempts += 1
+            otp_record.save(update_fields=['attempts'])
+            return Response({'otp': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the user's email
+        user = request.user
+        user.email = new_email
+        user.save(update_fields=['email'])
+        
+        # Clean up
+        otp_record.delete()
+
+        return Response({"message": "Email updated successfully.", "new_email": new_email})
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def nearby_traders(self, request):
@@ -1241,7 +1347,12 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def listings(self, request):
-        items = BarterItem.objects.filter(owner=request.user)
+        items = BarterItem.objects.filter(owner=request.user).order_by('-created_at')
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(items, request)
+        if page is not None:
+            serializer = BarterItemSerializer(page, many=True, context={'request': request})
+            return paginator.get_paginated_response(serializer.data)
         serializer = BarterItemSerializer(items, many=True, context={'request': request})
         return Response(serializer.data)
 

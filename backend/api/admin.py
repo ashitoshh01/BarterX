@@ -1,8 +1,9 @@
 # pyrefly: ignore [missing-import]
 from django.contrib import admin
 from .models import (
-    UserProfile, Category, BarterItem, BarterOffer, UserReview,
-    BarterInterest, Notification, DealConfirmation
+    UserProfile, Category, BarterItem, UserReview,
+    BarterInterest, Notification, DealConfirmation,
+    FinancialAuditLog
 )
 from chat.models import Conversation, Message
 
@@ -22,11 +23,7 @@ class BarterItemAdmin(admin.ModelAdmin):
     list_filter = ('status', 'category')
     search_fields = ('title', 'description', 'owner__username')
 
-@admin.register(BarterOffer)
-class BarterOfferAdmin(admin.ModelAdmin):
-    list_display = ('sender', 'receiver', 'offered_item', 'requested_item', 'status')
-    list_filter = ('status',)
-    search_fields = ('sender__username', 'receiver__username')
+
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
@@ -60,3 +57,19 @@ class ConversationAdmin(admin.ModelAdmin):
 @admin.register(DealConfirmation)
 class DealConfirmationAdmin(admin.ModelAdmin):
     list_display = ('barter_interest', 'user1_confirmed', 'user2_confirmed', 'completed_at')
+
+@admin.register(FinancialAuditLog)
+class FinancialAuditLogAdmin(admin.ModelAdmin):
+    list_display = ('target_user', 'action_type', 'amount_changed', 'previous_balance', 'new_balance', 'timestamp')
+    list_filter = ('action_type',)
+    search_fields = ('target_user__username', 'actor__username')
+    readonly_fields = ('target_user', 'actor', 'action_type', 'previous_balance', 'amount_changed', 'new_balance', 'reference_transaction', 'ip_address', 'notes', 'timestamp')
+
+    def has_add_permission(self, request):
+        return False
+        
+    def has_change_permission(self, request, obj=None):
+        return False
+        
+    def has_delete_permission(self, request, obj=None):
+        return False

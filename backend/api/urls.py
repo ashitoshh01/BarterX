@@ -5,12 +5,12 @@ from .views import (
     RegisterView,
     CategoryViewSet,
     BarterItemViewSet,
-    BarterOfferViewSet,
     UserReviewViewSet,
     UserProfileViewSet,
     SendOTPView,
     VerifyOTPAndRegisterView,
-    TradeTransactionViewSet,
+    RequestPasswordResetView,
+    VerifyAndSetNewPasswordView,
     BarterInterestViewSet,
     NotificationViewSet,
     PurchaseCoinsView,
@@ -43,10 +43,8 @@ from chat.views import ConversationViewSet
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'items', BarterItemViewSet, basename='barter-item')
-router.register(r'offers', BarterOfferViewSet, basename='barter-offer')
 router.register(r'reviews', UserReviewViewSet, basename='user-review')
 router.register(r'profiles', UserProfileViewSet, basename='user-profile')
-router.register(r'transactions', TradeTransactionViewSet, basename='trade-transaction')
 # New endpoints for barter interest flow
 router.register(r'interests', BarterInterestViewSet, basename='barter-interest')
 router.register(r'notifications', NotificationViewSet, basename='notification')
@@ -72,6 +70,8 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('register/simple/', SimpleRegisterView.as_view(), name='register-simple'),
     path('auth/google/', GoogleOAuthView.as_view(), name='google-oauth'),
+    path('auth/password-reset/request/', RequestPasswordResetView.as_view(), name='password-reset-request'),
+    path('auth/password-reset/verify-and-set/', VerifyAndSetNewPasswordView.as_view(), name='password-reset-verify'),
     path('login/', FlexLoginView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('wallet/purchase-coins/', PurchaseCoinsView.as_view(), name='purchase-coins'),

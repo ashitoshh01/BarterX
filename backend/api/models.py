@@ -121,6 +121,7 @@ class UserProfile(models.Model):
 # 2. Category Model
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     is_service = models.BooleanField(default=False)  # True = Service category, False = Product category
 
@@ -129,6 +130,9 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         from django.core.cache import cache
+        from django.utils.text import slugify
+        if not self.slug:
+            self.slug = slugify(self.name)
         cache.delete('categories')
         super().save(*args, **kwargs)
 
@@ -227,27 +231,7 @@ class ListingHistory(models.Model):
         listing_title = self.listing.title if self.listing else "Deleted Listing"
         return f"{self.action} on {listing_title} by {self.performed_by.username}"
 
-# 4. Barter Offer Model (Legacy — kept for backward compatibility)
-class BarterOffer(models.Model):
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('accepted', 'Accepted'),
-        ('rejected', 'Rejected'),
-        ('countered', 'Countered'),
-        ('cancelled', 'Cancelled'),
-    ]
 
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_offers')
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_offers')
-    offered_item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='as_offered_trade')
-    requested_item = models.ForeignKey(BarterItem, on_delete=models.CASCADE, related_name='as_requested_trade')
-    message = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Offer from {self.sender.username} to {self.receiver.username} ({self.status})"
 
 
 # ============================================================
@@ -454,7 +438,6 @@ class DealConfirmation(models.Model):
 class UserReview(models.Model):
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
     reviewed_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
-    offer = models.ForeignKey(BarterOffer, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviews')
     trade = models.ForeignKey('Trade', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviews')
     rating = models.IntegerField()  # 1 to 5 scale
     comment = models.TextField(blank=True, null=True)
@@ -494,38 +477,7 @@ class CoinTransaction(models.Model):
         return f"{self.transaction_type.capitalize()} {self.amount} coins for {self.user.username}"
 
 
-class TradeTransaction(models.Model):
-    offer = models.OneToOneField(
-        BarterOffer,
-        on_delete=models.CASCADE,
-        related_name='transaction'
-    )
-    item_1 = models.ForeignKey(
-        BarterItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='trade_as_item_1'
-    )
-    item_2 = models.ForeignKey(
-        BarterItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='trade_as_item_2'
-    )
-    user_1 = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='trades_as_user_1'
-    )
-    user_2 = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='trades_as_user_2'
-    )
-    completed_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Trade Transaction: {self.user_1.username} & {self.user_2.username} at {self.completed_at}"
 
 class Contract(models.Model):
     barter_interest = models.OneToOneField('BarterInterest', on_delete=models.CASCADE, related_name='contract')
@@ -621,6 +573,43 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.transaction_type} ({self.amount} Coins) - {self.status}"
+
+
+class FinancialAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('COIN_PURCHASE', 'Coin Purchase'),
+        ('COIN_REDEMPTION', 'Coin Redemption'),
+        ('TRADE_TRANSFER', 'Trade Transfer'),
+        ('TRADE_ESCROW', 'Trade Escrow'),
+        ('LISTING_BOOST', 'Listing Boost'),
+        ('ADMIN_ADJUSTMENT', 'Admin Adjustment'),
+        ('SYSTEM_BONUS', 'System Bonus'),
+    ]
+
+    target_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='financial_audits_target')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='financial_audits_actor', help_text="User, Admin, or System who initiated the action")
+    
+    action_type = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    
+    previous_balance = models.IntegerField()
+    amount_changed = models.IntegerField()
+    new_balance = models.IntegerField()
+    
+    reference_transaction = models.ForeignKey(WalletTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['target_user', '-timestamp']),
+            models.Index(fields=['action_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.action_type} for {self.target_user.username} (Δ {self.amount_changed})"
 
 
 class TradeCoinReservation(models.Model):
