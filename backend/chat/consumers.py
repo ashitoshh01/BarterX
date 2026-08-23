@@ -309,6 +309,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def check_user_chat_limit(self):
         return check_and_update_chat_limit(self.user)
 
+    @database_sync_to_async
     def get_user_display_name(self):
         try:
             return self.user.profile.display_name or self.user.username

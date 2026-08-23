@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
+    'django_celery_beat',
 
     # Local apps
     'api',
@@ -271,6 +272,10 @@ else:
             },
         }
     except Exception:
+        if not DEBUG:
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured("REDIS_URL must be set outside of DEBUG/local environments.")
+        
         logger.warning("Redis unavailable — falling back to InMemoryChannelLayer.")
         CHANNEL_LAYERS = {
             'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
@@ -280,3 +285,21 @@ else:
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400   # 25 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 26214400   # 25 MB
+
+# ─── Celery Settings ─────────────────────────────────────────────────────────
+
+# In production, ensure REDIS_URL is used for Celery as well
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/1")
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'deactivate-expired-boosts': {
+        'task': 'api.tasks.deactivate_expired_boosts',
+        'schedule': crontab(minute='*/5'),
+    },
+}

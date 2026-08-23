@@ -127,6 +127,16 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = "Categories"
 
+    def save(self, *args, **kwargs):
+        from django.core.cache import cache
+        cache.delete('categories')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from django.core.cache import cache
+        cache.delete('categories')
+        super().delete(*args, **kwargs)
+
     def __str__(self):
         category_type = "Service" if self.is_service else "Product"
         return f"{self.name} ({category_type})"
@@ -157,7 +167,7 @@ class BarterItem(models.Model):
     image_url = models.URLField(max_length=500, blank=True, null=True)
     image = models.ImageField(upload_to='item_images/', blank=True, null=True)
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='not_applicable')
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='items', db_index=True)
     location = models.CharField(max_length=150, default="Remote")
     location_name = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
@@ -173,7 +183,7 @@ class BarterItem(models.Model):
         null=True,
         validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)]
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     
     # New listing calculator & detail fields
     age_months = models.IntegerField(default=0)
@@ -181,13 +191,18 @@ class BarterItem(models.Model):
     item_score = models.FloatField(default=5.0)
 
     # Boost system & views analytics
-    is_boosted = models.BooleanField(default=False)
+    is_boosted = models.BooleanField(default=False, db_index=True)
     boosted_at = models.DateTimeField(null=True, blank=True)
     boost_expires_at = models.DateTimeField(null=True, blank=True)
     views_count = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['latitude', 'longitude']),
+        ]
 
     def __str__(self):
         return f"{self.title} (Owner: {self.owner.username})"
@@ -595,8 +610,14 @@ class WalletTransaction(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUCCESS')
     reference_id = models.CharField(max_length=100, blank=True, null=True)
     description = models.CharField(max_length=255)
+    price_inr = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Amount paid in INR")
     created_at = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'status']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.transaction_type} ({self.amount} Coins) - {self.status}"
@@ -615,6 +636,11 @@ class TradeCoinReservation(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RESERVED')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['proposal', 'status']),
+        ]
 
     def __str__(self):
         return f"Reservation #{self.id}: {self.amount} coins for proposal #{self.proposal.id} ({self.status})"

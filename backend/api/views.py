@@ -339,9 +339,12 @@ class RegisterView(generics.CreateAPIView):
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Category.objects.all().order_by('name')
     serializer_class = CategorySerializer
     permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        from django.core.cache import cache
+        return cache.get_or_set('categories', lambda: list(Category.objects.all().order_by('name')), 3600)
 
 class BarterItemViewSet(viewsets.ModelViewSet):
     serializer_class = BarterItemSerializer
@@ -359,10 +362,8 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from django.db import models
         from django.db.models import Count
-        # Deactivate expired boosts
-        BarterItem.objects.filter(is_boosted=True, boost_expires_at__lt=timezone.now()).update(is_boosted=False)
         
-        queryset = BarterItem.objects.select_related('owner__profile', 'category').prefetch_related('additional_images', 'history_logs').annotate(
+        queryset = BarterItem.objects.select_related('owner__profile', 'category').prefetch_related('additional_images').annotate(
             annotated_proposal_count=Count('interest_requests', distinct=True) + Count('interest_offers', distinct=True),
             annotated_chat_count=Count('conversations', distinct=True)
         )
@@ -440,9 +441,24 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'nearby']:
+        if self.action in ['list', 'retrieve', 'nearby', 'history']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def history(self, request, pk=None):
+        """Retrieve paginated history logs for a specific barter item."""
+        instance = self.get_object()
+        logs = instance.history_logs.all().order_by('-created_at')
+        page = self.paginate_queryset(logs)
+        from .serializers import ListingHistorySerializer
+        
+        if page is not None:
+            serializer = ListingHistorySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ListingHistorySerializer(logs, many=True)
+        return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -628,6 +644,17 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
         # Base queryset with standard filters (category, search, condition, status, etc.)
         queryset = self.get_queryset().filter(latitude__isnull=False, longitude__isnull=False)
+
+        # SQL-level bounding-box pre-filter
+        import math
+        lat_delta = radius_km / 111.0
+        lng_delta = radius_km / (111.0 * math.cos(math.radians(user_lat))) if math.cos(math.radians(user_lat)) != 0 else 0
+        queryset = queryset.filter(
+            latitude__gte=user_lat - lat_delta,
+            latitude__lte=user_lat + lat_delta,
+            longitude__gte=user_lng - lng_delta,
+            longitude__lte=user_lng + lng_delta
+        )
 
         matching_items = []
         for item in queryset:
@@ -954,11 +981,41 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def nearby_traders(self, request):
+        from .distance_service import haversine_distance_km
+        import math
+        
+        radius_km = float(request.query_params.get('radius', 50.0))
+        try:
+            profile = request.user.profile
+            user_lat = float(profile.latitude)
+            user_lng = float(profile.longitude)
+        except (AttributeError, TypeError, ValueError):
+            user_lat, user_lng = None, None
+
         # Get active items from other users
         active_items = BarterItem.objects.exclude(owner=request.user).filter(status='active').select_related('owner__profile')
         
+        # SQL-level bounding-box pre-filter
+        if user_lat is not None and user_lng is not None:
+            lat_delta = radius_km / 111.0
+            lng_delta = radius_km / (111.0 * math.cos(math.radians(user_lat))) if math.cos(math.radians(user_lat)) != 0 else 0
+            active_items = active_items.filter(
+                latitude__gte=user_lat - lat_delta,
+                latitude__lte=user_lat + lat_delta,
+                longitude__gte=user_lng - lng_delta,
+                longitude__lte=user_lng + lng_delta
+            )
+
         trader_map = {}
         for item in active_items:
+            # Precise haversine filter in Python
+            if user_lat is not None and user_lng is not None and item.latitude is not None and item.longitude is not None:
+                try:
+                    if haversine_distance_km(user_lat, user_lng, item.latitude, item.longitude) > radius_km:
+                        continue
+                except Exception:
+                    continue
+
             owner = item.owner
             if owner.id not in trader_map:
                 try:
@@ -1116,65 +1173,71 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
     def dashboard_stats(self, request):
         """Centralized dashboard statistics endpoint.
         Ensures all metrics are calculated server-side for consistency."""
+        from django.core.cache import cache
         user = request.user
-        profile, _ = UserProfile.objects.get_or_create(user=user)
+        cache_key = f"dashboard_stats:{user.id}"
 
-        # Successful swaps (completed interests)
-        completed_interests = BarterInterest.objects.filter(
-            Q(requester=user) | Q(receiver=user),
-            status='completed'
-        )
-        successful_swaps = completed_interests.count()
+        def get_stats():
+            profile, _ = UserProfile.objects.get_or_create(user=user)
 
-        # Recent swaps this month
-        from datetime import datetime
-        now = timezone.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        recent_swaps = completed_interests.filter(updated_at__gte=month_start).count()
+            from datetime import datetime
+            now = timezone.now()
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # Value saved (₹3,500 avg per swap)
-        value_saved = successful_swaps * 3500
+            # Combine all BarterInterest counts into a single aggregated query
+            from django.db.models import Count, Q
+            interest_stats = BarterInterest.objects.filter(
+                Q(requester=user) | Q(receiver=user)
+            ).aggregate(
+                successful=Count('id', filter=Q(status='completed')),
+                recent=Count('id', filter=Q(status='completed', updated_at__gte=month_start)),
+                pending=Count('id', filter=Q(status__in=['pending', 'accepted']))
+            )
+            
+            successful_swaps = interest_stats['successful'] or 0
+            recent_swaps = interest_stats['recent'] or 0
+            pending_offers = interest_stats['pending'] or 0
 
-        # Member months
-        date_joined = user.date_joined
-        member_months = max(1, (now.year - date_joined.year) * 12 + (now.month - date_joined.month))
+            # Value saved (₹3,500 avg per swap)
+            value_saved = successful_swaps * 3500
 
-        # Verification status
-        verification = {
-            'profile_complete': bool(profile.display_name and profile.bio and profile.location),
-            'phone_verified': bool(profile.phone_number),
-            'email_verified': bool(user.email),
-            'id_verified': profile.is_verified,
-            'successful_trades': successful_swaps,
-        }
+            # Member months
+            date_joined = user.date_joined
+            member_months = max(1, (now.year - date_joined.year) * 12 + (now.month - date_joined.month))
 
-        # Pending offers
-        pending_offers = BarterInterest.objects.filter(
-            Q(requester=user) | Q(receiver=user),
-            status__in=['pending', 'accepted']
-        ).count()
+            # Verification status
+            verification = {
+                'profile_complete': bool(profile.display_name and profile.bio and profile.location),
+                'phone_verified': bool(profile.phone_number),
+                'email_verified': bool(user.email),
+                'id_verified': profile.is_verified,
+                'successful_trades': successful_swaps,
+            }
 
-        # Unread messages
-        from chat.models import Message, Conversation
-        unread_messages = Message.objects.filter(
-            conversation__in=Conversation.objects.filter(participants=user),
-            read_at__isnull=True
-        ).exclude(sender=user).count()
+            # Unread messages
+            from chat.models import Message, Conversation
+            unread_messages = Message.objects.filter(
+                conversation__in=Conversation.objects.filter(participants=user),
+                read_at__isnull=True
+            ).exclude(sender=user).count()
 
-        return Response({
-            'trust_score': profile.trust_score,
-            'trust_level': profile.trust_level,
-            'successful_swaps': successful_swaps,
-            'recent_swaps': recent_swaps,
-            'value_saved': value_saved,
-            'member_since': profile.user.date_joined.strftime('%B %Y'),
-            'member_months': member_months,
-            'verification': verification,
-            'pending_offers': pending_offers,
-            'unread_messages': unread_messages,
-            'reward_points': profile.reward_points,
-            'average_rating': profile.average_rating,
-        })
+            return {
+                'trust_score': profile.trust_score,
+                'trust_level': profile.trust_level,
+                'successful_swaps': successful_swaps,
+                'recent_swaps': recent_swaps,
+                'value_saved': value_saved,
+                'member_since': profile.user.date_joined.strftime('%B %Y'),
+                'member_months': member_months,
+                'verification': verification,
+                'pending_offers': pending_offers,
+                'unread_messages': unread_messages,
+                'reward_points': profile.reward_points,
+                'average_rating': profile.average_rating,
+            }
+
+        data = cache.get_or_set(cache_key, get_stats, 30)
+        return Response(data)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def listings(self, request):
@@ -1300,6 +1363,7 @@ class CreateRazorpayOrderView(generics.GenericAPIView):
             status='PENDING',
             reference_id=order_id,
             description=f"Purchase {amount} Barter Coins",
+            price_inr=price_inr,
             metadata={"price_inr": price_inr, "is_simulated": is_simulated}
         )
 
@@ -2223,11 +2287,11 @@ class AdminDashboardStatsView(generics.GenericAPIView):
         pending_trades = Trade.objects.filter(status='pending').count()
         disputed_trades = Trade.objects.filter(status='disputed').count()
         
-        # Platform Revenue & Coins (Calculate in memory for SQLite safety)
+        # Platform Revenue & Coins (Aggregated safely at database level)
         purchase_txs = WalletTransaction.objects.filter(transaction_type='PURCHASE', status='SUCCESS')
-        revenue = sum((tx.metadata or {}).get('price_inr', 0) for tx in purchase_txs)
+        revenue = purchase_txs.aggregate(total=Sum('price_inr'))['total'] or 0.00
         coins_circulation = UserProfile.objects.aggregate(total=Sum('coin_balance'))['total'] or 0
-        coin_purchases = sum(tx.amount for tx in purchase_txs)
+        coin_purchases = purchase_txs.aggregate(total=Sum('amount'))['total'] or 0
 
         # Content Safety Stats
         flagged_images = ImageModerationResult.objects.filter(status='FLAGGED').count()

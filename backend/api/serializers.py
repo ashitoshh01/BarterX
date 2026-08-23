@@ -253,7 +253,6 @@ class BarterItemSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     category_name = serializers.ReadOnlyField(source='category.name')
     additional_images = BarterItemImageSerializer(many=True, read_only=True)
-    history_logs = ListingHistorySerializer(many=True, read_only=True)
     proposal_count = serializers.SerializerMethodField()
     chat_count = serializers.SerializerMethodField()
     distance_km = serializers.SerializerMethodField()
