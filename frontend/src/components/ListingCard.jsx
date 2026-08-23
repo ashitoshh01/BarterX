@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Heart, MapPin, Sparkles } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import api from "@/lib/api";
 
 const conditionTint = {
   New: "tint-mint",
@@ -38,11 +39,37 @@ export const ListingCard = ({ listing, compact = false }) => {
     setImgSrc(listing.images?.[0] || fallbackImage);
   }, [listing.images]);
 
+  const cardRef = React.useRef(null);
+  const viewTimer = React.useRef(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          viewTimer.current = setTimeout(() => {
+            api.post(`/api/items/${listing.id}/log-view/`).catch(() => {});
+          }, 1500);
+        } else {
+          if (viewTimer.current) clearTimeout(viewTimer.current);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (cardRef.current) observer.observe(cardRef.current);
+
+    return () => {
+      if (viewTimer.current) clearTimeout(viewTimer.current);
+      observer.disconnect();
+    };
+  }, [listing.id]);
+
   return (
     <Link
       to={`/app/listing/${listing.id}`}
       className="group block"
       data-testid={`listing-card-${listing.id}`}
+      ref={cardRef}
     >
       <div className="nb-card overflow-hidden flex flex-col h-full">
         <div className="relative aspect-[4/3] overflow-hidden bg-[var(--surface-2)]">

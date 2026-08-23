@@ -550,6 +550,13 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def log_view(self, request, pk=None):
+        instance = self.get_object()
+        from .services import log_interaction
+        log_interaction(request.user, instance, 'view')
+        return Response({"detail": "View logged."})
+
     def create(self, request, *args, **kwargs):
         # We need minimum 1 image. They can be passed as a list under 'images' or individually as files.
         images = request.FILES.getlist('images')
@@ -1701,6 +1708,9 @@ class BarterInterestViewSet(viewsets.ModelViewSet):
             coins_offered=coins_val,
         )
 
+        from .services import log_interaction
+        log_interaction(request.user, requested_item, 'offer_sent')
+
         from chat.models import Conversation
         room, room_created = Conversation.objects.get_or_create(
             barter_interest=interest,
@@ -2079,8 +2089,13 @@ class TradeViewSet(viewsets.ModelViewSet):
                 trade.status = 'completed'
                 trade.completed_at = timezone.now()
 
+                from .services import log_interaction
+                log_interaction(trade.requester, trade.requested_listing, 'traded')
+                if trade.offered_listing:
+                    log_interaction(trade.receiver, trade.offered_listing, 'traded')
+
                 # Escrow coin settlement
-                proposal = trade.barter_interest
+                proposal = trade.proposal
                 if proposal and proposal.coins_offered != 0:
                     from .coin_service import transfer_coins_for_trade
                     transfer_coins_for_trade(trade)
@@ -2176,6 +2191,14 @@ class SavedItemViewSet(viewsets.ModelViewSet):
         if not created:
             saved.delete()
             return Response({"saved": False, "item_id": item_id})
+
+        from .services import log_interaction
+        try:
+            item = BarterItem.objects.get(id=item_id)
+            log_interaction(request.user, item, 'save')
+        except BarterItem.DoesNotExist:
+            pass
+
         return Response({"saved": True, "item_id": item_id})
 
 

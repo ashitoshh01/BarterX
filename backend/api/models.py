@@ -683,4 +683,24 @@ class AdminActionLog(models.Model):
         return f"AdminAction: {self.admin.username} - {self.action} at {self.created_at}"
 
 
+class UserItemInteraction(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='item_interactions')
+    item = models.ForeignKey('BarterItem', on_delete=models.CASCADE, related_name='user_interactions')
+    interaction_type = models.CharField(max_length=20, choices=[
+        ('view', 'View'),
+        ('save', 'Save/Favorite'),
+        ('offer_sent', 'Offer Sent'),
+        ('traded', 'Traded'),
+        ('hidden', 'Hidden/Not Interested'),
+    ])
+    weight = models.FloatField(default=1.0)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['item', 'interaction_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.interaction_type} - {self.item.title}"
