@@ -1,10 +1,10 @@
 {
     "snyk.advanced.autoSelectOrganization": true,
-    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
-    "python.pythonPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/bin/python",
+    "python.pythonPath": "${workspaceFolder}/backend/venv/bin/python",
     "python.analysis.extraPaths": [
         "${workspaceFolder}/backend",
-        "${workspaceFolder}/backend/venv/Lib/site-packages"
+        "${workspaceFolder}/backend/venv/lib/python3.12/site-packages"
     ],
     "python.analysis.venvPath": "${workspaceFolder}/backend",
     "python.venvPath": "${workspaceFolder}/backend",
