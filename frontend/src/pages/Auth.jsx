@@ -25,15 +25,15 @@ const isGoogleAuthEnabled = Boolean(GOOGLE_CLIENT_ID && !isPlaceholder(GOOGLE_CL
 // ─── Input Field Component ─────────────────────────────────────────────────
 const AuthInput = ({ label, icon: Icon, error, ...props }) => (
   <div>
-    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">
+    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">
       {label}
     </label>
-    <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden transition-all ${error ? "border-red-500/60" : ""}`}>
-      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
-        <Icon size={15} strokeWidth={2} />
+    <div className={`flex items-center nb-input gap-2.5 p-0 overflow-hidden transition-all ${error ? "border-red-500/60" : ""}`}>
+      <span className="flex items-center justify-center w-10 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
+        <Icon size={16} strokeWidth={2} />
       </span>
       <input
-        className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
+        className="flex-1 bg-transparent outline-none py-3 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
         {...props}
       />
     </div>
@@ -216,21 +216,21 @@ const Auth = () => {
       <div className="min-h-screen grid md:grid-cols-2 relative overflow-hidden" style={{ background: "var(--bg)" }}>
 
         {/* Left decorative panel */}
-        <div className="hidden md:flex flex-col justify-between p-10 relative overflow-hidden border-r border-[var(--border)] bg-[var(--surface-2)]">
-          <Link to="/" className="relative z-10"><LogoWordmark size="text-lg" /></Link>
+        <div className="hidden md:flex flex-col p-10 relative overflow-hidden border-r border-[var(--border)] bg-[var(--surface-2)]">
+          <Link to="/" className="relative z-10 mb-12"><LogoWordmark size="text-sm" markSize={18} /></Link>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="relative z-10 space-y-6 my-auto py-4"
+            className="relative z-10 space-y-6 flex-1"
           >
             <div>
-              <h1 className="font-display text-5xl lg:text-6xl leading-[0.9] text-[var(--text)]">
+              <h1 className="font-display text-4xl lg:text-[44px] leading-[0.95] text-[var(--text)]">
                 Trade<br />like it's<br />
                 <span className="font-serif-i italic text-[var(--lime)]">1892.</span>
               </h1>
-              <p className="mt-3 max-w-md text-[var(--text-2)] text-base">
+              <p className="mt-2 max-w-[380px] text-[var(--text-2)] text-sm">
                 Money-free marketplace. Real people. Real swaps. Gamified for you.
               </p>
             </div>
@@ -240,41 +240,34 @@ const Auth = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-white p-1.5 shadow-lg group max-w-md"
+              className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-white p-1 shadow-sm group max-w-[380px]"
             >
-              <div className="relative w-full h-48 lg:h-60 rounded-xl overflow-hidden">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden">
                 <img
-                  src="/match_visual.png"
-                  alt="Barter AI Match Visual"
+                  src="/barter_editorial_marketplace.png"
+                  alt="Editorial Marketplace visual"
                   className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-40" />
-
-                {/* Floating Badge on Image */}
-                <div className="absolute bottom-3 left-3 tint-lime border border-lime-400/40 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-lg flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[var(--lime)] animate-ping" />
-                  <span className="text-[10px] font-mono2 font-bold text-[var(--text)] uppercase tracking-wider">AI Swap Engine · 98% Match Rate</span>
-                </div>
               </div>
             </motion.div>
           </motion.div>
 
-          <div className="relative z-10 flex gap-2 flex-wrap">
-            <span className="nb-tag tint-lime">◆ SKATE</span>
-            <span className="nb-tag tint-amber">◆ CAMERAS</span>
-            <span className="nb-tag tint-mint">◆ PLANTS</span>
-            <span className="nb-tag tint-purple">◆ ART</span>
-            <span className="nb-tag tint-blue">◆ CODE</span>
+          <div className="relative z-10 flex gap-2 flex-wrap mt-auto pt-6">
+            <span className="nb-tag tint-lime text-[9px] py-1">◆ SKATE</span>
+            <span className="nb-tag tint-amber text-[9px] py-1">◆ CAMERAS</span>
+            <span className="nb-tag tint-mint text-[9px] py-1">◆ PLANTS</span>
+            <span className="nb-tag tint-purple text-[9px] py-1">◆ ART</span>
+            <span className="nb-tag tint-blue text-[9px] py-1">◆ CODE</span>
           </div>
         </div>
 
         {/* Right form panel */}
         <div className="flex items-center justify-center p-6 md:p-10 relative overflow-y-auto bg-white">
-          <div className="w-full max-w-md relative py-8">
-            <div className="md:hidden mb-10"><Link to="/"><LogoWordmark /></Link></div>
+          <div className="w-full max-w-[380px] relative py-6">
+            <div className="md:hidden mb-8"><Link to="/"><LogoWordmark size="text-sm" markSize={18} /></Link></div>
 
             {/* Tab switcher */}
-            <div className="backdrop-blur bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 flex mb-8 w-fit">
+            <div className="backdrop-blur bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 flex mb-6 w-fit">
               {["signup", "login"].map(tab => (
                 <button
                   key={tab}
@@ -288,12 +281,12 @@ const Auth = () => {
             </div>
 
             {/* Heading */}
-            <div className="mb-8">
-              <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3 flex items-center gap-2">
-                <span className="w-6 h-px bg-[var(--lime)]" />
+            <div className="mb-6">
+              <div className="font-mono2 text-[9px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-2.5 flex items-center gap-2">
+                <span className="w-4 h-px bg-[var(--lime)]" />
                 {mode === "login" ? "WELCOME BACK" : signupStep === "otp" ? "VERIFY EMAIL" : "NEW HERE"}
               </div>
-              <h2 className="font-display text-5xl md:text-6xl text-[var(--text)] leading-[0.95]">
+              <h2 className="font-display text-3xl md:text-4xl text-[var(--text)] leading-[1]">
                 {mode === "login" ? (
                   <>Log <span className="font-serif-i italic">back</span> in.</>
                 ) : signupStep === "otp" ? (
@@ -307,7 +300,7 @@ const Auth = () => {
             {/* Google Sign-In (only shown during login or step 1 signup) */}
             {mode === "login" || signupStep === "form" ? (
               <>
-                <div className="mb-6">
+                <div className="mb-5">
                   {isGoogleAuthEnabled ? (
                     <div className="w-full">
                       <GoogleLogin
@@ -338,9 +331,9 @@ const Auth = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-4 mb-5">
                   <div className="flex-1 h-px bg-[var(--surface-3)]" />
-                  <span className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">or</span>
+                  <span className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">or</span>
                   <div className="flex-1 h-px bg-[var(--surface-3)]" />
                 </div>
               </>
@@ -356,7 +349,7 @@ const Auth = () => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                   onSubmit={handleLogin}
-                  className="space-y-4"
+                  className="space-y-3"
                   data-testid="auth-form"
                 >
                   <AuthInput
@@ -371,16 +364,16 @@ const Auth = () => {
                     data-testid="auth-email"
                   />
                   <div>
-                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Password</label>
-                    <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
-                        <Lock size={15} strokeWidth={2} />
+                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">Password</label>
+                    <div className={`flex items-center nb-input gap-2.5 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
+                      <span className="flex items-center justify-center w-10 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
+                        <Lock size={16} strokeWidth={2} />
                       </span>
                       <input
                         type={showPassword ? "text" : "password"}
                         value={loginForm.password}
                         onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                        className="flex-1 bg-transparent outline-none py-[0.9rem] text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
+                        className="flex-1 bg-transparent outline-none py-3 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                         placeholder="••••••••"
                         autoComplete="current-password"
                         data-testid="auth-password"
@@ -392,7 +385,7 @@ const Auth = () => {
                     {errors.password && <p className="mt-1 text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {errors.password}</p>}
                   </div>
 
-                  <NbButton type="submit" disabled={loading} className="w-full py-4 text-base" data-testid="auth-submit">
+                  <NbButton type="submit" disabled={loading} className="w-full py-3.5 text-sm" data-testid="auth-submit">
                     {loading ? "Signing in..." : "Log in"} <ArrowRight size={18} strokeWidth={2.5} />
                   </NbButton>
 
@@ -418,7 +411,7 @@ const Auth = () => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                   onSubmit={handleRequestOTP}
-                  className="space-y-4"
+                  className="space-y-3"
                   data-testid="auth-form"
                 >
                   <AuthInput
@@ -455,16 +448,16 @@ const Auth = () => {
                     data-testid="auth-email"
                   />
                   <div>
-                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Password</label>
-                    <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
-                        <Lock size={15} strokeWidth={2} />
+                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">Password</label>
+                    <div className={`flex items-center nb-input gap-2.5 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
+                      <span className="flex items-center justify-center w-10 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
+                        <Lock size={16} strokeWidth={2} />
                       </span>
                       <input
                         type={showPassword ? "text" : "password"}
                         value={signupForm.password}
                         onChange={e => setSignupForm({ ...signupForm, password: e.target.value })}
-                        className="flex-1 bg-transparent outline-none py-[0.9rem] text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
+                        className="flex-1 bg-transparent outline-none py-3 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                         placeholder="Min 8 characters"
                         autoComplete="new-password"
                         data-testid="auth-password"
@@ -476,18 +469,18 @@ const Auth = () => {
                     {errors.password && <p className="mt-1 text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {errors.password}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Confirm Password</label>
-                    <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.confirm ? "border-red-500/60" : signupForm.confirm && signupForm.confirm === signupForm.password ? "border-green-500/40" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
+                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">Confirm Password</label>
+                    <div className={`flex items-center nb-input gap-2.5 p-0 overflow-hidden ${errors.confirm ? "border-red-500/60" : signupForm.confirm && signupForm.confirm === signupForm.password ? "border-green-500/40" : ""}`}>
+                      <span className="flex items-center justify-center w-10 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         {signupForm.confirm && signupForm.confirm === signupForm.password
-                          ? <CheckCircle2 size={15} className="text-green-400" />
-                          : <Lock size={15} strokeWidth={2} />}
+                          ? <CheckCircle2 size={16} className="text-green-400" />
+                          : <Lock size={16} strokeWidth={2} />}
                       </span>
                       <input
                         type={showPassword ? "text" : "password"}
                         value={signupForm.confirm}
                         onChange={e => setSignupForm({ ...signupForm, confirm: e.target.value })}
-                        className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
+                        className="flex-1 bg-transparent outline-none py-3 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                         placeholder="Repeat password"
                         autoComplete="new-password"
                         data-testid="auth-confirm"
@@ -527,11 +520,11 @@ const Auth = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">
+                    <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">
                       6-Digit OTP Code
                     </label>
-                    <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.otp ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
+                    <div className={`flex items-center nb-input gap-2.5 p-0 overflow-hidden ${errors.otp ? "border-red-500/60" : ""}`}>
+                      <span className="flex items-center justify-center w-10 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         <KeyRound size={16} strokeWidth={2} />
                       </span>
                       <input
@@ -539,7 +532,7 @@ const Auth = () => {
                         maxLength={6}
                         value={otp}
                         onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
-                        className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] text-xl font-bold font-mono2 tracking-[0.4em] placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:text-[var(--text-3)]"
+                        className="flex-1 bg-transparent outline-none py-3 pr-4 text-[var(--text)] text-lg font-bold font-mono2 tracking-[0.4em] placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:text-[var(--text-3)]"
                         placeholder="123456"
                         autoFocus
                         data-testid="auth-otp-input"
@@ -564,7 +557,7 @@ const Auth = () => {
                     </button>
                   </div>
 
-                  <NbButton type="submit" disabled={loading} className="w-full py-4 text-base" data-testid="auth-otp-submit">
+                  <NbButton type="submit" disabled={loading} className="w-full py-3.5 text-sm" data-testid="auth-otp-submit">
                     {loading ? "Verifying..." : "Verify Code & Create Account"} <ArrowRight size={18} strokeWidth={2.5} />
                   </NbButton>
                 </motion.form>

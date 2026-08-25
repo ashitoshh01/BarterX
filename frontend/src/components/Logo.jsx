@@ -47,9 +47,9 @@ export const LogoMark = ({ size = 40, className = "", accent = "#C8F000", ink = 
   </svg>
 );
 
-export const LogoWordmark = ({ className = "", size = "text-2xl", showDot = true }) => (
+export const LogoWordmark = ({ className = "", size = "text-2xl", showDot = true, markSize = 32 }) => (
   <div className={`flex items-center gap-2.5 ${className}`} data-testid="logo-wordmark">
-    <LogoMark size={32} />
+    <LogoMark size={markSize} />
     <span className={`font-display ${size} tracking-tight leading-none text-[var(--text)]`}>
       baarter{showDot && <span className="text-[var(--lime)]">.</span>}
     </span>
