@@ -1,0 +1,2101 @@
+{
+  "communities": {
+    "0": [
+      "backend_api_models_barteritem",
+      "backend_api_models_barteritem_str",
+      "backend_api_models_dealconfirmation",
+      "backend_api_models_dealconfirmation_is_completed",
+      "backend_api_models_dealconfirmation_str",
+      "backend_api_serializers_dealconfirmationserializer",
+      "backend_api_tests_enhancedplatformtests_test_chat_limit_rate_limiting",
+      "backend_chat_consumers",
+      "backend_chat_consumers_get_online_status",
+      "backend_chat_models",
+      "backend_chat_models_conversation",
+      "backend_chat_models_conversation_str",
+      "backend_chat_models_message",
+      "backend_chat_models_message_str",
+      "backend_chat_models_meta",
+      "backend_chat_permissions",
+      "backend_chat_permissions_isconversationparticipant",
+      "backend_chat_permissions_isconversationparticipant_has_object_permission",
+      "backend_chat_permissions_rationale_4",
+      "backend_chat_serializers",
+      "backend_chat_serializers_chatlistingserializer",
+      "backend_chat_serializers_chatlistingserializer_get_image_url",
+      "backend_chat_serializers_chatuserserializer",
+      "backend_chat_serializers_chatuserserializer_get_avatar",
+      "backend_chat_serializers_chatuserserializer_get_display_name",
+      "backend_chat_serializers_chatuserserializer_get_last_seen",
+      "backend_chat_serializers_chatuserserializer_get_online_status",
+      "backend_chat_serializers_conversationserializer",
+      "backend_chat_serializers_conversationserializer_get_last_message_detail",
+      "backend_chat_serializers_conversationserializer_get_unread_count",
+      "backend_chat_serializers_messageserializer",
+      "backend_chat_serializers_messageserializer_get_attachment_url",
+      "backend_chat_serializers_messageserializer_get_reply_to_detail",
+      "backend_chat_serializers_messageserializer_get_sender_avatar",
+      "backend_chat_serializers_messageserializer_get_sender_display_name",
+      "backend_chat_serializers_meta",
+      "backend_chat_services",
+      "backend_chat_services_check_and_update_chat_limit",
+      "backend_chat_services_create_message",
+      "backend_chat_services_get_user_group_name",
+      "backend_chat_services_mark_messages_as_delivered",
+      "backend_chat_services_mark_messages_as_read",
+      "backend_chat_services_rationale_108",
+      "backend_chat_services_rationale_122",
+      "backend_chat_services_rationale_31",
+      "backend_chat_services_rationale_85",
+      "backend_chat_utils",
+      "backend_chat_utils_rationale_16",
+      "backend_chat_utils_validate_chat_attachment",
+      "backend_chat_views",
+      "backend_chat_views_conversationviewset",
+      "backend_chat_views_conversationviewset_confirmation_status",
+      "backend_chat_views_conversationviewset_get_or_create_for_listing",
+      "backend_chat_views_conversationviewset_get_queryset",
+      "backend_chat_views_conversationviewset_messages",
+      "backend_chat_views_conversationviewset_request_confirmation",
+      "backend_chat_views_conversationviewset_respond_confirmation",
+      "backend_chat_views_conversationviewset_search",
+      "backend_chat_views_conversationviewset_send_message",
+      "backend_chat_views_py_action",
+      "backend_chat_views_rationale_103",
+      "backend_chat_views_rationale_116",
+      "backend_chat_views_rationale_166",
+      "backend_chat_views_rationale_180",
+      "backend_chat_views_rationale_251",
+      "backend_chat_views_rationale_27",
+      "backend_chat_views_rationale_46",
+      "backend_generate_test_data",
+      "backend_generate_test_data_generate_data"
+    ],
+    "1": [
+      "backend_api_ai_service",
+      "backend_api_ai_service_calculate_distance",
+      "backend_api_ai_service_extract_keywords",
+      "backend_api_ai_service_find_3_party_loops",
+      "backend_api_ai_service_get_ai_matches",
+      "backend_api_ai_service_get_fallback_matches",
+      "backend_api_ai_service_get_gemini_matches",
+      "backend_api_ai_service_is_interested_in",
+      "backend_api_ai_service_rationale_137",
+      "backend_api_ai_service_rationale_19",
+      "backend_api_ai_service_rationale_26",
+      "backend_api_ai_service_rationale_43",
+      "backend_api_distance_service",
+      "backend_api_distance_service_format_distance",
+      "backend_api_distance_service_haversine_distance_km",
+      "backend_api_distance_service_rationale_11",
+      "backend_api_distance_service_rationale_40",
+      "backend_api_models_useriteminteraction",
+      "backend_api_recommendations",
+      "backend_api_recommendations_category_affinity",
+      "backend_api_recommendations_diversify",
+      "backend_api_recommendations_generate_candidates",
+      "backend_api_recommendations_get_recommendations",
+      "backend_api_recommendations_get_user_category_affinities",
+      "backend_api_recommendations_proximity_score",
+      "backend_api_recommendations_rationale_101",
+      "backend_api_recommendations_rationale_13",
+      "backend_api_recommendations_rationale_145",
+      "backend_api_recommendations_rationale_157",
+      "backend_api_recommendations_rationale_169",
+      "backend_api_recommendations_rationale_194",
+      "backend_api_recommendations_rationale_215",
+      "backend_api_recommendations_rationale_241",
+      "backend_api_recommendations_recency_decay",
+      "backend_api_recommendations_score_item_for_user",
+      "backend_api_services",
+      "backend_api_tasks",
+      "backend_api_tasks_rationale_14",
+      "backend_api_tasks_refresh_user_recommendations",
+      "backend_api_views_adminimagemoderationqueueviewset_get_queryset",
+      "backend_api_views_airecommendationviewset_loops",
+      "backend_api_views_airecommendationviewset_matches",
+      "backend_api_views_barteritemviewset_list",
+      "backend_api_views_barteritemviewset_nearby",
+      "backend_api_views_rationale_711",
+      "backend_api_views_userprofileviewset_nearby_traders",
+      "backend_config_celery",
+      "backend_config_init"
+    ],
+    "2": [
+      "asyncwebsocketconsumer",
+      "backend_chat_consumers_chatconsumer",
+      "backend_chat_consumers_chatconsumer_auth_timeout",
+      "backend_chat_consumers_chatconsumer_broadcast_presence_change",
+      "backend_chat_consumers_chatconsumer_channel_event",
+      "backend_chat_consumers_chatconsumer_check_user_chat_limit",
+      "backend_chat_consumers_chatconsumer_connect",
+      "backend_chat_consumers_chatconsumer_create_and_broadcast_message",
+      "backend_chat_consumers_chatconsumer_delete_message_db",
+      "backend_chat_consumers_chatconsumer_disconnect",
+      "backend_chat_consumers_chatconsumer_edit_message_db",
+      "backend_chat_consumers_chatconsumer_get_user_conversations",
+      "backend_chat_consumers_chatconsumer_get_user_display_name",
+      "backend_chat_consumers_chatconsumer_handle_delete_message",
+      "backend_chat_consumers_chatconsumer_handle_edit_message",
+      "backend_chat_consumers_chatconsumer_handle_join_room",
+      "backend_chat_consumers_chatconsumer_handle_leave_room",
+      "backend_chat_consumers_chatconsumer_handle_read_receipt",
+      "backend_chat_consumers_chatconsumer_handle_send_message",
+      "backend_chat_consumers_chatconsumer_handle_typing",
+      "backend_chat_consumers_chatconsumer_is_conversation_member",
+      "backend_chat_consumers_chatconsumer_mark_messages_delivered_db",
+      "backend_chat_consumers_chatconsumer_mark_messages_read_db",
+      "backend_chat_consumers_chatconsumer_receive",
+      "backend_chat_consumers_chatconsumer_setup_authenticated_user",
+      "backend_chat_consumers_py_database_sync_to_async",
+      "backend_chat_consumers_rationale_105",
+      "backend_chat_consumers_rationale_37",
+      "backend_chat_consumers_rationale_385",
+      "backend_chat_consumers_rationale_411",
+      "backend_chat_consumers_set_user_db_offline",
+      "backend_chat_middleware",
+      "backend_chat_middleware_get_user_from_token",
+      "backend_chat_middleware_jwtauthmiddleware",
+      "backend_chat_middleware_jwtauthmiddleware_call",
+      "backend_chat_middleware_jwtauthmiddleware_init",
+      "backend_chat_middleware_py_database_sync_to_async",
+      "backend_chat_middleware_rationale_1",
+      "backend_chat_middleware_rationale_37",
+      "backend_chat_routing",
+      "backend_chat_services_get_room_group_name",
+      "backend_config_asgi",
+      "backend_config_asgi_rationale_1"
+    ],
+    "3": [
+      "frontend_package_resolutions",
+      "frontend_package_resolutions_anymatch_picomatch",
+      "frontend_package_resolutions_axios_form_data",
+      "frontend_package_resolutions_babel_plugin_transform_modules_systemjs",
+      "frontend_package_resolutions_cosmiconfig_yaml",
+      "frontend_package_resolutions_css_loader_postcss",
+      "frontend_package_resolutions_css_minimizer_webpack_plugin_postcss",
+      "frontend_package_resolutions_cssnano_yaml",
+      "frontend_package_resolutions_diff",
+      "frontend_package_resolutions_eslint_eslintrc_js_yaml",
+      "frontend_package_resolutions_eslint_js_yaml",
+      "frontend_package_resolutions_eslint_plugin_kit",
+      "frontend_package_resolutions_fast_uri",
+      "frontend_package_resolutions_filelist_minimatch",
+      "frontend_package_resolutions_flatted",
+      "frontend_package_resolutions_follow_redirects",
+      "frontend_package_resolutions_istanbuljs_load_nyc_config_js_yaml",
+      "frontend_package_resolutions_jest_util_picomatch",
+      "frontend_package_resolutions_jsdom_form_data",
+      "frontend_package_resolutions_jsonpath",
+      "frontend_package_resolutions_micromatch_picomatch",
+      "frontend_package_resolutions_node_forge",
+      "frontend_package_resolutions_nth_check",
+      "frontend_package_resolutions_path_to_regexp",
+      "frontend_package_resolutions_postcss_load_config_yaml",
+      "frontend_package_resolutions_postcss_svgo_svgo",
+      "frontend_package_resolutions_qs",
+      "frontend_package_resolutions_react_router",
+      "frontend_package_resolutions_react_scripts_postcss",
+      "frontend_package_resolutions_readdirp_picomatch",
+      "frontend_package_resolutions_resolve_url_loader",
+      "frontend_package_resolutions_resolve_url_loader_postcss",
+      "frontend_package_resolutions_rollup",
+      "frontend_package_resolutions_serialize_javascript",
+      "frontend_package_resolutions_shell_quote",
+      "frontend_package_resolutions_svgo_js_yaml",
+      "frontend_package_resolutions_tinyglobby_picomatch",
+      "frontend_package_resolutions_tootallnate_once",
+      "frontend_package_resolutions_underscore",
+      "frontend_package_resolutions_uuid",
+      "frontend_package_resolutions_webpack_dev_server",
+      "frontend_package_resolutions_webpack_dev_server_ws"
+    ],
+    "4": [
+      "autoprefixer",
+      "babel_plugin_proposal_private_property_in_object",
+      "craco_craco",
+      "dotenv",
+      "eslint",
+      "eslint_js",
+      "eslint_plugin_import",
+      "eslint_plugin_jsx_a11y",
+      "eslint_plugin_react",
+      "eslint_plugin_react_hooks",
+      "frontend_package_devdependencies",
+      "frontend_package_devdependencies_autoprefixer",
+      "frontend_package_devdependencies_babel_plugin_proposal_private_property_in_object",
+      "frontend_package_devdependencies_craco_craco",
+      "frontend_package_devdependencies_dotenv",
+      "frontend_package_devdependencies_eslint",
+      "frontend_package_devdependencies_eslint_js",
+      "frontend_package_devdependencies_eslint_plugin_import",
+      "frontend_package_devdependencies_eslint_plugin_jsx_a11y",
+      "frontend_package_devdependencies_eslint_plugin_react",
+      "frontend_package_devdependencies_eslint_plugin_react_hooks",
+      "frontend_package_devdependencies_globals",
+      "frontend_package_devdependencies_postcss",
+      "frontend_package_devdependencies_tailwindcss",
+      "frontend_package_devdependencies_types_lodash",
+      "frontend_package_devdependencies_typescript",
+      "frontend_package_json_tailwindcss",
+      "globals",
+      "postcss",
+      "types_lodash",
+      "typescript"
+    ],
+    "5": [
+      "backend_api_models_cointransaction",
+      "backend_api_models_cointransaction_str",
+      "backend_api_urls",
+      "backend_api_views_airecommendationviewset",
+      "backend_api_views_categoryviewset",
+      "backend_api_views_categoryviewset_get_queryset",
+      "backend_api_views_coinpackagesview",
+      "backend_api_views_coinpackagesview_get",
+      "backend_api_views_cointransactionviewset",
+      "backend_api_views_cointransactionviewset_get_queryset",
+      "backend_api_views_createrazorpayorderview",
+      "backend_api_views_createrazorpayorderview_post",
+      "backend_api_views_flexloginview",
+      "backend_api_views_purchasecoinsview",
+      "backend_api_views_purchasecoinsview_post",
+      "backend_api_views_rationale_73",
+      "backend_api_views_rationale_79",
+      "backend_api_views_redeemcoinsview",
+      "backend_api_views_redeemcoinsview_post",
+      "backend_api_views_registerview",
+      "backend_api_views_simpleregisterview",
+      "backend_api_views_simpleregisterview_post",
+      "backend_api_views_walletoverviewview",
+      "backend_api_views_walletoverviewview_get",
+      "tokenobtainpairview"
+    ],
+    "6": [
+      "backend_api_models_barteritemimage",
+      "backend_api_models_barteritemimage_str",
+      "backend_api_models_disputeevidence",
+      "backend_api_models_disputeevidence_str",
+      "backend_api_models_listinghistory",
+      "backend_api_models_listinghistory_str",
+      "backend_api_models_notification",
+      "backend_api_models_notification_str",
+      "backend_api_serializers",
+      "backend_api_serializers_barteritemimageserializer",
+      "backend_api_serializers_barteritemlistserializer",
+      "backend_api_serializers_barteritemlistserializer_get_owner",
+      "backend_api_serializers_categoryserializer",
+      "backend_api_serializers_cointransactionserializer",
+      "backend_api_serializers_disputeevidenceserializer",
+      "backend_api_serializers_imagemoderationresultserializer",
+      "backend_api_serializers_listinghistoryserializer",
+      "backend_api_serializers_meta",
+      "backend_api_serializers_notificationserializer",
+      "backend_api_serializers_rationale_214",
+      "backend_api_serializers_saveditemserializer",
+      "backend_api_serializers_userreviewserializer",
+      "backend_api_serializers_wallettransactionserializer"
+    ],
+    "7": [
+      "frontend_src_context_appcontext",
+      "frontend_src_context_appcontext_appcontext",
+      "frontend_src_context_appcontext_appprovider",
+      "frontend_src_context_appcontext_default_user",
+      "frontend_src_context_appcontext_fallback_listings",
+      "frontend_src_context_appcontext_getabsoluteurl",
+      "frontend_src_context_appcontext_mapcategory",
+      "frontend_src_context_appcontext_mapcontract",
+      "frontend_src_context_appcontext_mapconversation",
+      "frontend_src_context_appcontext_mapdispute",
+      "frontend_src_context_appcontext_mapinteresttoproposal",
+      "frontend_src_context_appcontext_mapitemtolisting",
+      "frontend_src_context_appcontext_mapmessage",
+      "frontend_src_context_appcontext_mapnotification",
+      "frontend_src_context_appcontext_mapreview",
+      "frontend_src_context_appcontext_mapuserprofile",
+      "frontend_src_context_appcontext_mapwallettransaction",
+      "frontend_src_context_appcontext_notif_type_map",
+      "frontend_src_context_appcontext_parsebackenderror",
+      "frontend_src_context_appcontext_rationale_547",
+      "frontend_src_context_appcontext_useapp"
+    ],
+    "8": [
+      "backend_api_models_category",
+      "backend_api_models_category_delete",
+      "backend_api_models_category_save",
+      "backend_api_models_category_str",
+      "backend_api_models_rationale_101",
+      "backend_api_models_rationale_106",
+      "backend_api_models_rationale_96",
+      "backend_api_models_userprofile",
+      "backend_api_models_userprofile_add_coins",
+      "backend_api_models_userprofile_add_points",
+      "backend_api_models_userprofile_adjust_trust",
+      "backend_api_models_userprofile_str",
+      "backend_api_models_userprofile_trust_level",
+      "backend_api_tasks_deactivate_expired_boosts",
+      "backend_api_tasks_rationale_7",
+      "backend_seed",
+      "backend_seed_large_dataset",
+      "backend_seed_large_dataset_seed_data",
+      "backend_test_changes",
+      "backend_test_changes_run_tests"
+    ],
+    "9": [
+      "backend_api_tests_barterinterestworkflowtests",
+      "backend_api_tests_barterinterestworkflowtests_setup",
+      "backend_api_tests_barterinterestworkflowtests_test_accept_reserves_listings_and_cancellation_unlocks_them",
+      "backend_api_tests_barterinterestworkflowtests_test_coin_transaction_ledger_and_balance",
+      "backend_api_tests_barterinterestworkflowtests_test_contract_auto_creation_and_dual_signing",
+      "backend_api_tests_barterinterestworkflowtests_test_deal_confirmation_dual_confirm",
+      "backend_api_tests_barterinterestworkflowtests_test_dispute_creation_and_escalation",
+      "backend_api_tests_barterinterestworkflowtests_test_invalid_status_transition_is_rejected",
+      "backend_api_tests_barterinterestworkflowtests_test_p2p_coin_transfer_insufficient_balance",
+      "backend_api_tests_barterinterestworkflowtests_test_p2p_coin_transfer_success",
+      "backend_api_tests_barterinterestworkflowtests_test_p2p_coin_transfer_to_self",
+      "backend_api_tests_barterinterestworkflowtests_test_trust_score_adjustment_and_level_property",
+      "backend_api_tests_rationale_104",
+      "backend_api_tests_rationale_137",
+      "backend_api_tests_rationale_157",
+      "backend_api_tests_rationale_177",
+      "backend_api_tests_rationale_199",
+      "backend_api_tests_rationale_231",
+      "backend_api_tests_rationale_250",
+      "backend_api_tests_rationale_70"
+    ],
+    "10": [
+      "anonratethrottle",
+      "backend_api_models_contract",
+      "backend_api_models_contract_str",
+      "backend_api_pdf_service",
+      "backend_api_pdf_service_generate_contract_pdf",
+      "backend_api_pdf_service_rationale_10",
+      "backend_api_serializers_contractserializer",
+      "backend_api_serializers_contractserializer_get_party_a_display_name",
+      "backend_api_serializers_contractserializer_get_party_b_display_name",
+      "backend_api_views",
+      "backend_api_views_contractviewset",
+      "backend_api_views_contractviewset_download_pdf",
+      "backend_api_views_contractviewset_get_queryset",
+      "backend_api_views_isadminuserorstaff",
+      "backend_api_views_isadminuserorstaff_has_permission",
+      "backend_api_views_loginratethrottle",
+      "backend_api_views_otpratethrottle",
+      "backend_api_views_registerratethrottle"
+    ],
+    "11": [
+      "backend_api_coin_service",
+      "backend_api_coin_service_broadcast_wallet_update",
+      "backend_api_coin_service_rationale_10",
+      "backend_api_coin_service_rationale_111",
+      "backend_api_coin_service_rationale_25",
+      "backend_api_coin_service_rationale_74",
+      "backend_api_coin_service_release_coins_for_proposal",
+      "backend_api_coin_service_reserve_coins_for_proposal",
+      "backend_api_coin_service_transfer_coins_for_trade",
+      "backend_api_models_tradecoinreservation",
+      "backend_api_models_tradecoinreservation_str",
+      "backend_api_models_wallettransaction",
+      "backend_api_models_wallettransaction_str",
+      "backend_api_tests_enhancedplatformtests_test_coin_reservation_and_release",
+      "backend_api_views_cointransferview",
+      "backend_api_views_cointransferview_post",
+      "backend_api_views_verifyrazorpaypaymentview",
+      "backend_api_views_verifyrazorpaypaymentview_post"
+    ],
+    "12": [
+      "frontend_components",
+      "frontend_components_aliases",
+      "frontend_components_aliases_components",
+      "frontend_components_aliases_hooks",
+      "frontend_components_aliases_lib",
+      "frontend_components_aliases_ui",
+      "frontend_components_aliases_utils",
+      "frontend_components_iconlibrary",
+      "frontend_components_rsc",
+      "frontend_components_schema",
+      "frontend_components_style",
+      "frontend_components_tailwind",
+      "frontend_components_tailwind_basecolor",
+      "frontend_components_tailwind_config",
+      "frontend_components_tailwind_css",
+      "frontend_components_tailwind_cssvariables",
+      "frontend_components_tailwind_prefix",
+      "frontend_components_tsx"
+    ],
+    "13": [
+      "backend_api_admin",
+      "backend_api_admin_barterinterestadmin",
+      "backend_api_admin_barteritemadmin",
+      "backend_api_admin_categoryadmin",
+      "backend_api_admin_conversationadmin",
+      "backend_api_admin_dealconfirmationadmin",
+      "backend_api_admin_financialauditlogadmin",
+      "backend_api_admin_financialauditlogadmin_has_add_permission",
+      "backend_api_admin_financialauditlogadmin_has_change_permission",
+      "backend_api_admin_financialauditlogadmin_has_delete_permission",
+      "backend_api_admin_messageadmin",
+      "backend_api_admin_notificationadmin",
+      "backend_api_admin_userprofileadmin",
+      "backend_api_admin_userreviewadmin",
+      "backend_api_models_financialauditlog",
+      "backend_api_models_financialauditlog_str",
+      "register"
+    ],
+    "14": [
+      "backend_api_services_log_interaction",
+      "backend_api_views_admindisputemanagementviewset_resolve",
+      "backend_api_views_adminimagemoderationqueueviewset_action",
+      "backend_api_views_adminlistingmanagementviewset_manage",
+      "backend_api_views_adminusermanagementviewset_manage",
+      "backend_api_views_barteritemviewset_log_view",
+      "backend_api_views_contractviewset_sign",
+      "backend_api_views_disputeviewset_escalate",
+      "backend_api_views_notificationviewset",
+      "backend_api_views_notificationviewset_get_queryset",
+      "backend_api_views_notificationviewset_mark_all_read",
+      "backend_api_views_notificationviewset_read",
+      "backend_api_views_notificationviewset_unread_count",
+      "backend_api_views_py_action",
+      "backend_api_views_rationale_1977",
+      "backend_api_views_saveditemviewset_toggle",
+      "backend_api_views_tradeviewset_update_logistics"
+    ],
+    "15": [
+      "frontend_src_components_ui_menubar",
+      "frontend_src_components_ui_menubar_menubar",
+      "frontend_src_components_ui_menubar_menubarcheckboxitem",
+      "frontend_src_components_ui_menubar_menubarcontent",
+      "frontend_src_components_ui_menubar_menubargroup",
+      "frontend_src_components_ui_menubar_menubaritem",
+      "frontend_src_components_ui_menubar_menubarlabel",
+      "frontend_src_components_ui_menubar_menubarmenu",
+      "frontend_src_components_ui_menubar_menubarportal",
+      "frontend_src_components_ui_menubar_menubarradiogroup",
+      "frontend_src_components_ui_menubar_menubarradioitem",
+      "frontend_src_components_ui_menubar_menubarseparator",
+      "frontend_src_components_ui_menubar_menubarshortcut",
+      "frontend_src_components_ui_menubar_menubarsub",
+      "frontend_src_components_ui_menubar_menubarsubcontent",
+      "frontend_src_components_ui_menubar_menubarsubtrigger",
+      "frontend_src_components_ui_menubar_menubartrigger"
+    ],
+    "16": [
+      "axios",
+      "cra_template",
+      "frontend_package_dependencies",
+      "frontend_package_dependencies_axios",
+      "frontend_package_dependencies_cra_template",
+      "frontend_package_dependencies_leaflet",
+      "frontend_package_dependencies_radix_ui_react_aspect_ratio",
+      "frontend_package_dependencies_radix_ui_react_avatar",
+      "frontend_package_dependencies_radix_ui_react_toast",
+      "frontend_package_dependencies_react_resizable_panels",
+      "leaflet",
+      "radix_ui_react_aspect_ratio",
+      "radix_ui_react_avatar",
+      "radix_ui_react_toast",
+      "react_resizable_panels"
+    ],
+    "17": [
+      "backend_api_email_services",
+      "backend_api_email_services_rationale_6",
+      "backend_api_email_services_send_otp_email",
+      "backend_api_models_otpverification",
+      "backend_api_models_otpverification_is_expired",
+      "backend_api_models_otpverification_str",
+      "backend_api_views_requestpasswordresetview",
+      "backend_api_views_requestpasswordresetview_post",
+      "backend_api_views_sendotpview",
+      "backend_api_views_sendotpview_post",
+      "backend_api_views_userprofileviewset_request_email_change",
+      "backend_api_views_verifyandsetnewpasswordview",
+      "backend_api_views_verifyandsetnewpasswordview_post",
+      "backend_api_views_verifyotpandregisterview",
+      "backend_api_views_verifyotpandregisterview_post"
+    ],
+    "18": [
+      "backend_api_views_barterinterestviewset",
+      "backend_api_views_barterinterestviewset_accept",
+      "backend_api_views_barterinterestviewset_cancel",
+      "backend_api_views_barterinterestviewset_counter",
+      "backend_api_views_barterinterestviewset_create",
+      "backend_api_views_barterinterestviewset_decline",
+      "backend_api_views_barterinterestviewset_get_queryset",
+      "backend_api_views_create_notification",
+      "backend_api_views_rationale_1655",
+      "backend_api_views_rationale_1663",
+      "backend_api_views_rationale_1673",
+      "backend_api_views_rationale_1783",
+      "backend_api_views_rationale_1897",
+      "backend_chat_services_broadcast_to_group",
+      "backend_chat_services_rationale_16"
+    ],
+    "19": [
+      "frontend_src_mock_data",
+      "frontend_src_mock_data_ai_matches",
+      "frontend_src_mock_data_categories",
+      "frontend_src_mock_data_chats",
+      "frontend_src_mock_data_contracts",
+      "frontend_src_mock_data_current_user",
+      "frontend_src_mock_data_disputes",
+      "frontend_src_mock_data_listings",
+      "frontend_src_mock_data_notifications",
+      "frontend_src_mock_data_proposals",
+      "frontend_src_mock_data_reviews",
+      "frontend_src_mock_data_swap_tracker",
+      "frontend_src_mock_data_users",
+      "frontend_src_mock_data_wallet_history"
+    ],
+    "20": [
+      "backend_api_serializers_userprofileserializer",
+      "backend_api_serializers_userprofileserializer_get_member_since",
+      "backend_api_serializers_userprofileserializer_update",
+      "backend_api_serializers_userprofileserializer_validate_latitude",
+      "backend_api_serializers_userprofileserializer_validate_longitude",
+      "backend_api_views_rationale_1327",
+      "backend_api_views_userprofileviewset",
+      "backend_api_views_userprofileviewset_dashboard_stats",
+      "backend_api_views_userprofileviewset_me",
+      "backend_api_views_userprofileviewset_reviews",
+      "backend_api_views_userprofileviewset_saved_items",
+      "backend_api_views_userprofileviewset_update_me",
+      "backend_api_views_userprofileviewset_verify_email_change"
+    ],
+    "21": [
+      "backend_api_models",
+      "backend_api_models_adminactionlog",
+      "backend_api_models_adminactionlog_str",
+      "backend_api_models_chatusage",
+      "backend_api_models_chatusage_str",
+      "backend_api_models_imagemoderationresult",
+      "backend_api_models_imagemoderationresult_str",
+      "backend_api_moderation_service",
+      "backend_api_serializers_adminactionlogserializer",
+      "backend_api_views_admindashboardstatsview",
+      "backend_api_views_admindashboardstatsview_get",
+      "backend_api_views_adminimagemoderationqueueviewset"
+    ],
+    "22": [
+      "backend_api_models_meta",
+      "backend_api_models_saveditem",
+      "backend_api_models_saveditem_str",
+      "backend_api_models_trade",
+      "backend_api_models_trade_str",
+      "backend_api_views_saveditemviewset",
+      "backend_api_views_saveditemviewset_get_queryset",
+      "backend_api_views_saveditemviewset_perform_create",
+      "backend_api_views_tradeviewset",
+      "backend_api_views_tradeviewset_get_queryset",
+      "backend_test_recommendation_logging",
+      "backend_test_recommendation_logging_run_tests"
+    ],
+    "23": [
+      "backend_api_pagination",
+      "backend_api_pagination_standardresultssetpagination",
+      "backend_api_serializers_userserializer",
+      "backend_api_serializers_userserializer_create",
+      "backend_api_serializers_userserializer_validate",
+      "backend_api_views_adminlistingmanagementviewset",
+      "backend_api_views_adminlistingmanagementviewset_get_queryset",
+      "backend_api_views_adminusermanagementviewset",
+      "backend_api_views_adminusermanagementviewset_get_queryset",
+      "backend_api_views_wallettransactionsview",
+      "backend_api_views_wallettransactionsview_get_queryset",
+      "pagenumberpagination"
+    ],
+    "24": [
+      "backend_api_serializers_barterinterestserializer",
+      "backend_api_serializers_barterinterestserializer_get_can_accept",
+      "backend_api_serializers_barterinterestserializer_get_can_cancel",
+      "backend_api_serializers_barterinterestserializer_get_can_counter",
+      "backend_api_serializers_barterinterestserializer_get_can_decline",
+      "backend_api_serializers_barterinterestserializer_get_chat_room_id",
+      "backend_api_serializers_barterinterestserializer_get_is_read_only",
+      "backend_api_serializers_barterinterestserializer_get_receiver_display_name",
+      "backend_api_serializers_barterinterestserializer_get_requester_display_name",
+      "backend_api_serializers_barterinterestserializer_get_trade_id",
+      "backend_api_serializers_barterinterestserializer_validate"
+    ],
+    "25": [
+      "frontend_src_hooks_use_toast",
+      "frontend_src_hooks_use_toast_actiontypes",
+      "frontend_src_hooks_use_toast_addtoremovequeue",
+      "frontend_src_hooks_use_toast_dispatch",
+      "frontend_src_hooks_use_toast_genid",
+      "frontend_src_hooks_use_toast_listeners",
+      "frontend_src_hooks_use_toast_memorystate",
+      "frontend_src_hooks_use_toast_reducer",
+      "frontend_src_hooks_use_toast_toast",
+      "frontend_src_hooks_use_toast_toasttimeouts",
+      "frontend_src_hooks_use_toast_usetoast"
+    ],
+    "26": [
+      "backend_api_moderation_service_moderate_uploaded_image",
+      "backend_api_moderation_service_rationale_9",
+      "backend_api_tests",
+      "backend_api_tests_enhancedplatformtests",
+      "backend_api_tests_enhancedplatformtests_setup",
+      "backend_api_tests_enhancedplatformtests_test_admin_dashboard_stats_and_actions",
+      "backend_api_tests_enhancedplatformtests_test_image_moderation_service",
+      "backend_api_views_barteritemviewset_create",
+      "backend_api_views_barteritemviewset_update",
+      "testcase"
+    ],
+    "27": [
+      "backend_api_views_barteritemviewset",
+      "backend_api_views_barteritemviewset_boost",
+      "backend_api_views_barteritemviewset_destroy",
+      "backend_api_views_barteritemviewset_get_permissions",
+      "backend_api_views_barteritemviewset_get_queryset",
+      "backend_api_views_barteritemviewset_get_serializer_class",
+      "backend_api_views_barteritemviewset_history",
+      "backend_api_views_barteritemviewset_my_items",
+      "backend_api_views_barteritemviewset_retrieve",
+      "backend_api_views_rationale_568"
+    ],
+    "28": [
+      "frontend_src_components_ui_command",
+      "frontend_src_components_ui_command_command",
+      "frontend_src_components_ui_command_commanddialog",
+      "frontend_src_components_ui_command_commandempty",
+      "frontend_src_components_ui_command_commandgroup",
+      "frontend_src_components_ui_command_commandinput",
+      "frontend_src_components_ui_command_commanditem",
+      "frontend_src_components_ui_command_commandlist",
+      "frontend_src_components_ui_command_commandseparator",
+      "frontend_src_components_ui_command_commandshortcut"
+    ],
+    "29": [
+      "frontend_src_components_ui_context_menu",
+      "frontend_src_components_ui_context_menu_contextmenucheckboxitem",
+      "frontend_src_components_ui_context_menu_contextmenucontent",
+      "frontend_src_components_ui_context_menu_contextmenuitem",
+      "frontend_src_components_ui_context_menu_contextmenulabel",
+      "frontend_src_components_ui_context_menu_contextmenuradioitem",
+      "frontend_src_components_ui_context_menu_contextmenuseparator",
+      "frontend_src_components_ui_context_menu_contextmenushortcut",
+      "frontend_src_components_ui_context_menu_contextmenusubcontent",
+      "frontend_src_components_ui_context_menu_contextmenusubtrigger"
+    ],
+    "30": [
+      "frontend_src_components_ui_dropdown_menu",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenucheckboxitem",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenucontent",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenuitem",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenulabel",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenuradioitem",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenuseparator",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenushortcut",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenusubcontent",
+      "frontend_src_components_ui_dropdown_menu_dropdownmenusubtrigger"
+    ],
+    "31": [
+      "frontend_src_components_ui_form",
+      "frontend_src_components_ui_form_formcontrol",
+      "frontend_src_components_ui_form_formdescription",
+      "frontend_src_components_ui_form_formfield",
+      "frontend_src_components_ui_form_formfieldcontext",
+      "frontend_src_components_ui_form_formitem",
+      "frontend_src_components_ui_form_formitemcontext",
+      "frontend_src_components_ui_form_formlabel",
+      "frontend_src_components_ui_form_formmessage",
+      "frontend_src_components_ui_form_useformfield"
+    ],
+    "32": [
+      "backend_api_models_dispute",
+      "backend_api_models_dispute_str",
+      "backend_api_serializers_disputeserializer",
+      "backend_api_serializers_disputeserializer_get_against_name",
+      "backend_api_views_admindisputemanagementviewset",
+      "backend_api_views_admindisputemanagementviewset_get_queryset",
+      "backend_api_views_disputeviewset",
+      "backend_api_views_disputeviewset_get_queryset",
+      "backend_api_views_disputeviewset_perform_create"
+    ],
+    "33": [
+      "backend_api_serializers_barteritemserializer",
+      "backend_api_serializers_barteritemserializer_get_chat_count",
+      "backend_api_serializers_barteritemserializer_get_distance_formatted",
+      "backend_api_serializers_barteritemserializer_get_distance_km",
+      "backend_api_serializers_barteritemserializer_get_owner",
+      "backend_api_serializers_barteritemserializer_get_proposal_count",
+      "backend_api_serializers_barteritemserializer_validate_latitude",
+      "backend_api_serializers_barteritemserializer_validate_longitude",
+      "backend_api_views_userprofileviewset_listings"
+    ],
+    "34": [
+      "frontend_package",
+      "frontend_package_name",
+      "frontend_package_packagemanager",
+      "frontend_package_private",
+      "frontend_package_scripts",
+      "frontend_package_scripts_build",
+      "frontend_package_scripts_start",
+      "frontend_package_scripts_test",
+      "frontend_package_version"
+    ],
+    "35": [
+      "frontend_package_browserslist",
+      "frontend_package_browserslist_development",
+      "frontend_package_browserslist_production",
+      "ref_0_2",
+      "ref_last_1_chrome_version",
+      "ref_last_1_firefox_version",
+      "ref_last_1_safari_version",
+      "ref_not_dead",
+      "ref_not_op_mini_all"
+    ],
+    "36": [
+      "frontend_src_components_ui_alert_dialog",
+      "frontend_src_components_ui_alert_dialog_alertdialogaction",
+      "frontend_src_components_ui_alert_dialog_alertdialogcancel",
+      "frontend_src_components_ui_alert_dialog_alertdialogcontent",
+      "frontend_src_components_ui_alert_dialog_alertdialogdescription",
+      "frontend_src_components_ui_alert_dialog_alertdialogfooter",
+      "frontend_src_components_ui_alert_dialog_alertdialogheader",
+      "frontend_src_components_ui_alert_dialog_alertdialogoverlay",
+      "frontend_src_components_ui_alert_dialog_alertdialogtitle"
+    ],
+    "37": [
+      "frontend_src_components_ui_table",
+      "frontend_src_components_ui_table_table",
+      "frontend_src_components_ui_table_tablebody",
+      "frontend_src_components_ui_table_tablecaption",
+      "frontend_src_components_ui_table_tablecell",
+      "frontend_src_components_ui_table_tablefooter",
+      "frontend_src_components_ui_table_tablehead",
+      "frontend_src_components_ui_table_tableheader",
+      "frontend_src_components_ui_table_tablerow"
+    ],
+    "38": [
+      "backend_api_models_barterinterest",
+      "backend_api_models_barterinterest_ensure_contract_exists",
+      "backend_api_models_barterinterest_ensure_trade_exists",
+      "backend_api_models_barterinterest_get_allowed_transitions",
+      "backend_api_models_barterinterest_reserve_listings",
+      "backend_api_models_barterinterest_str",
+      "backend_api_models_barterinterest_transition_to",
+      "backend_api_models_barterinterest_unlock_listings"
+    ],
+    "39": [
+      "backend_api_serializers_rationale_529",
+      "backend_api_serializers_tradeserializer",
+      "backend_api_serializers_tradeserializer_get_contract_id",
+      "backend_api_serializers_tradeserializer_get_handshake_pin",
+      "backend_api_serializers_tradeserializer_get_pending_review",
+      "backend_api_serializers_tradeserializer_get_receiver_display_name",
+      "backend_api_serializers_tradeserializer_get_requester_display_name",
+      "backend_api_views_userprofileviewset_completed_trades"
+    ],
+    "40": [
+      "frontend_src_components_ui",
+      "frontend_src_components_ui_chip",
+      "frontend_src_components_ui_emptystate",
+      "frontend_src_components_ui_jsx_frontend_src_components_ui_card",
+      "frontend_src_components_ui_levelbadge",
+      "frontend_src_components_ui_nbbutton",
+      "frontend_src_components_ui_sectiontitle",
+      "frontend_src_components_ui_xpbar"
+    ],
+    "41": [
+      "frontend_src_components_ui_breadcrumb",
+      "frontend_src_components_ui_breadcrumb_breadcrumb",
+      "frontend_src_components_ui_breadcrumb_breadcrumbellipsis",
+      "frontend_src_components_ui_breadcrumb_breadcrumbitem",
+      "frontend_src_components_ui_breadcrumb_breadcrumblink",
+      "frontend_src_components_ui_breadcrumb_breadcrumblist",
+      "frontend_src_components_ui_breadcrumb_breadcrumbpage",
+      "frontend_src_components_ui_breadcrumb_breadcrumbseparator"
+    ],
+    "42": [
+      "frontend_src_components_ui_carousel",
+      "frontend_src_components_ui_carousel_carousel",
+      "frontend_src_components_ui_carousel_carouselcontent",
+      "frontend_src_components_ui_carousel_carouselcontext",
+      "frontend_src_components_ui_carousel_carouselitem",
+      "frontend_src_components_ui_carousel_carouselnext",
+      "frontend_src_components_ui_carousel_carouselprevious",
+      "frontend_src_components_ui_carousel_usecarousel"
+    ],
+    "43": [
+      "frontend_src_components_ui_drawer",
+      "frontend_src_components_ui_drawer_drawer",
+      "frontend_src_components_ui_drawer_drawercontent",
+      "frontend_src_components_ui_drawer_drawerdescription",
+      "frontend_src_components_ui_drawer_drawerfooter",
+      "frontend_src_components_ui_drawer_drawerheader",
+      "frontend_src_components_ui_drawer_draweroverlay",
+      "frontend_src_components_ui_drawer_drawertitle"
+    ],
+    "44": [
+      "frontend_src_components_ui_navigation_menu",
+      "frontend_src_components_ui_navigation_menu_navigationmenu",
+      "frontend_src_components_ui_navigation_menu_navigationmenucontent",
+      "frontend_src_components_ui_navigation_menu_navigationmenuindicator",
+      "frontend_src_components_ui_navigation_menu_navigationmenulist",
+      "frontend_src_components_ui_navigation_menu_navigationmenutrigger",
+      "frontend_src_components_ui_navigation_menu_navigationmenutriggerstyle",
+      "frontend_src_components_ui_navigation_menu_navigationmenuviewport"
+    ],
+    "45": [
+      "frontend_src_components_ui_pagination",
+      "frontend_src_components_ui_pagination_pagination",
+      "frontend_src_components_ui_pagination_paginationcontent",
+      "frontend_src_components_ui_pagination_paginationellipsis",
+      "frontend_src_components_ui_pagination_paginationitem",
+      "frontend_src_components_ui_pagination_paginationlink",
+      "frontend_src_components_ui_pagination_paginationnext",
+      "frontend_src_components_ui_pagination_paginationprevious"
+    ],
+    "46": [
+      "frontend_src_components_ui_select",
+      "frontend_src_components_ui_select_selectcontent",
+      "frontend_src_components_ui_select_selectitem",
+      "frontend_src_components_ui_select_selectlabel",
+      "frontend_src_components_ui_select_selectscrolldownbutton",
+      "frontend_src_components_ui_select_selectscrollupbutton",
+      "frontend_src_components_ui_select_selectseparator",
+      "frontend_src_components_ui_select_selecttrigger"
+    ],
+    "47": [
+      "frontend_src_components_ui_sheet",
+      "frontend_src_components_ui_sheet_sheetcontent",
+      "frontend_src_components_ui_sheet_sheetdescription",
+      "frontend_src_components_ui_sheet_sheetfooter",
+      "frontend_src_components_ui_sheet_sheetheader",
+      "frontend_src_components_ui_sheet_sheetoverlay",
+      "frontend_src_components_ui_sheet_sheettitle",
+      "frontend_src_components_ui_sheet_sheetvariants"
+    ],
+    "48": [
+      "frontend_src_components_ui_toast",
+      "frontend_src_components_ui_toast_toast",
+      "frontend_src_components_ui_toast_toastaction",
+      "frontend_src_components_ui_toast_toastclose",
+      "frontend_src_components_ui_toast_toastdescription",
+      "frontend_src_components_ui_toast_toasttitle",
+      "frontend_src_components_ui_toast_toastvariants",
+      "frontend_src_components_ui_toast_toastviewport"
+    ],
+    "49": [
+      "backend_api_models_usercategoryaffinityhistory",
+      "backend_api_models_usercategoryaffinityhistory_str",
+      "backend_api_tasks_archive_old_interactions",
+      "backend_api_tasks_rationale_36",
+      "backend_api_tasks_rationale_64",
+      "backend_api_tasks_refresh_all_active_users_recommendations",
+      "shared_task"
+    ],
+    "50": [
+      "frontend_plugins_health_check_webpack_health_plugin",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin_apply",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin_constructor",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin_getsimplestatus",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin_getstatus",
+      "frontend_plugins_health_check_webpack_health_plugin_webpackhealthplugin_reset"
+    ],
+    "51": [
+      "frontend_src_components_applayout",
+      "frontend_src_components_applayout_applayout",
+      "frontend_src_components_applayout_bottombar",
+      "frontend_src_components_applayout_nav",
+      "frontend_src_components_applayout_secondarynav",
+      "frontend_src_components_applayout_siderail",
+      "frontend_src_components_applayout_topbar"
+    ],
+    "52": [
+      "frontend_src_components_ui_card_card",
+      "frontend_src_components_ui_card_cardcontent",
+      "frontend_src_components_ui_card_carddescription",
+      "frontend_src_components_ui_card_cardfooter",
+      "frontend_src_components_ui_card_cardheader",
+      "frontend_src_components_ui_card_cardtitle",
+      "frontend_src_components_ui_card_jsx_frontend_src_components_ui_card"
+    ],
+    "53": [
+      "frontend_src_components_ui_dialog",
+      "frontend_src_components_ui_dialog_dialogcontent",
+      "frontend_src_components_ui_dialog_dialogdescription",
+      "frontend_src_components_ui_dialog_dialogfooter",
+      "frontend_src_components_ui_dialog_dialogheader",
+      "frontend_src_components_ui_dialog_dialogoverlay",
+      "frontend_src_components_ui_dialog_dialogtitle"
+    ],
+    "54": [
+      "frontend_src_constants_testids_auth",
+      "frontend_src_constants_testids_auth_login",
+      "frontend_src_constants_testids_auth_logout",
+      "frontend_src_constants_testids_auth_register",
+      "frontend_src_constants_testids_home",
+      "frontend_src_constants_testids_home_home",
+      "frontend_src_constants_testids_index"
+    ],
+    "55": [
+      "frontend_src_pages_swaptracker",
+      "frontend_src_pages_swaptracker_pinentrycard",
+      "frontend_src_pages_swaptracker_reviewmodal",
+      "frontend_src_pages_swaptracker_stage_icons",
+      "frontend_src_pages_swaptracker_stage_labels",
+      "frontend_src_pages_swaptracker_stages",
+      "frontend_src_pages_swaptracker_swaptracker"
+    ],
+    "56": [
+      "backend_api_geocoding_service",
+      "backend_api_geocoding_service_rationale_16",
+      "backend_api_geocoding_service_reverse_geocode",
+      "backend_api_views_rationale_2355",
+      "backend_api_views_reversegeocodeview",
+      "backend_api_views_reversegeocodeview_post"
+    ],
+    "57": [
+      "backend_test_security",
+      "backend_test_security_main",
+      "backend_test_security_print_result",
+      "backend_test_security_test_login",
+      "backend_test_security_test_public_leak",
+      "backend_test_security_test_websocket_timeout"
+    ],
+    "58": [
+      "frontend_plugins_health_check_health_endpoints",
+      "frontend_plugins_health_check_health_endpoints_formatbytes",
+      "frontend_plugins_health_check_health_endpoints_formatduration",
+      "frontend_plugins_health_check_health_endpoints_os",
+      "frontend_plugins_health_check_health_endpoints_server_start_time",
+      "frontend_plugins_health_check_health_endpoints_setuphealthendpoints"
+    ],
+    "59": [
+      "frontend_src_pages_auth",
+      "frontend_src_pages_auth_auth",
+      "frontend_src_pages_auth_authinput",
+      "frontend_src_pages_auth_google_client_id",
+      "frontend_src_pages_auth_isgoogleauthenabled",
+      "frontend_src_pages_auth_isplaceholder"
+    ],
+    "60": [
+      "frontend_src_pages_landing",
+      "frontend_src_pages_landing_cursorspotlight",
+      "frontend_src_pages_landing_floatcard",
+      "frontend_src_pages_landing_landing",
+      "frontend_src_pages_landing_social_proof_avatars",
+      "frontend_src_pages_landing_testimonials"
+    ],
+    "61": [
+      "backend_api_models_userreview",
+      "backend_api_models_userreview_str",
+      "backend_api_views_userreviewviewset",
+      "backend_api_views_userreviewviewset_get_queryset",
+      "backend_api_views_userreviewviewset_perform_create"
+    ],
+    "62": [
+      "backend_api_serializers_barteritemcompactserializer",
+      "backend_api_serializers_barteritemcompactserializer_get_owner_display_name",
+      "backend_api_serializers_barteritemcompactserializer_get_owner_trust_level",
+      "backend_api_serializers_barteritemcompactserializer_get_owner_trust_score",
+      "backend_api_serializers_rationale_341"
+    ],
+    "63": [
+      "backend_api_views_googleoauthview",
+      "backend_api_views_googleoauthview_make_username",
+      "backend_api_views_googleoauthview_post",
+      "backend_api_views_rationale_137",
+      "backend_api_views_rationale_196"
+    ],
+    "64": [
+      "frontend_craco_config",
+      "frontend_craco_config_config",
+      "frontend_craco_config_makedevserverv5compatible",
+      "frontend_craco_config_path",
+      "frontend_craco_config_webpackconfig"
+    ],
+    "65": [
+      "frontend_src_components_ui_alert",
+      "frontend_src_components_ui_alert_alert",
+      "frontend_src_components_ui_alert_alertdescription",
+      "frontend_src_components_ui_alert_alerttitle",
+      "frontend_src_components_ui_alert_alertvariants"
+    ],
+    "66": [
+      "frontend_src_components_ui_input_otp",
+      "frontend_src_components_ui_input_otp_inputotp",
+      "frontend_src_components_ui_input_otp_inputotpgroup",
+      "frontend_src_components_ui_input_otp_inputotpseparator",
+      "frontend_src_components_ui_input_otp_inputotpslot"
+    ],
+    "67": [
+      "backend_api_migrations_0034_consolidate_trade_flow",
+      "backend_api_migrations_0034_consolidate_trade_flow_migrate_legacy_trade_data",
+      "backend_api_migrations_0034_consolidate_trade_flow_migration",
+      "backend_api_migrations_0034_consolidate_trade_flow_reverse_migration"
+    ],
+    "68": [
+      "backend_api_views_emailorusernametokenserializer",
+      "backend_api_views_emailorusernametokenserializer_validate",
+      "backend_api_views_rationale_46",
+      "tokenobtainpairserializer"
+    ],
+    "69": [
+      "backend_config_settings",
+      "backend_config_settings_env_bool",
+      "backend_config_settings_env_list",
+      "backend_config_settings_rationale_1"
+    ],
+    "70": [
+      "frontend_src_components_listingmap",
+      "frontend_src_components_listingmap_createlistingicon",
+      "frontend_src_components_listingmap_listingmap",
+      "frontend_src_components_listingmap_usericon"
+    ],
+    "71": [
+      "frontend_src_components_ui_accordion",
+      "frontend_src_components_ui_accordion_accordioncontent",
+      "frontend_src_components_ui_accordion_accordionitem",
+      "frontend_src_components_ui_accordion_accordiontrigger"
+    ],
+    "72": [
+      "frontend_src_components_ui_avatar",
+      "frontend_src_components_ui_avatar_avatar",
+      "frontend_src_components_ui_avatar_avatarfallback",
+      "frontend_src_components_ui_avatar_avatarimage"
+    ],
+    "73": [
+      "frontend_src_components_ui_tabs",
+      "frontend_src_components_ui_tabs_tabscontent",
+      "frontend_src_components_ui_tabs_tabslist",
+      "frontend_src_components_ui_tabs_tabstrigger"
+    ],
+    "74": [
+      "frontend_src_components_ui_toggle_group",
+      "frontend_src_components_ui_toggle_group_togglegroup",
+      "frontend_src_components_ui_toggle_group_togglegroupcontext",
+      "frontend_src_components_ui_toggle_group_togglegroupitem"
+    ],
+    "75": [
+      "frontend_src_lib_api",
+      "frontend_src_lib_api_api",
+      "frontend_src_lib_api_failedqueue",
+      "frontend_src_lib_api_processqueue"
+    ],
+    "76": [
+      "frontend_src_pages_notifications",
+      "frontend_src_pages_notifications_bg",
+      "frontend_src_pages_notifications_icons",
+      "frontend_src_pages_notifications_notifications"
+    ],
+    "77": [
+      "frontend_src_pages_proposals",
+      "frontend_src_pages_proposals_countermodal",
+      "frontend_src_pages_proposals_proposals",
+      "frontend_src_pages_proposals_statuscolors"
+    ],
+    "78": [
+      "package",
+      "package_dependencies",
+      "package_dependencies_razorpay",
+      "razorpay"
+    ],
+    "79": [
+      "backend_api_apps",
+      "backend_api_apps_apiconfig",
+      "backend_api_apps_py_appconfig"
+    ],
+    "80": [
+      "backend_api_migrations_0037_populate_category_slugs",
+      "backend_api_migrations_0037_populate_category_slugs_migration",
+      "backend_api_migrations_0037_populate_category_slugs_populate_slugs"
+    ],
+    "81": [
+      "backend_chat_apps",
+      "backend_chat_apps_chatconfig",
+      "backend_chat_apps_py_appconfig"
+    ],
+    "82": [
+      "backend_manage",
+      "backend_manage_main",
+      "backend_manage_rationale_8"
+    ],
+    "83": [
+      "frontend_src_app",
+      "frontend_src_app_app",
+      "frontend_src_app_shell"
+    ],
+    "84": [
+      "frontend_src_components_listingcard",
+      "frontend_src_components_listingcard_conditiontint",
+      "frontend_src_components_listingcard_listingcard"
+    ],
+    "85": [
+      "frontend_src_components_logo",
+      "frontend_src_components_logo_logomark",
+      "frontend_src_components_logo_logowordmark"
+    ],
+    "86": [
+      "frontend_src_components_ui_badge",
+      "frontend_src_components_ui_badge_badge",
+      "frontend_src_components_ui_badge_badgevariants"
+    ],
+    "87": [
+      "frontend_src_components_ui_button",
+      "frontend_src_components_ui_button_button",
+      "frontend_src_components_ui_button_buttonvariants"
+    ],
+    "88": [
+      "frontend_src_components_ui_label",
+      "frontend_src_components_ui_label_label",
+      "frontend_src_components_ui_label_labelvariants"
+    ],
+    "89": [
+      "frontend_src_components_ui_radio_group",
+      "frontend_src_components_ui_radio_group_radiogroup",
+      "frontend_src_components_ui_radio_group_radiogroupitem"
+    ],
+    "90": [
+      "frontend_src_components_ui_resizable",
+      "frontend_src_components_ui_resizable_resizablehandle",
+      "frontend_src_components_ui_resizable_resizablepanelgroup"
+    ],
+    "91": [
+      "frontend_src_components_ui_scroll_area",
+      "frontend_src_components_ui_scroll_area_scrollarea",
+      "frontend_src_components_ui_scroll_area_scrollbar"
+    ],
+    "92": [
+      "frontend_src_components_ui_toggle",
+      "frontend_src_components_ui_toggle_toggle",
+      "frontend_src_components_ui_toggle_togglevariants"
+    ],
+    "93": [
+      "frontend_src_index",
+      "frontend_src_index_queryclient",
+      "frontend_src_index_root"
+    ],
+    "94": [
+      "frontend_src_pages_createlisting",
+      "frontend_src_pages_createlisting_createlisting",
+      "frontend_src_pages_createlisting_steps"
+    ],
+    "95": [
+      "frontend_src_pages_explore",
+      "frontend_src_pages_explore_explore",
+      "frontend_src_pages_explore_radius_options"
+    ],
+    "96": [
+      "frontend_src_pages_onboarding",
+      "frontend_src_pages_onboarding_onboarding",
+      "frontend_src_pages_onboarding_steps"
+    ],
+    "97": [
+      "ajv",
+      "frontend_package_dependencies_ajv"
+    ],
+    "98": [
+      "backend_api_migrations_0001_initial",
+      "backend_api_migrations_0001_initial_migration"
+    ],
+    "99": [
+      "backend_api_migrations_0002_category_barteritem_status_barteritem_updated_at_and_more",
+      "backend_api_migrations_0002_category_barteritem_status_barteritem_updated_at_and_more_migration"
+    ],
+    "100": [
+      "backend_api_migrations_0003_barteritem_condition_barteritem_image_and_more",
+      "backend_api_migrations_0003_barteritem_condition_barteritem_image_and_more_migration"
+    ],
+    "101": [
+      "backend_api_migrations_0003_userprofile_account_type_and_more",
+      "backend_api_migrations_0003_userprofile_account_type_and_more_migration"
+    ],
+    "102": [
+      "backend_api_migrations_0004_otpverification",
+      "backend_api_migrations_0004_otpverification_migration"
+    ],
+    "103": [
+      "backend_api_migrations_0005_merge_20260602_1651",
+      "backend_api_migrations_0005_merge_20260602_1651_migration"
+    ],
+    "104": [
+      "backend_api_migrations_0006_alter_chatmessage_options_chatmessage_media_and_more",
+      "backend_api_migrations_0006_alter_chatmessage_options_chatmessage_media_and_more_migration"
+    ],
+    "105": [
+      "backend_api_migrations_0007_alter_barterinterest_offered_item",
+      "backend_api_migrations_0007_alter_barterinterest_offered_item_migration"
+    ],
+    "106": [
+      "backend_api_migrations_0008_barteritem_age_months_barteritem_item_score_and_more",
+      "backend_api_migrations_0008_barteritem_age_months_barteritem_item_score_and_more_migration"
+    ],
+    "107": [
+      "backend_api_migrations_0009_userprofile_coin_balance_cointransaction",
+      "backend_api_migrations_0009_userprofile_coin_balance_cointransaction_migration"
+    ],
+    "108": [
+      "backend_api_migrations_0010_alter_userprofile_coin_balance",
+      "backend_api_migrations_0010_alter_userprofile_coin_balance_migration"
+    ],
+    "109": [
+      "backend_api_migrations_0011_alter_cointransaction_transaction_type",
+      "backend_api_migrations_0011_alter_cointransaction_transaction_type_migration"
+    ],
+    "110": [
+      "backend_api_migrations_0012_userprofile_college_organization_and_more",
+      "backend_api_migrations_0012_userprofile_college_organization_and_more_migration"
+    ],
+    "111": [
+      "backend_api_migrations_0013_barteritem_boost_expires_at_barteritem_boosted_at_and_more",
+      "backend_api_migrations_0013_barteritem_boost_expires_at_barteritem_boosted_at_and_more_migration"
+    ],
+    "112": [
+      "backend_api_migrations_0014_remove_chatroom_barter_interest_and_more",
+      "backend_api_migrations_0014_remove_chatroom_barter_interest_and_more_migration"
+    ],
+    "113": [
+      "backend_api_migrations_0015_barterinterest_coins_offered_barterinterest_metadata_and_more",
+      "backend_api_migrations_0015_barterinterest_coins_offered_barterinterest_metadata_and_more_migration"
+    ],
+    "114": [
+      "backend_api_migrations_0016_remove_tradeevent_trade_remove_tradelogistics_trade_and_more",
+      "backend_api_migrations_0016_remove_tradeevent_trade_remove_tradelogistics_trade_and_more_migration"
+    ],
+    "115": [
+      "backend_api_migrations_0017_contract",
+      "backend_api_migrations_0017_contract_migration"
+    ],
+    "116": [
+      "backend_api_migrations_0018_trade_logistics_status_trade_shipping_provider_and_more",
+      "backend_api_migrations_0018_trade_logistics_status_trade_shipping_provider_and_more_migration"
+    ],
+    "117": [
+      "backend_api_migrations_0019_dispute",
+      "backend_api_migrations_0019_dispute_migration"
+    ],
+    "118": [
+      "backend_api_migrations_0020_saveditem",
+      "backend_api_migrations_0020_saveditem_migration"
+    ],
+    "119": [
+      "backend_api_migrations_0021_contract_signed_a_ip_contract_signed_a_timestamp_and_more",
+      "backend_api_migrations_0021_contract_signed_a_ip_contract_signed_a_timestamp_and_more_migration"
+    ],
+    "120": [
+      "backend_api_migrations_0022_dispute_evidence_image_dispute_is_escalated_and_more",
+      "backend_api_migrations_0022_dispute_evidence_image_dispute_is_escalated_and_more_migration"
+    ],
+    "121": [
+      "backend_api_migrations_0023_remove_dispute_evidence_image_disputeevidence",
+      "backend_api_migrations_0023_remove_dispute_evidence_image_disputeevidence_migration"
+    ],
+    "122": [
+      "backend_api_migrations_0024_remove_userprofile_bio_userprofile_city_and_more",
+      "backend_api_migrations_0024_remove_userprofile_bio_userprofile_city_and_more_migration"
+    ],
+    "123": [
+      "backend_api_migrations_0025_userprofile_bio",
+      "backend_api_migrations_0025_userprofile_bio_migration"
+    ],
+    "124": [
+      "backend_api_migrations_0026_alter_userprofile_coin_balance",
+      "backend_api_migrations_0026_alter_userprofile_coin_balance_migration"
+    ],
+    "125": [
+      "backend_api_migrations_0027_barteritem_city_barteritem_country_and_more",
+      "backend_api_migrations_0027_barteritem_city_barteritem_country_and_more_migration"
+    ],
+    "126": [
+      "backend_api_migrations_0027_trade_handshake_pin_trade_meetup_datetime_and_more",
+      "backend_api_migrations_0027_trade_handshake_pin_trade_meetup_datetime_and_more_migration"
+    ],
+    "127": [
+      "backend_api_migrations_0028_userprofile_is_premium",
+      "backend_api_migrations_0028_userprofile_is_premium_migration"
+    ],
+    "128": [
+      "backend_api_migrations_0028_userreview_trade",
+      "backend_api_migrations_0028_userreview_trade_migration"
+    ],
+    "129": [
+      "backend_api_migrations_0029_merge_20260815_1510",
+      "backend_api_migrations_0029_merge_20260815_1510_migration"
+    ],
+    "130": [
+      "backend_api_migrations_0030_barteritem_location_name_userprofile_country_and_more",
+      "backend_api_migrations_0030_barteritem_location_name_userprofile_country_and_more_migration"
+    ],
+    "131": [
+      "backend_api_migrations_0031_alter_otpverification_created_at",
+      "backend_api_migrations_0031_alter_otpverification_created_at_migration"
+    ],
+    "132": [
+      "backend_api_migrations_0032_alter_barteritem_is_boosted_alter_barteritem_status_and_more",
+      "backend_api_migrations_0032_alter_barteritem_is_boosted_alter_barteritem_status_and_more_migration"
+    ],
+    "133": [
+      "backend_api_migrations_0033_wallettransaction_price_inr",
+      "backend_api_migrations_0033_wallettransaction_price_inr_migration"
+    ],
+    "134": [
+      "backend_api_migrations_0035_remove_legacy_trade_models",
+      "backend_api_migrations_0035_remove_legacy_trade_models_migration"
+    ],
+    "135": [
+      "backend_api_migrations_0036_add_category_slug",
+      "backend_api_migrations_0036_add_category_slug_migration"
+    ],
+    "136": [
+      "backend_api_migrations_0038_add_financial_audit_log",
+      "backend_api_migrations_0038_add_financial_audit_log_migration"
+    ],
+    "137": [
+      "backend_api_migrations_0039_useriteminteraction",
+      "backend_api_migrations_0039_useriteminteraction_migration"
+    ],
+    "138": [
+      "backend_api_migrations_0040_usercategoryaffinityhistory",
+      "backend_api_migrations_0040_usercategoryaffinityhistory_migration"
+    ],
+    "139": [
+      "backend_api_views_barterinterestviewset_negotiate",
+      "backend_api_views_rationale_1883"
+    ],
+    "140": [
+      "backend_chat_migrations_0001_initial",
+      "backend_chat_migrations_0001_initial_migration"
+    ],
+    "141": [
+      "backend_config_urls",
+      "backend_config_urls_rationale_1"
+    ],
+    "142": [
+      "backend_config_wsgi",
+      "backend_config_wsgi_rationale_1"
+    ],
+    "143": [
+      "backend_entrypoint",
+      "backend_entrypoint_sh__entry"
+    ],
+    "144": [
+      "class_variance_authority",
+      "frontend_package_dependencies_class_variance_authority"
+    ],
+    "145": [
+      "clsx",
+      "frontend_package_dependencies_clsx"
+    ],
+    "146": [
+      "cmdk",
+      "frontend_package_dependencies_cmdk"
+    ],
+    "147": [
+      "date_fns",
+      "frontend_package_dependencies_date_fns"
+    ],
+    "148": [
+      "dayjs",
+      "frontend_package_dependencies_dayjs"
+    ],
+    "149": [
+      "embla_carousel_react",
+      "frontend_package_dependencies_embla_carousel_react"
+    ],
+    "150": [
+      "framer_motion",
+      "frontend_package_dependencies_framer_motion"
+    ],
+    "151": [
+      "frontend_package_dependencies_hookform_resolvers",
+      "hookform_resolvers"
+    ],
+    "152": [
+      "frontend_package_dependencies_input_otp",
+      "input_otp"
+    ],
+    "153": [
+      "frontend_package_dependencies_lodash",
+      "lodash"
+    ],
+    "154": [
+      "frontend_package_dependencies_lucide_react",
+      "lucide_react"
+    ],
+    "155": [
+      "frontend_package_dependencies_next_themes",
+      "next_themes"
+    ],
+    "156": [
+      "frontend_package_dependencies_radix_ui_react_accordion",
+      "radix_ui_react_accordion"
+    ],
+    "157": [
+      "frontend_package_dependencies_radix_ui_react_alert_dialog",
+      "radix_ui_react_alert_dialog"
+    ],
+    "158": [
+      "frontend_package_dependencies_radix_ui_react_checkbox",
+      "radix_ui_react_checkbox"
+    ],
+    "159": [
+      "frontend_package_dependencies_radix_ui_react_collapsible",
+      "radix_ui_react_collapsible"
+    ],
+    "160": [
+      "frontend_package_dependencies_radix_ui_react_context_menu",
+      "radix_ui_react_context_menu"
+    ],
+    "161": [
+      "frontend_package_dependencies_radix_ui_react_dialog",
+      "radix_ui_react_dialog"
+    ],
+    "162": [
+      "frontend_package_dependencies_radix_ui_react_dropdown_menu",
+      "radix_ui_react_dropdown_menu"
+    ],
+    "163": [
+      "frontend_package_dependencies_radix_ui_react_hover_card",
+      "radix_ui_react_hover_card"
+    ],
+    "164": [
+      "frontend_package_dependencies_radix_ui_react_label",
+      "radix_ui_react_label"
+    ],
+    "165": [
+      "frontend_package_dependencies_radix_ui_react_menubar",
+      "radix_ui_react_menubar"
+    ],
+    "166": [
+      "frontend_package_dependencies_radix_ui_react_navigation_menu",
+      "radix_ui_react_navigation_menu"
+    ],
+    "167": [
+      "frontend_package_dependencies_radix_ui_react_popover",
+      "radix_ui_react_popover"
+    ],
+    "168": [
+      "frontend_package_dependencies_radix_ui_react_progress",
+      "radix_ui_react_progress"
+    ],
+    "169": [
+      "frontend_package_dependencies_radix_ui_react_radio_group",
+      "radix_ui_react_radio_group"
+    ],
+    "170": [
+      "frontend_package_dependencies_radix_ui_react_scroll_area",
+      "radix_ui_react_scroll_area"
+    ],
+    "171": [
+      "frontend_package_dependencies_radix_ui_react_select",
+      "radix_ui_react_select"
+    ],
+    "172": [
+      "frontend_package_dependencies_radix_ui_react_separator",
+      "radix_ui_react_separator"
+    ],
+    "173": [
+      "frontend_package_dependencies_radix_ui_react_slider",
+      "radix_ui_react_slider"
+    ],
+    "174": [
+      "frontend_package_dependencies_radix_ui_react_slot",
+      "radix_ui_react_slot"
+    ],
+    "175": [
+      "frontend_package_dependencies_radix_ui_react_switch",
+      "radix_ui_react_switch"
+    ],
+    "176": [
+      "frontend_package_dependencies_radix_ui_react_tabs",
+      "radix_ui_react_tabs"
+    ],
+    "177": [
+      "frontend_package_dependencies_radix_ui_react_toggle",
+      "radix_ui_react_toggle"
+    ],
+    "178": [
+      "frontend_package_dependencies_radix_ui_react_toggle_group",
+      "radix_ui_react_toggle_group"
+    ],
+    "179": [
+      "frontend_package_dependencies_radix_ui_react_tooltip",
+      "radix_ui_react_tooltip"
+    ],
+    "180": [
+      "frontend_package_dependencies_react",
+      "react"
+    ],
+    "181": [
+      "frontend_package_dependencies_react_day_picker",
+      "react_day_picker"
+    ],
+    "182": [
+      "frontend_package_dependencies_react_dom",
+      "react_dom"
+    ],
+    "183": [
+      "frontend_package_dependencies_react_hook_form",
+      "react_hook_form"
+    ],
+    "184": [
+      "frontend_package_dependencies_react_oauth_google",
+      "react_oauth_google"
+    ],
+    "185": [
+      "frontend_package_dependencies_react_router_dom",
+      "react_router_dom"
+    ],
+    "186": [
+      "frontend_package_dependencies_react_scripts",
+      "react_scripts"
+    ],
+    "187": [
+      "frontend_package_dependencies_recharts",
+      "recharts"
+    ],
+    "188": [
+      "frontend_package_dependencies_sonner",
+      "sonner"
+    ],
+    "189": [
+      "frontend_package_dependencies_swr",
+      "swr"
+    ],
+    "190": [
+      "frontend_package_dependencies_tailwind_merge",
+      "tailwind_merge"
+    ],
+    "191": [
+      "frontend_package_dependencies_tailwindcss_animate",
+      "tailwindcss_animate"
+    ],
+    "192": [
+      "frontend_package_dependencies_tanstack_react_query",
+      "tanstack_react_query"
+    ],
+    "193": [
+      "frontend_package_dependencies_vaul",
+      "vaul"
+    ],
+    "194": [
+      "frontend_package_dependencies_zod",
+      "zod"
+    ],
+    "195": [
+      "frontend_src_components_imageuploader",
+      "frontend_src_components_imageuploader_imageuploader"
+    ],
+    "196": [
+      "frontend_src_components_marquee",
+      "frontend_src_components_marquee_marquee"
+    ],
+    "197": [
+      "frontend_src_components_privateroute",
+      "frontend_src_components_privateroute_privateroute"
+    ],
+    "198": [
+      "frontend_src_components_reviewmodal",
+      "frontend_src_components_reviewmodal_reviewmodal"
+    ],
+    "199": [
+      "frontend_src_components_ui_calendar",
+      "frontend_src_components_ui_calendar_calendar"
+    ],
+    "200": [
+      "frontend_src_components_ui_checkbox",
+      "frontend_src_components_ui_checkbox_checkbox"
+    ],
+    "201": [
+      "frontend_src_components_ui_hover_card",
+      "frontend_src_components_ui_hover_card_hovercardcontent"
+    ],
+    "202": [
+      "frontend_src_components_ui_input",
+      "frontend_src_components_ui_input_input"
+    ],
+    "203": [
+      "frontend_src_components_ui_popover",
+      "frontend_src_components_ui_popover_popovercontent"
+    ],
+    "204": [
+      "frontend_src_components_ui_progress",
+      "frontend_src_components_ui_progress_progress"
+    ],
+    "205": [
+      "frontend_src_components_ui_separator",
+      "frontend_src_components_ui_separator_separator"
+    ],
+    "206": [
+      "frontend_src_components_ui_skeleton",
+      "frontend_src_components_ui_skeleton_skeleton"
+    ],
+    "207": [
+      "frontend_src_components_ui_slider",
+      "frontend_src_components_ui_slider_slider"
+    ],
+    "208": [
+      "frontend_src_components_ui_sonner",
+      "frontend_src_components_ui_sonner_toaster"
+    ],
+    "209": [
+      "frontend_src_components_ui_switch",
+      "frontend_src_components_ui_switch_switch"
+    ],
+    "210": [
+      "frontend_src_components_ui_textarea",
+      "frontend_src_components_ui_textarea_textarea"
+    ],
+    "211": [
+      "frontend_src_components_ui_toaster",
+      "frontend_src_components_ui_toaster_toaster"
+    ],
+    "212": [
+      "frontend_src_components_ui_tooltip",
+      "frontend_src_components_ui_tooltip_tooltipcontent"
+    ],
+    "213": [
+      "frontend_src_lib_geocoding",
+      "frontend_src_lib_geocoding_reversegeocode"
+    ],
+    "214": [
+      "frontend_src_lib_utils",
+      "frontend_src_lib_utils_cn"
+    ],
+    "215": [
+      "frontend_src_pages_admindashboard",
+      "frontend_src_pages_admindashboard_admindashboard"
+    ],
+    "216": [
+      "frontend_src_pages_aimatches",
+      "frontend_src_pages_aimatches_aimatches"
+    ],
+    "217": [
+      "frontend_src_pages_chat",
+      "frontend_src_pages_chat_chat"
+    ],
+    "218": [
+      "frontend_src_pages_chatthread",
+      "frontend_src_pages_chatthread_chatthread"
+    ],
+    "219": [
+      "frontend_src_pages_contracts",
+      "frontend_src_pages_contracts_contracts"
+    ],
+    "220": [
+      "frontend_src_pages_disputes",
+      "frontend_src_pages_disputes_disputes"
+    ],
+    "221": [
+      "frontend_src_pages_feed",
+      "frontend_src_pages_feed_feed"
+    ],
+    "222": [
+      "frontend_src_pages_listingdetail",
+      "frontend_src_pages_listingdetail_listingdetail"
+    ],
+    "223": [
+      "frontend_src_pages_logistics",
+      "frontend_src_pages_logistics_logistics"
+    ],
+    "224": [
+      "frontend_src_pages_mapview",
+      "frontend_src_pages_mapview_mapview"
+    ],
+    "225": [
+      "frontend_src_pages_profile",
+      "frontend_src_pages_profile_profile"
+    ],
+    "226": [
+      "frontend_src_pages_serviceswap",
+      "frontend_src_pages_serviceswap_serviceswap"
+    ],
+    "227": [
+      "frontend_src_pages_verification",
+      "frontend_src_pages_verification_verification"
+    ],
+    "228": [
+      "frontend_src_pages_wallet",
+      "frontend_src_pages_wallet_wallet"
+    ],
+    "229": [
+      "frontend_vercel",
+      "frontend_vercel_rewrites"
+    ],
+    "230": [
+      "backend_api_init"
+    ],
+    "231": [
+      "backend_api_migrations_init"
+    ],
+    "232": [
+      "backend_chat_migrations_init"
+    ],
+    "233": [
+      "backend_run_migration_sqlite"
+    ],
+    "234": [
+      "frontend_postcss_config"
+    ],
+    "235": [
+      "frontend_src_components_ui_aspect_ratio"
+    ],
+    "236": [
+      "frontend_src_components_ui_collapsible"
+    ],
+    "237": [
+      "frontend_tailwind_config"
+    ],
+    "238": [
+      "tailwindcss_tailwindcss"
+    ]
+  },
+  "cohesion": {
+    "0": 0.059676044330775786,
+    "1": 0.0673758865248227,
+    "2": 0.09302325581395349,
+    "3": 0.047619047619047616,
+    "4": 0.06451612903225806,
+    "5": 0.08666666666666667,
+    "6": 0.1422924901185771,
+    "7": 0.17142857142857143,
+    "8": 0.15263157894736842,
+    "9": 0.1,
+    "10": 0.1568627450980392,
+    "11": 0.1895424836601307,
+    "12": 0.1111111111111111,
+    "13": 0.18382352941176472,
+    "14": 0.14705882352941177,
+    "15": 0.11764705882352941,
+    "16": 0.13333333333333333,
+    "17": 0.14285714285714285,
+    "18": 0.20952380952380953,
+    "19": 0.14285714285714285,
+    "20": 0.1794871794871795,
+    "21": 0.24242424242424243,
+    "22": 0.2727272727272727,
+    "23": 0.16666666666666666,
+    "24": 0.18181818181818182,
+    "25": 0.3090909090909091,
+    "26": 0.2222222222222222,
+    "27": 0.2,
+    "28": 0.2,
+    "29": 0.2,
+    "30": 0.2,
+    "31": 0.28888888888888886,
+    "32": 0.2777777777777778,
+    "33": 0.2222222222222222,
+    "34": 0.2222222222222222,
+    "35": 0.2222222222222222,
+    "36": 0.2222222222222222,
+    "37": 0.2222222222222222,
+    "38": 0.42857142857142855,
+    "39": 0.25,
+    "40": 0.25,
+    "41": 0.25,
+    "42": 0.39285714285714285,
+    "43": 0.25,
+    "44": 0.2857142857142857,
+    "45": 0.25,
+    "46": 0.25,
+    "47": 0.2857142857142857,
+    "48": 0.2857142857142857,
+    "49": 0.2857142857142857,
+    "50": 0.2857142857142857,
+    "51": 0.2857142857142857,
+    "52": 0.2857142857142857,
+    "53": 0.2857142857142857,
+    "54": 0.2857142857142857,
+    "55": 0.2857142857142857,
+    "56": 0.3333333333333333,
+    "57": 0.7333333333333333,
+    "58": 0.4666666666666667,
+    "59": 0.3333333333333333,
+    "60": 0.3333333333333333,
+    "61": 0.4,
+    "62": 0.4,
+    "63": 0.5,
+    "64": 0.4,
+    "65": 0.5,
+    "66": 0.4,
+    "67": 0.5,
+    "68": 0.5,
+    "69": 0.5,
+    "70": 0.6666666666666666,
+    "71": 0.5,
+    "72": 0.5,
+    "73": 0.5,
+    "74": 0.5,
+    "75": 0.5,
+    "76": 0.5,
+    "77": 0.5,
+    "78": 0.5,
+    "79": 0.6666666666666666,
+    "80": 0.6666666666666666,
+    "81": 0.6666666666666666,
+    "82": 0.6666666666666666,
+    "83": 0.6666666666666666,
+    "84": 0.6666666666666666,
+    "85": 0.6666666666666666,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 0.6666666666666666,
+    "90": 0.6666666666666666,
+    "91": 0.6666666666666666,
+    "92": 1.0,
+    "93": 0.6666666666666666,
+    "94": 0.6666666666666666,
+    "95": 0.6666666666666666,
+    "96": 0.6666666666666666,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0,
+    "101": 1.0,
+    "102": 1.0,
+    "103": 1.0,
+    "104": 1.0,
+    "105": 1.0,
+    "106": 1.0,
+    "107": 1.0,
+    "108": 1.0,
+    "109": 1.0,
+    "110": 1.0,
+    "111": 1.0,
+    "112": 1.0,
+    "113": 1.0,
+    "114": 1.0,
+    "115": 1.0,
+    "116": 1.0,
+    "117": 1.0,
+    "118": 1.0,
+    "119": 1.0,
+    "120": 1.0,
+    "121": 1.0,
+    "122": 1.0,
+    "123": 1.0,
+    "124": 1.0,
+    "125": 1.0,
+    "126": 1.0,
+    "127": 1.0,
+    "128": 1.0,
+    "129": 1.0,
+    "130": 1.0,
+    "131": 1.0,
+    "132": 1.0,
+    "133": 1.0,
+    "134": 1.0,
+    "135": 1.0,
+    "136": 1.0,
+    "137": 1.0,
+    "138": 1.0,
+    "139": 1.0,
+    "140": 1.0,
+    "141": 1.0,
+    "142": 1.0,
+    "143": 1.0,
+    "144": 1.0,
+    "145": 1.0,
+    "146": 1.0,
+    "147": 1.0,
+    "148": 1.0,
+    "149": 1.0,
+    "150": 1.0,
+    "151": 1.0,
+    "152": 1.0,
+    "153": 1.0,
+    "154": 1.0,
+    "155": 1.0,
+    "156": 1.0,
+    "157": 1.0,
+    "158": 1.0,
+    "159": 1.0,
+    "160": 1.0,
+    "161": 1.0,
+    "162": 1.0,
+    "163": 1.0,
+    "164": 1.0,
+    "165": 1.0,
+    "166": 1.0,
+    "167": 1.0,
+    "168": 1.0,
+    "169": 1.0,
+    "170": 1.0,
+    "171": 1.0,
+    "172": 1.0,
+    "173": 1.0,
+    "174": 1.0,
+    "175": 1.0,
+    "176": 1.0,
+    "177": 1.0,
+    "178": 1.0,
+    "179": 1.0,
+    "180": 1.0,
+    "181": 1.0,
+    "182": 1.0,
+    "183": 1.0,
+    "184": 1.0,
+    "185": 1.0,
+    "186": 1.0,
+    "187": 1.0,
+    "188": 1.0,
+    "189": 1.0,
+    "190": 1.0,
+    "191": 1.0,
+    "192": 1.0,
+    "193": 1.0,
+    "194": 1.0,
+    "195": 1.0,
+    "196": 1.0,
+    "197": 1.0,
+    "198": 1.0,
+    "199": 1.0,
+    "200": 1.0,
+    "201": 1.0,
+    "202": 1.0,
+    "203": 1.0,
+    "204": 1.0,
+    "205": 1.0,
+    "206": 1.0,
+    "207": 1.0,
+    "208": 1.0,
+    "209": 1.0,
+    "210": 1.0,
+    "211": 1.0,
+    "212": 1.0,
+    "213": 1.0,
+    "214": 1.0,
+    "215": 1.0,
+    "216": 1.0,
+    "217": 1.0,
+    "218": 1.0,
+    "219": 1.0,
+    "220": 1.0,
+    "221": 1.0,
+    "222": 1.0,
+    "223": 1.0,
+    "224": 1.0,
+    "225": 1.0,
+    "226": 1.0,
+    "227": 1.0,
+    "228": 1.0,
+    "229": 1.0,
+    "230": 1.0,
+    "231": 1.0,
+    "232": 1.0,
+    "233": 1.0,
+    "234": 1.0,
+    "235": 1.0,
+    "236": 1.0,
+    "237": 1.0,
+    "238": 1.0
+  },
+  "gods": [
+    {
+      "id": "backend_api_models_userprofile",
+      "label": "UserProfile",
+      "degree": 42
+    },
+    {
+      "id": "frontend_package_resolutions",
+      "label": "resolutions",
+      "degree": 42
+    },
+    {
+      "id": "backend_api_models_barteritem",
+      "label": "BarterItem",
+      "degree": 41
+    },
+    {
+      "id": "backend_api_models_barterinterest",
+      "label": "BarterInterest",
+      "degree": 31
+    },
+    {
+      "id": "backend_chat_consumers_chatconsumer",
+      "label": "ChatConsumer",
+      "degree": 29
+    },
+    {
+      "id": "backend_api_views_barteritemviewset",
+      "label": "BarterItemViewSet",
+      "degree": 28
+    },
+    {
+      "id": "backend_api_views_userprofileviewset",
+      "label": "UserProfileViewSet",
+      "degree": 27
+    },
+    {
+      "id": "backend_api_models_category",
+      "label": "Category",
+      "degree": 23
+    },
+    {
+      "id": "backend_chat_views_conversationviewset",
+      "label": "ConversationViewSet",
+      "degree": 22
+    },
+    {
+      "id": "backend_api_serializers_meta",
+      "label": "Meta",
+      "degree": 21
+    }
+  ],
+  "surprises": [
+    {
+      "source": "get_ai_matches()",
+      "target": "BarterItem",
+      "source_files": [
+        "backend/api/ai_service.py",
+        "backend/api/models.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "find_3_party_loops()",
+      "target": "BarterItem",
+      "source_files": [
+        "backend/api/ai_service.py",
+        "backend/api/models.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "BarterInterestSerializer",
+      "target": "UserProfile",
+      "source_files": [
+        "backend/api/serializers.py",
+        "backend/api/models.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "BarterItemCompactSerializer",
+      "target": "UserProfile",
+      "source_files": [
+        "backend/api/serializers.py",
+        "backend/api/models.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "UserProfileSerializer",
+      "target": "UserProfile",
+      "source_files": [
+        "backend/api/serializers.py",
+        "backend/api/models.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}
