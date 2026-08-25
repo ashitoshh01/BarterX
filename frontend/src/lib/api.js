@@ -52,6 +52,11 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Skip interceptor logic for login endpoint so we can handle invalid credentials normally
+      if (originalRequest.url && (originalRequest.url.includes("/login") || originalRequest.url.includes("/token"))) {
+        return Promise.reject(error);
+      }
+
       const refreshToken = localStorage.getItem("barter_refresh_token");
 
       // No refresh token — redirect to login

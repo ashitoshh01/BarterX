@@ -46,7 +46,7 @@ const TopBar = () => {
 
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-1.5 tint-amber px-3 py-1.5 rounded-full text-xs font-mono2 font-bold" data-testid="top-streak">
-            <Flame size={12} strokeWidth={2.5} /> 7
+            <Flame size={12} strokeWidth={2.5} /> {user.streak || 0}
           </div>
           <Link
             to="/app/wallet"
@@ -131,9 +131,6 @@ const BottomBar = () => {
 
 const SideRail = ({ collapsed, setCollapsed }) => {
   const { user } = useApp();
-  const level = 4;
-  const xp = 340;
-  const xpMax = 500;
 
   return (
     <aside className={`hidden lg:flex flex-col shrink-0 sticky top-24 self-start transition-all duration-200 ${collapsed ? "w-16" : "w-56"}`}>
@@ -168,25 +165,6 @@ const SideRail = ({ collapsed, setCollapsed }) => {
         ))}
       </div>
 
-      {/* Level card */}
-      {!collapsed && (
-        <div className="mt-6 nb-card p-4 relative overflow-hidden transition-all duration-200" data-testid="side-level">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Level</span>
-              <span className="font-display text-2xl text-[var(--text)]">{level}</span>
-            </div>
-            <div className="tint-lime px-2 py-0.5 rounded-full text-[9px] font-mono2 font-bold">SWAPPER</div>
-          </div>
-          <div className="xp-bar mb-1.5">
-            <div className="xp-fill" style={{ width: `${(xp / xpMax) * 100}%` }} />
-          </div>
-          <div className="flex justify-between text-[10px] font-mono2 text-[var(--text-3)]">
-            <span>{xp} XP</span>
-            <span>{xpMax - xp} to LVL {level + 1}</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };

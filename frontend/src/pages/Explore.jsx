@@ -121,12 +121,12 @@ const Explore = () => {
       {/* Search + filters */}
       <div className="nb-card p-4 bg-[var(--surface)] space-y-3">
         <div className="relative">
-          <Search size={18} strokeWidth={2.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+          <Search size={18} strokeWidth={2.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search skateboards, tutors, plants..."
-            className="nb-input pl-10"
+            className="nb-input !pl-11 w-full"
             data-testid="explore-search"
           />
         </div>
