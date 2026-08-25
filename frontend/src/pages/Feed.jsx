@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Sparkles, TrendingUp, MapPin, ArrowRight } from "lucide-react";
@@ -6,45 +6,53 @@ import { useApp } from "@/context/AppContext";
 import ListingCard from "@/components/ListingCard";
 import { NbButton, SectionTitle, EmptyState } from "@/components/UI";
 import Marquee from "@/components/Marquee";
+import api from "@/lib/api";
 
 const Feed = () => {
   const { user, listings, aiMatches, categories } = useApp();
 
-  // "For You" — most recent listings not owned by the user (real recency sort)
-  const forYou = useMemo(() => {
-    return listings
-      .filter((l) => l.owner?.username !== user.id && l.status !== "traded")
-      .slice(0, 4);
-  }, [listings, user.id]);
+  const [forYou, setForYou] = useState([]);
+  const [forYouLoading, setForYouLoading] = useState(true);
 
-  // "Trending" — sort by views (descending), not by array position
-  const trending = useMemo(() => {
-    return [...listings]
-      .filter((l) => l.status !== "traded")
-      .sort((a, b) => (b.views || 0) - (a.views || 0))
-      .slice(0, 4);
-  }, [listings]);
+  const [trending, setTrending] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
-  // "Near You" — same location as user (or all if no location set)
-  const local = useMemo(() => {
-    const userLoc = (user.location || "").toLowerCase().trim();
-    if (!userLoc) {
-      return listings
-        .filter((l) => l.owner?.username !== user.id && l.status !== "traded")
-        .slice(0, 4);
-    }
-    const locationItems = listings.filter((l) => {
-      if (l.owner?.username === user.id || l.status === "traded") return false;
-      const itemLoc = (l.location || "").toLowerCase();
-      // Match on city/state overlap
-      return userLoc.split(",").some((part) =>
-        itemLoc.includes(part.trim())
-      ) || itemLoc.split(",").some((part) =>
-        userLoc.includes(part.trim())
-      );
+  const [local, setLocal] = useState([]);
+  const [localLoading, setLocalLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    api.get('/items/recommendations/').then(res => {
+      if (isMounted) {
+        setForYou(res.data.results || res.data);
+        setForYouLoading(false);
+      }
+    }).catch(err => {
+      if (isMounted) setForYouLoading(false);
     });
-    return locationItems.length > 0 ? locationItems.slice(0, 4) : listings.filter((l) => l.owner?.username !== user.id).slice(0, 4);
-  }, [listings, user.id, user.location]);
+    
+    api.get('/items/trending/').then(res => {
+      if (isMounted) {
+        setTrending(res.data.results || res.data);
+        setTrendingLoading(false);
+      }
+    }).catch(err => {
+      if (isMounted) setTrendingLoading(false);
+    });
+    
+    api.get('/items/nearby/').then(res => {
+      if (isMounted) {
+        setLocal(res.data.results || res.data);
+        setLocalLoading(false);
+      }
+    }).catch(err => {
+      if (isMounted) setLocalLoading(false);
+    });
+    
+    return () => { isMounted = false; };
+  }, []);
+
 
   const topMatch = aiMatches[0];
   const topMatchListing = topMatch ? listings.find((l) => l.id === topMatch.theirItem) : null;
@@ -149,8 +157,10 @@ const Feed = () => {
       {/* For you */}
       <section>
         <SectionTitle kicker="FOR YOU">Fresh finds.</SectionTitle>
-        {forYou.length === 0 ? (
-          <EmptyState emoji="🌱" title="Nothing yet" subtitle="Check back soon — new listings are added daily." />
+        {forYouLoading ? (
+          <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Loading recommendations...</div>
+        ) : forYou.length === 0 ? (
+          <EmptyState emoji="🌱" title="Nothing yet" subtitle="We're learning what you're interested in. Explore a few listings and your recommendations will improve." />
         ) : (
           <motion.div
             initial="hidden"
@@ -174,8 +184,10 @@ const Feed = () => {
         <SectionTitle kicker="TRENDING">
           <div className="flex items-center gap-3">Hot right now <TrendingUp size={32} strokeWidth={3} className="text-[var(--lime)]" /></div>
         </SectionTitle>
-        {trending.length === 0 ? (
-          <EmptyState emoji="🔥" title="No trending items" subtitle="Post a listing to get the marketplace started." />
+        {trendingLoading ? (
+          <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Finding trends...</div>
+        ) : trending.length === 0 ? (
+          <EmptyState emoji="🔥" title="Nothing trending yet" subtitle="As the marketplace gets active, the hottest listings will appear here." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {trending.map((l) => <ListingCard key={l.id} listing={l} />)}
@@ -188,8 +200,10 @@ const Feed = () => {
         <SectionTitle kicker="NEAR YOU">
           <div className="flex items-center gap-3">Local swaps <MapPin size={28} strokeWidth={3} /></div>
         </SectionTitle>
-        {local.length === 0 ? (
-          <EmptyState emoji="📍" title="No local swaps" subtitle="Update your location in profile settings to find nearby swappers." />
+        {localLoading ? (
+          <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Searching nearby...</div>
+        ) : local.length === 0 ? (
+          <EmptyState emoji="📍" title="No local swaps" subtitle="Update your location in profile settings to discover nearby listings." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {local.map((l) => <ListingCard key={l.id} listing={l} />)}

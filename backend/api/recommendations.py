@@ -254,3 +254,102 @@ def get_recommendations(user):
     # 4. Diversification
     return diversify(scored_items)
 
+
+def get_trending(user):
+    """
+    Trending = Demand Velocity + User Relevance.
+    """
+    base_qs = BarterItem.objects.select_related('owner__profile', 'category')\
+        .prefetch_related('additional_images')\
+        .exclude(status__in=['archived', 'draft', 'traded'])
+        
+    if user.is_authenticated:
+        base_qs = base_qs.exclude(owner=user)
+        hidden_item_ids = UserItemInteraction.objects.filter(
+            user=user, interaction_type='hidden'
+        ).values_list('item_id', flat=True)
+        base_qs = base_qs.exclude(id__in=hidden_item_ids)
+
+    # Get items from the last 30 days that have views
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    candidates = list(base_qs.filter(created_at__gte=thirty_days_ago, views_count__gt=0).order_by('-views_count')[:100])
+    
+    # If not enough, pull top viewed overall
+    if len(candidates) < 10:
+        candidates += list(base_qs.filter(created_at__lt=thirty_days_ago).order_by('-views_count')[:20])
+    
+    scored_items = []
+    now = timezone.now()
+    for item in set(candidates):
+        days_old = max(1.0, (now - item.created_at).total_seconds() / 86400.0)
+        # Velocity = views / days
+        velocity = item.views_count / days_old
+        
+        affinity = category_affinity(user, item.category)
+        
+        # Balance between global demand and user relevance
+        score = (velocity * 0.7) + (affinity * 10.0) # affinity is 0-1, velocity could be 0-100+
+        scored_items.append((item, score))
+        
+    scored_items.sort(key=lambda x: x[1], reverse=True)
+    return diversify(scored_items, max_per_category=4)
+
+
+def get_nearby(user, lat=None, lng=None, radius_km=50.0):
+    """
+    NEAR YOU = Proximity + Relevance.
+    Distance is the highest weight.
+    """
+    if lat is None or lng is None:
+        if user.is_authenticated and hasattr(user, 'profile'):
+            lat = user.profile.latitude
+            lng = user.profile.longitude
+            
+    if lat is None or lng is None:
+        return []
+        
+    base_qs = BarterItem.objects.select_related('owner__profile', 'category')\
+        .prefetch_related('additional_images')\
+        .exclude(status__in=['archived', 'draft', 'traded'])
+        
+    if user.is_authenticated:
+        base_qs = base_qs.exclude(owner=user)
+
+    lat_delta = radius_km / 111.0
+    lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
+    
+    candidates = list(
+        base_qs.filter(
+            latitude__gte=lat - lat_delta, 
+            latitude__lte=lat + lat_delta,
+            longitude__gte=lng - lng_delta, 
+            longitude__lte=lng + lng_delta
+        ).order_by('-created_at')[:150]
+    )
+    
+    scored_items = []
+    for item in candidates:
+        if item.latitude is None or item.longitude is None:
+            continue
+            
+        try:
+            distance = haversine_distance_km(lat, lng, item.latitude, item.longitude)
+        except Exception:
+            continue
+            
+        if distance > radius_km:
+            continue
+            
+        # Proximity score (higher is better, max 1.0)
+        prox_score = max(0.0, 1.0 - (distance / radius_km))
+        
+        affinity = category_affinity(user, item.category)
+        recency = recency_decay(item.created_at)
+        
+        # Distance is the strongest weight (5x)
+        score = (5.0 * prox_score) + (1.5 * affinity) + (1.0 * recency)
+        scored_items.append((item, score))
+        
+    scored_items.sort(key=lambda x: x[1], reverse=True)
+    return [item for item, score in scored_items][:30]
+

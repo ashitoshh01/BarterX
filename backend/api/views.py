@@ -707,108 +707,61 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
-    def nearby(self, request):
-        """
-        GET /api/items/nearby/?latitude=18.5204&longitude=73.8567&radius=10
-        Returns active listings within radius_km of coordinates, sorted nearest -> farthest.
-        Uses authenticated user profile coordinates if latitude/longitude are omitted.
-        """
-        from .distance_service import haversine_distance_km, format_distance
+    def recommendations(self, request):
+        from .recommendations import get_recommendations
+        items = get_recommendations(request.user)
+        
+        page = self.paginate_queryset(items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def trending(self, request):
+        from .recommendations import get_trending
+        items = get_trending(request.user)
+        
+        page = self.paginate_queryset(items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def nearby(self, request):
+        from .recommendations import get_nearby
+        
         lat_param = request.query_params.get('latitude')
         lng_param = request.query_params.get('longitude')
-        radius_param = request.query_params.get('radius', 10.0)
-
-        user_lat = None
-        user_lng = None
-
-        # Resolve user coordinates: query params OR user profile coordinates
-        if lat_param is not None and lng_param is not None and lat_param != '' and lng_param != '':
+        radius_param = request.query_params.get('radius', 50.0)
+        
+        user_lat, user_lng = None, None
+        
+        if lat_param and lng_param:
             try:
-                user_lat = float(lat_param)
-                user_lng = float(lng_param)
-            except (ValueError, TypeError):
-                return Response(
-                    {"detail": "Latitude and longitude must be valid floating point numbers."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        elif request.user.is_authenticated:
-            profile = getattr(request.user, 'profile', None)
-            if profile and profile.latitude is not None and profile.longitude is not None:
-                user_lat = float(profile.latitude)
-                user_lng = float(profile.longitude)
-
-        if user_lat is None or user_lng is None:
-            return Response(
-                {"detail": "Location is not available. Please set your location first."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Validate coordinate ranges
-        if user_lat < -90.0 or user_lat > 90.0:
-            return Response(
-                {"detail": "Latitude must be between -90 and 90."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if user_lng < -180.0 or user_lng > 180.0:
-            return Response(
-                {"detail": "Longitude must be between -180 and 180."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Validate radius
+                user_lat, user_lng = float(lat_param), float(lng_param)
+            except ValueError:
+                return Response({"detail": "Invalid coordinates"}, status=status.HTTP_400_BAD_REQUEST)
+                
         try:
             radius_km = float(radius_param)
-        except (ValueError, TypeError):
-            return Response(
-                {"detail": "Radius must be a valid number between 1 and 100 km."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if radius_km < 1.0 or radius_km > 100.0:
-            return Response(
-                {"detail": "Radius must be between 1 and 100 km."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Base queryset with standard filters (category, search, condition, status, etc.)
-        queryset = self.get_queryset().filter(latitude__isnull=False, longitude__isnull=False)
-
-        # SQL-level bounding-box pre-filter
-        import math
-        lat_delta = radius_km / 111.0
-        lng_delta = radius_km / (111.0 * math.cos(math.radians(user_lat))) if math.cos(math.radians(user_lat)) != 0 else 0
-        queryset = queryset.filter(
-            latitude__gte=user_lat - lat_delta,
-            latitude__lte=user_lat + lat_delta,
-            longitude__gte=user_lng - lng_delta,
-            longitude__lte=user_lng + lng_delta
-        )
-
-        matching_items = []
-        for item in queryset:
-            if item.latitude is None or item.longitude is None:
-                continue
-            try:
-                dist = haversine_distance_km(user_lat, user_lng, item.latitude, item.longitude)
-                if dist <= radius_km:
-                    item.distance_km = dist
-                    item.distance_formatted = format_distance(dist)
-                    matching_items.append(item)
-            except Exception:
-                continue
-
-        # Sort nearest to farthest while prioritizing boosted items
-        matching_items.sort(key=lambda x: (not getattr(x, 'is_boosted', False), getattr(x, 'distance_km', 999999.0)))
-
-        serializer = self.get_serializer(matching_items, many=True)
-        return Response({
-            "count": len(matching_items),
-            "radius_km": radius_km,
-            "user_latitude": user_lat,
-            "user_longitude": user_lng,
-            "results": serializer.data
-        }, status=status.HTTP_200_OK)
+        except ValueError:
+            radius_km = 50.0
+            
+        items = get_nearby(request.user, lat=user_lat, lng=user_lng, radius_km=radius_km)
+        
+        page = self.paginate_queryset(items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         import json
