@@ -173,7 +173,7 @@ const Proposals = () => {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-full text-sm font-bold uppercase ${tab === t ? "bg-black text-white" : ""}`}
+            className={`px-4 py-1.5 rounded-full text-sm font-bold uppercase ${tab === t ? "bg-[var(--text)] text-white" : ""}`}
             data-testid={`proposals-tab-${t}`}
           >
             {t}
@@ -225,8 +225,8 @@ const Proposals = () => {
                 {p.coinsOffered !== 0 && (
                   <div className={`nb-border-2 rounded-lg p-2.5 text-xs font-mono2 font-bold text-center mb-3 ${
                     p.coinsOffered > 0
-                      ? (p.direction === "incoming" ? "bg-[var(--lime)] text-black" : "bg-[var(--pink)] text-white")
-                      : (p.direction === "incoming" ? "bg-[var(--pink)] text-white" : "bg-[var(--lime)] text-black")
+                      ? (p.direction === "incoming" ? "bg-[var(--lime)] text-black" : "bg-[var(--pink)] text-[var(--text)]")
+                      : (p.direction === "incoming" ? "bg-[var(--pink)] text-[var(--text)]" : "bg-[var(--lime)] text-black")
                   }`}>
                     {p.coinsOffered > 0 ? (
                       p.direction === "incoming"
@@ -289,7 +289,7 @@ const Proposals = () => {
                   )}
                   {p.status === "accepted" && p.tradeId && (
                     <Link to={`/app/tracker/${p.tradeId}`}>
-                      <button className="nb-btn bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" data-testid={`proposal-track-${p.id}`}>
+                      <button className="nb-btn bg-[var(--text)] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" data-testid={`proposal-track-${p.id}`}>
                         Track swap <ArrowRight size={14} strokeWidth={3} />
                       </button>
                     </Link>

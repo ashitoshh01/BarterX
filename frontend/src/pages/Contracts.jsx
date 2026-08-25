@@ -59,7 +59,7 @@ const Contracts = () => {
             <div key={c.id} className="nb-card p-6 bg-[var(--surface)]" data-testid={`contract-${c.id}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-black text-white flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-lg bg-[var(--text)] text-white flex items-center justify-center">
                     <FileText size={22} strokeWidth={2.5} />
                   </div>
                   <div>
@@ -93,7 +93,7 @@ const Contracts = () => {
                 </ul>
               </div>
 
-              <div className="flex items-center justify-between border-t-2 border-white/10/10 pt-4">
+              <div className="flex items-center justify-between border-t-2 border-[var(--border)]/10 pt-4">
                 <div className="flex items-center gap-4">
                   <div className="text-xs">
                     <div className="font-mono2 uppercase text-[var(--text-3)]">Party A</div>

@@ -372,7 +372,7 @@ const SwapTracker = () => {
 
           {/* Handshake PIN — only requester/shipper sees this */}
           {trade.handshake_pin && isRequester && (
-            <div className="nb-card p-4 bg-black text-white space-y-2" data-testid="pin-display">
+            <div className="nb-card p-4 bg-[var(--text)] text-white space-y-2" data-testid="pin-display">
               <div className="font-mono2 text-xs uppercase text-neutral-400">Handshake PIN</div>
               <div className="font-display text-4xl tracking-widest text-[var(--lime)]" data-testid="pin-value">
                 {trade.handshake_pin}

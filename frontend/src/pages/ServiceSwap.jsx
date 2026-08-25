@@ -59,7 +59,7 @@ const ServiceSwap = () => {
           <div className="inline-flex items-center gap-2 tint-blue border px-3 py-1 rounded-full mb-4 font-mono2 uppercase text-[10px] tracking-widest">
             <Repeat size={12} strokeWidth={2.5} /> SERVICE ↔ SERVICE
           </div>
-          <h1 className="font-display text-5xl md:text-6xl leading-[0.95] text-white">
+          <h1 className="font-display text-5xl md:text-6xl leading-[0.95] text-[var(--text)]">
             Skills for <span className="font-serif-i italic text-[var(--lime)]">skills</span>.
           </h1>
           <p className="mt-4 max-w-md text-[var(--text-2)]">

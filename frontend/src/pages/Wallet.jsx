@@ -197,7 +197,7 @@ const Wallet = () => {
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3">BALANCE</div>
-            <div className="font-display text-7xl md:text-8xl leading-none text-white flex items-baseline gap-2">
+            <div className="font-display text-7xl md:text-8xl leading-none text-[var(--text)] flex items-baseline gap-2">
               {(user.coins || 0).toLocaleString()}
               <span className="text-3xl text-[var(--lime)]">◈</span>
             </div>
@@ -221,7 +221,7 @@ const Wallet = () => {
         ].map((s) => (
           <div key={s.label} className={`nb-card p-4 border ${s.tint}`}>
             <s.icon size={18} strokeWidth={2} className="mb-2 opacity-80" />
-            <div className="font-display text-2xl text-white">{s.value}</div>
+            <div className="font-display text-2xl text-[var(--text)]">{s.value}</div>
             <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">{s.label}</div>
           </div>
         ))}
@@ -376,12 +376,12 @@ const Wallet = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-[#1a1f36] nb-border-2 overflow-hidden rounded-xl text-white shadow-2xl flex flex-col"
+              className="w-full max-w-md bg-[#1a1f36] nb-border-2 overflow-hidden rounded-xl text-[var(--text)] shadow-2xl flex flex-col"
             >
               {/* Header */}
-              <div className="bg-[#111625] p-5 border-b border-white/10 flex justify-between items-center">
+              <div className="bg-[#111625] p-5 border-b border-[var(--border)] flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-sm">R</div>
+                  <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-[var(--text)] font-bold text-sm">R</div>
                   <div>
                     <h4 className="font-display text-sm leading-tight">Razorpay Checkout</h4>
                     <span className="text-[10px] font-mono2 text-[var(--text-3)]">SECURED BY RAZORPAY</span>
@@ -389,7 +389,7 @@ const Wallet = () => {
                 </div>
                 <button
                   onClick={() => setRazorpayOrder(null)}
-                  className="text-white/40 hover:text-white text-lg font-bold"
+                  className="text-white/40 hover:text-[var(--text)] text-lg font-bold"
                   disabled={paymentStep === "processing"}
                 >
                   ✕
@@ -397,9 +397,9 @@ const Wallet = () => {
               </div>
 
               {/* Order Info */}
-              <div className="bg-[#1b233a] px-5 py-3 border-b border-white/5 flex justify-between items-center text-sm font-mono2">
+              <div className="bg-[#1b233a] px-5 py-3 border-b border-[var(--border)] flex justify-between items-center text-sm font-mono2">
                 <div>
-                  <span className="text-white/60">ORDER ID:</span> {razorpayOrder.order_id}
+                  <span className="text-[var(--text-2)]">ORDER ID:</span> {razorpayOrder.order_id}
                 </div>
                 <div className="font-bold text-lg text-[var(--lime)]">
                   ₹{razorpayOrder.amount_inr}.00
@@ -420,8 +420,8 @@ const Wallet = () => {
                         onClick={() => setPaymentMethod(m.id)}
                         className={`p-2.5 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-bold ${
                           paymentMethod === m.id
-                            ? "border-[var(--lime)] bg-[var(--lime)]/10 text-white"
-                            : "border-white/10 bg-[#161a2b] text-white/60 hover:text-white"
+                            ? "border-[var(--lime)] bg-[var(--lime)]/10 text-[var(--text)]"
+                            : "border-[var(--border)] bg-[#161a2b] text-[var(--text-2)] hover:text-[var(--text)]"
                         }`}
                       >
                         <m.icon size={16} />
@@ -431,16 +431,16 @@ const Wallet = () => {
                   </div>
 
                   {/* Form fields based on selected method */}
-                  <div className="bg-[#121624] p-4 rounded-lg border border-white/5 min-h-[120px] flex flex-col justify-center">
+                  <div className="bg-[#121624] p-4 rounded-lg border border-[var(--border)] min-h-[120px] flex flex-col justify-center">
                     {paymentMethod === "upi" && (
                       <div className="space-y-2">
-                        <label className="text-xs font-mono2 text-white/60 uppercase">Enter Virtual Payment Address (VPA)</label>
+                        <label className="text-xs font-mono2 text-[var(--text-2)] uppercase">Enter Virtual Payment Address (VPA)</label>
                         <input
                           type="text"
                           value={upiId}
                           onChange={(e) => setUpiId(e.target.value)}
                           placeholder="username@upi"
-                          className="nb-input bg-[#1a1f35] border-white/10 text-white w-full text-sm"
+                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm"
                         />
                         <div className="text-[10px] text-white/40 font-mono2">e.g., username@okaxis, handle@paytm</div>
                       </div>
@@ -449,34 +449,34 @@ const Wallet = () => {
                     {paymentMethod === "card" && (
                       <div className="space-y-3">
                         <div className="space-y-1">
-                          <label className="text-xs font-mono2 text-white/60 uppercase">Card Number</label>
+                          <label className="text-xs font-mono2 text-[var(--text-2)] uppercase">Card Number</label>
                           <input
                             type="text"
                             value={cardNumber}
                             onChange={(e) => setCardNumber(e.target.value)}
                             placeholder="4242 4242 4242 4242"
-                            className="nb-input bg-[#1a1f35] border-white/10 text-white w-full text-sm font-mono2"
+                            className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <label className="text-xs font-mono2 text-white/60 uppercase">Expiry</label>
+                            <label className="text-xs font-mono2 text-[var(--text-2)] uppercase">Expiry</label>
                             <input
                               type="text"
                               value={cardExpiry}
                               onChange={(e) => setCardExpiry(e.target.value)}
                               placeholder="MM/YY"
-                              className="nb-input bg-[#1a1f35] border-white/10 text-white w-full text-sm font-mono2"
+                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-xs font-mono2 text-white/60 uppercase">CVV</label>
+                            <label className="text-xs font-mono2 text-[var(--text-2)] uppercase">CVV</label>
                             <input
                               type="password"
                               value={cardCvv}
                               onChange={(e) => setCardCvv(e.target.value)}
                               placeholder="•••"
-                              className="nb-input bg-[#1a1f35] border-white/10 text-white w-full text-sm font-mono2"
+                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
                             />
                           </div>
                         </div>
@@ -485,11 +485,11 @@ const Wallet = () => {
 
                     {paymentMethod === "netbanking" && (
                       <div className="space-y-2">
-                        <label className="text-xs font-mono2 text-white/60 uppercase">Select Bank</label>
+                        <label className="text-xs font-mono2 text-[var(--text-2)] uppercase">Select Bank</label>
                         <select
                           value={selectedBank}
                           onChange={(e) => setSelectedBank(e.target.value)}
-                          className="nb-input bg-[#1a1f35] border-white/10 text-white w-full text-sm"
+                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm"
                         >
                           <option value="sbi">State Bank of India (SBI)</option>
                           <option value="hdfc">HDFC Bank</option>
@@ -500,7 +500,7 @@ const Wallet = () => {
                     )}
                   </div>
 
-                  <NbButton onClick={handleSimulatePayment} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                  <NbButton onClick={handleSimulatePayment} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-[var(--text)] font-bold">
                     Pay ₹{razorpayOrder.amount_inr}.00
                   </NbButton>
                 </div>
@@ -508,7 +508,7 @@ const Wallet = () => {
 
               {paymentStep === "processing" && (
                 <div className="p-10 flex flex-col items-center justify-center space-y-4">
-                  <div className="w-12 h-12 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin" />
+                  <div className="w-12 h-12 border-4 border-[var(--border-hi)] border-t-blue-500 rounded-full animate-spin" />
                   <div className="text-center">
                     <p className="font-bold text-base">Processing Payment...</p>
                     <p className="text-xs text-white/40 font-mono2 mt-1">Please do not close or refresh this page.</p>
@@ -523,13 +523,13 @@ const Wallet = () => {
                   </div>
                   <div className="text-center">
                     <p className="font-display text-2xl text-[var(--lime)]">Payment Successful!</p>
-                    <p className="text-sm text-white/80 font-mono2 mt-2">
+                    <p className="text-sm text-[var(--text)] font-mono2 mt-2">
                       +{razorpayOrder.amount_coins} Coins Credited
                     </p>
                   </div>
                   <NbButton
                     onClick={() => setRazorpayOrder(null)}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold mt-4"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-[var(--text)] font-bold mt-4"
                   >
                     Done
                   </NbButton>
@@ -549,10 +549,10 @@ const Wallet = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-white shadow-2xl space-y-4"
+              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-[var(--text)] shadow-2xl space-y-4"
               data-testid="buy-coins-modal"
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <div>
                   <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">COIN STORE</div>
                   <h3 className="font-display text-2xl">⚡ Buy Barter Coins</h3>
@@ -574,17 +574,17 @@ const Wallet = () => {
                     key={tier.coins}
                     disabled={purchasing}
                     onClick={() => handleBuyCoinsTier(tier.coins)}
-                    className="nb-card p-4 text-center bg-[var(--surface)] hover:tint-lime transition-all border-2 border-white/10 hover:border-[var(--lime)]"
+                    className="nb-card p-4 text-center bg-[var(--surface)] hover:tint-lime transition-all border-2 border-[var(--border)] hover:border-[var(--lime)]"
                     data-testid={`buy-tier-${tier.coins}`}
                   >
                     <div className="font-display text-2xl text-[var(--lime)]">{tier.coins} ◈</div>
-                    <div className="text-xs font-bold text-white mt-1">{tier.price}</div>
+                    <div className="text-xs font-bold text-[var(--text)] mt-1">{tier.price}</div>
                     <div className="text-[9px] font-mono2 text-[var(--text-3)] uppercase mt-0.5">{tier.label}</div>
                   </button>
                 ))}
               </div>
 
-              <div className="border-t border-white/10 pt-3 space-y-2">
+              <div className="border-t border-[var(--border)] pt-3 space-y-2">
                 <label className="block text-xs font-mono2 uppercase text-[var(--text-3)]">Or Custom Coin Amount</label>
                 <div className="flex gap-2">
                   <input

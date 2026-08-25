@@ -40,14 +40,14 @@ const Onboarding = () => {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
       <div className="grid-bg fixed inset-0 opacity-40 pointer-events-none" />
-      <header className="border-b border-white/5 relative">
+      <header className="border-b border-[var(--border)] relative">
         <div className="max-w-4xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <Link to="/"><LogoWordmark size="text-lg" /></Link>
           <div className="flex items-center gap-1.5">
             {steps.map((s, i) => (
               <div
                 key={s.key}
-                className={`h-1 rounded-full transition-all ${i <= step ? "bg-[var(--lime)] w-10 shadow-[0_0_12px_var(--lime-glow)]" : "bg-white/10 w-6"}`}
+                className={`h-1 rounded-full transition-all ${i <= step ? "bg-[var(--lime)] w-10 shadow-[0_0_12px_var(--lime-glow)]" : "bg-[var(--surface-3)] w-6"}`}
                 data-testid={`onboard-progress-${i}`}
               />
             ))}
@@ -68,7 +68,7 @@ const Onboarding = () => {
             <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-4">
               STEP {step + 1} OF {steps.length}
             </div>
-            <h1 className="font-display text-5xl md:text-7xl leading-[0.95] text-white mb-4">{current.title}</h1>
+            <h1 className="font-display text-5xl md:text-7xl leading-[0.95] text-[var(--text)] mb-4">{current.title}</h1>
             <p className="text-lg text-[var(--text-2)] mb-10">{current.subtitle}</p>
 
             {current.key === "location" ? (
@@ -90,7 +90,7 @@ const Onboarding = () => {
                       className={`nb-btn px-4 py-2.5 rounded-full text-sm flex items-center gap-2 transition-all ${
                         active
                           ? "bg-[var(--lime)] text-black shadow-[0_0_20px_-4px_var(--lime-glow)]"
-                          : "bg-white/5 text-white border border-white/10 hover:border-white/25"
+                          : "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:border-white/25"
                       }`}
                       data-testid={`onboard-${current.key}-${c.id}`}
                     >
@@ -106,9 +106,9 @@ const Onboarding = () => {
         </AnimatePresence>
       </main>
 
-      <footer className="border-t border-white/5 relative" style={{ background: "var(--bg-2)" }}>
+      <footer className="border-t border-[var(--border)] relative" style={{ background: "var(--bg-2)" }}>
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-          <button onClick={back} className="text-sm text-[var(--text-2)] hover:text-white flex items-center gap-1" data-testid="onboard-back">
+          <button onClick={back} className="text-sm text-[var(--text-2)] hover:text-[var(--text)] flex items-center gap-1" data-testid="onboard-back">
             <ArrowLeft size={14} strokeWidth={2.5} /> Back
           </button>
           <NbButton onClick={next} data-testid="onboard-next">

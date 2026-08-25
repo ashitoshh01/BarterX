@@ -100,12 +100,12 @@ const Verification = () => {
       <div className="nb-card p-8 relative overflow-hidden">
         <div className="aurora" style={{ opacity: 0.3 }} />
         <div className="relative flex items-center gap-5">
-          <div className="w-20 h-20 rounded-full border border-white/10 bg-white/5 flex items-center justify-center backdrop-blur">
+          <div className="w-20 h-20 rounded-full border border-[var(--border)] bg-[var(--surface-2)] flex items-center justify-center backdrop-blur">
             <Shield size={36} strokeWidth={1.5} className="text-[var(--lime)]" />
           </div>
           <div className="flex-1">
             <div className="font-mono2 text-[10px] uppercase tracking-widest text-[var(--text-3)] mb-1">TRUST SCORE</div>
-            <div className="font-display text-6xl text-white">{trustScore}<span className="text-2xl text-[var(--text-3)]">%</span></div>
+            <div className="font-display text-6xl text-[var(--text)]">{trustScore}<span className="text-2xl text-[var(--text-3)]">%</span></div>
             <div className="flex items-center gap-2 mt-1">
               <span className="nb-tag tint-lime text-[10px]">{trustLevel}</span>
               <span className="text-sm text-[var(--text-2)]">{total} of 4 verifications complete</span>
@@ -120,15 +120,15 @@ const Verification = () => {
       {stats?.successful_swaps !== undefined && (
         <div className="grid grid-cols-3 gap-3">
           <div className="nb-card p-4 tint-lime">
-            <div className="font-display text-2xl text-white">{stats.successful_swaps}</div>
+            <div className="font-display text-2xl text-[var(--text)]">{stats.successful_swaps}</div>
             <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">Swaps Done</div>
           </div>
           <div className="nb-card p-4 tint-amber">
-            <div className="font-display text-2xl text-white">{stats.average_rating?.toFixed(1) || "0.0"}</div>
+            <div className="font-display text-2xl text-[var(--text)]">{stats.average_rating?.toFixed(1) || "0.0"}</div>
             <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">Avg Rating</div>
           </div>
           <div className="nb-card p-4 tint-purple">
-            <div className="font-display text-2xl text-white">{stats.member_since || "N/A"}</div>
+            <div className="font-display text-2xl text-[var(--text)]">{stats.member_since || "N/A"}</div>
             <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">Member Since</div>
           </div>
         </div>

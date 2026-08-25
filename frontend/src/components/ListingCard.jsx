@@ -76,11 +76,10 @@ export const ListingCard = ({ listing, compact = false }) => {
           <img
             src={imgSrc}
             alt={listing.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
             onError={() => setImgSrc(fallbackImage)}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap max-w-[70%]">
             <span className={`nb-tag ${tint}`} data-testid={`listing-condition-${listing.id}`}>
               {listing.condition}
@@ -96,27 +95,27 @@ export const ListingCard = ({ listing, compact = false }) => {
               </span>
             )}
             {listing.status === "archived" && (
-              <span className="nb-tag bg-gray-500 text-white font-mono2 uppercase">
+              <span className="nb-tag bg-gray-100 text-gray-600 font-mono2 uppercase">
                 Archived
               </span>
             )}
             {listing.status === "reserved" && (
-              <span className="nb-tag bg-amber-500 text-black font-mono2 uppercase">
+              <span className="nb-tag bg-amber-50 text-amber-700 font-mono2 uppercase">
                 Reserved
               </span>
             )}
             {listing.status === "traded" && (
-              <span className="nb-tag bg-blue-500 text-white font-mono2 uppercase">
+              <span className="nb-tag bg-blue-50 text-blue-600 font-mono2 uppercase">
                 Completed
               </span>
             )}
           </div>
           <button
             onClick={(e) => { e.preventDefault(); toggleSave(listing.id); }}
-            className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${
+            className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
               isSaved
-                ? "bg-[var(--pink)] text-white shadow-[0_0_20px_-4px_var(--pink-glow)]"
-                : "bg-black/40 text-white hover:bg-black/60"
+                ? "bg-[var(--pink)] text-white shadow-md"
+                : "bg-white/80 backdrop-blur-sm text-[var(--text-2)] hover:bg-white hover:text-[var(--text)]"
             }`}
             data-testid={`listing-save-${listing.id}`}
             aria-label="Save"
@@ -124,17 +123,17 @@ export const ListingCard = ({ listing, compact = false }) => {
             <Heart size={14} strokeWidth={2.5} fill={isSaved ? "white" : "none"} />
           </button>
           <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-            <span className="font-mono2 text-[10px] uppercase tracking-widest text-white/70">
+            <span className="font-mono2 text-[10px] uppercase tracking-widest text-white/90 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
               ~₹{listing.estValue}
             </span>
-            <span className="font-mono2 text-[10px] uppercase tracking-widest text-white/70">
+            <span className="font-mono2 text-[10px] uppercase tracking-widest text-white/90 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
               {listing.posted}
             </span>
           </div>
         </div>
         <div className="p-4 flex-1 flex flex-col">
           <h3
-            className="font-display text-lg leading-tight text-white line-clamp-2 mb-1.5"
+            className="font-display text-lg leading-tight text-[var(--text)] line-clamp-2 mb-1.5"
             data-testid={`listing-title-${listing.id}`}
           >
             {listing.title}
@@ -146,22 +145,22 @@ export const ListingCard = ({ listing, compact = false }) => {
                 <MapPin size={10} strokeWidth={2} /> {listing.location}
               </span>
               {(listing.distance_formatted || listing.distance_km !== null) && (
-                <span className="nb-tag tint-lime py-0 px-1.5 text-[9px] font-bold text-black border-none" data-testid={`listing-distance-${listing.id}`}>
+                <span className="nb-tag tint-lime py-0 px-1.5 text-[9px] font-bold border-none" data-testid={`listing-distance-${listing.id}`}>
                   📍 {listing.distance_formatted || `${listing.distance_km} km away`}
                 </span>
               )}
             </div>
           )}
-          <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-white/5">
+          <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-[var(--border)]">
             <div className="flex items-center gap-2 min-w-0">
               <img
                 src={owner.avatar}
                 alt={owner.name}
-                className="w-6 h-6 rounded-full border border-white/10 object-cover shrink-0"
+                className="w-6 h-6 rounded-full border border-[var(--border)] object-cover shrink-0"
                 onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"; }}
               />
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-white truncate flex items-center gap-1">
+                <span className="text-xs font-bold text-[var(--text)] truncate flex items-center gap-1">
                   {owner.name}
                   {owner.verified && (
                     <span className="w-2.5 h-2.5 rounded-full bg-[var(--lime)] flex items-center justify-center text-[6px] font-black text-black">

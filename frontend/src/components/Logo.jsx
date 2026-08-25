@@ -7,7 +7,7 @@ import React from "react";
  * and the outer stroke forms a chevron pointing left (receive).
  * Distinctive, memorable, works at any size, monochrome or accent.
  */
-export const LogoMark = ({ size = 40, className = "", accent = "#DBFE01", ink = "#08080A" }) => (
+export const LogoMark = ({ size = 40, className = "", accent = "#C8F000", ink = "#1a1a1a" }) => (
   <svg
     width={size} height={size}
     viewBox="0 0 64 64"
@@ -19,7 +19,7 @@ export const LogoMark = ({ size = 40, className = "", accent = "#DBFE01", ink = 
     <defs>
       <linearGradient id="lg-glow" x1="0" y1="0" x2="64" y2="64">
         <stop offset="0%" stopColor={accent} />
-        <stop offset="100%" stopColor="#FF2E88" />
+        <stop offset="100%" stopColor="#4F6AFF" />
       </linearGradient>
     </defs>
     {/* Ring */}
@@ -36,7 +36,7 @@ export const LogoMark = ({ size = 40, className = "", accent = "#DBFE01", ink = 
     {/* Lower arrow (receive ←) */}
     <path
       d="M46 39 L26 39 L30 34 M26 39 L30 44"
-      stroke="#F5F5F7"
+      stroke="#ffffff"
       strokeWidth="3.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -50,7 +50,7 @@ export const LogoMark = ({ size = 40, className = "", accent = "#DBFE01", ink = 
 export const LogoWordmark = ({ className = "", size = "text-2xl", showDot = true }) => (
   <div className={`flex items-center gap-2.5 ${className}`} data-testid="logo-wordmark">
     <LogoMark size={32} />
-    <span className={`font-display ${size} tracking-tight leading-none text-white`}>
+    <span className={`font-display ${size} tracking-tight leading-none text-[var(--text)]`}>
       baarter{showDot && <span className="text-[var(--lime)]">.</span>}
     </span>
   </div>

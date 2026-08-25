@@ -316,7 +316,7 @@ const CreateListing = () => {
                       key={t}
                       type="button"
                       onClick={() => upd("type", t)}
-                      className={`nb-btn py-4 rounded-xl font-bold text-sm uppercase ${form.type === t ? "bg-black text-white" : "bg-[var(--surface)]"}`}
+                      className={`nb-btn py-4 rounded-xl font-bold text-sm uppercase ${form.type === t ? "bg-[var(--text)] text-white" : "bg-[var(--surface)]"}`}
                       data-testid={`create-type-${t}`}
                       disabled={!!id} // type shouldn't change during edit
                     >
@@ -377,7 +377,7 @@ const CreateListing = () => {
                   <select
                     value={form.condition}
                     onChange={(e) => upd("condition", e.target.value)}
-                    className="nb-input bg-[var(--surface-2)] text-white"
+                    className="nb-input bg-[var(--surface-2)] text-[var(--text)]"
                     data-testid="create-condition"
                   >
                     {["New", "Like New", "Good", "Fair", "Needs Repair", "Digital Item", "Service"].map((c) => <option key={c}>{c}</option>)}
@@ -402,7 +402,7 @@ const CreateListing = () => {
                     type="button"
                     onClick={handleGetLocation}
                     disabled={locating}
-                    className="nb-btn text-xs px-2.5 py-1 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1 shadow-[2px_2px_0_0_#000]"
+                    className="nb-btn text-xs px-2.5 py-1 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1 shadow-sm"
                     data-testid="create-use-location"
                   >
                     <MapPin size={12} /> {locating ? "Detecting..." : "Use My Current Location"}
@@ -428,7 +428,7 @@ const CreateListing = () => {
                   <select
                     value={form.status}
                     onChange={(e) => upd("status", e.target.value)}
-                    className="nb-input w-full bg-[var(--surface-2)] text-white"
+                    className="nb-input w-full bg-[var(--surface-2)] text-[var(--text)]"
                   >
                     {existingListing?.status === "active" && (
                       <>
@@ -524,7 +524,7 @@ const CreateListing = () => {
                 />
                 <div className="font-display text-xl">{form.title || "Untitled"}</div>
                 <div className="text-sm text-[var(--text-2)] line-clamp-2">{form.description || "-"}</div>
-                <div className="pt-2 border-t border-white/5 space-y-1">
+                <div className="pt-2 border-t border-[var(--border)] space-y-1">
                   <div className="text-xs"><span className="text-[var(--text-3)] font-mono2 uppercase">Estimated Value:</span> <span className="font-bold">₹{form.estValue || 0}</span></div>
                   <div className="text-xs"><span className="text-[var(--text-3)] font-mono2 uppercase">Condition:</span> <span className="font-bold">{form.condition}</span></div>
                   <div className="text-xs"><span className="text-[var(--text-3)] font-mono2 uppercase">Looking For:</span> <span className="font-bold">{form.wants && form.wants.length > 0 ? form.wants.join(", ") : "Open to Offers"}</span></div>

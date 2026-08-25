@@ -140,7 +140,7 @@ const Explore = () => {
                 <button
                   key={t}
                   onClick={() => setType(t)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase transition-all ${type === t ? "bg-black text-white shadow-[1px_1px_0_0_#000]" : "text-[var(--text-2)] hover:text-white"}`}
+                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase transition-all ${type === t ? "bg-[var(--text)] text-white shadow-sm" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
                   data-testid={`explore-type-${t}`}
                 >
                   {t}
@@ -159,7 +159,7 @@ const Explore = () => {
                 <button
                   key={opt.label}
                   onClick={() => handleRadiusSelect(opt.value)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${selectedRadius === opt.value ? "bg-[var(--lime)] text-black shadow-[1px_1px_0_0_#000]" : "text-[var(--text-2)] hover:text-white"}`}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${selectedRadius === opt.value ? "bg-[var(--lime)] text-black shadow-sm" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
                   data-testid={`explore-radius-${opt.value}`}
                 >
                   {opt.label}
@@ -172,7 +172,7 @@ const Explore = () => {
           <div className="nb-border-2 rounded-full p-0.5 bg-[var(--surface-2)] flex ml-auto items-center" data-testid="explore-view-switcher">
             <button
               onClick={() => setView("grid")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "grid" ? "bg-[var(--lime)] text-black shadow-[1px_1px_0_0_#000]" : "text-[var(--text-2)] hover:text-white"}`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "grid" ? "bg-[var(--lime)] text-black shadow-sm" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
               data-testid="explore-view-grid"
               aria-label="Grid View"
             >
@@ -181,7 +181,7 @@ const Explore = () => {
             </button>
             <button
               onClick={() => setView("list")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "list" ? "bg-[var(--lime)] text-black shadow-[1px_1px_0_0_#000]" : "text-[var(--text-2)] hover:text-white"}`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "list" ? "bg-[var(--lime)] text-black shadow-sm" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
               data-testid="explore-view-list"
               aria-label="List View"
             >
@@ -190,7 +190,7 @@ const Explore = () => {
             </button>
             <button
               onClick={() => setView("map")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "map" ? "bg-[var(--lime)] text-black shadow-[1px_1px_0_0_#000]" : "text-[var(--text-2)] hover:text-white"}`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${view === "map" ? "bg-[var(--lime)] text-black shadow-sm" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
               data-testid="explore-view-map"
               aria-label="Map View"
             >
@@ -212,7 +212,7 @@ const Explore = () => {
             <Link to="/app/profile" className="nb-btn text-xs px-3 py-1.5 bg-[var(--lime)] text-black font-bold rounded-lg">
               Set Location in Profile
             </Link>
-            <button onClick={() => setSelectedRadius("all")} className="nb-btn text-xs px-3 py-1.5 bg-black/40 text-white font-bold rounded-lg">
+            <button onClick={() => setSelectedRadius("all")} className="nb-btn text-xs px-3 py-1.5 bg-[var(--surface-3)] text-[var(--text)] font-bold rounded-lg">
               Show All Listings
             </button>
           </div>
@@ -223,7 +223,7 @@ const Explore = () => {
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
         <button
           onClick={() => setCat("all")}
-          className={`nb-btn px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 ${activeCat === "all" ? "bg-black text-white" : "bg-[var(--surface)]"}`}
+          className={`nb-btn px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 ${activeCat === "all" ? "bg-[var(--text)] text-white" : "bg-[var(--surface)]"}`}
           data-testid="explore-cat-all"
         >
           ALL

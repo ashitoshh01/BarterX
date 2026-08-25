@@ -133,7 +133,7 @@ const ChatThread = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] nb-card bg-[var(--surface)] overflow-hidden" data-testid="chat-thread">
       {/* Header */}
-      <div className="flex items-center gap-3 p-3 border-b-[3px] border-white/10 bg-[var(--surface)]">
+      <div className="flex items-center gap-3 p-3 border-b-[3px] border-[var(--border)] bg-[var(--surface)]">
         <Link to="/app/chat" className="p-2 hover:bg-black/5 rounded-lg"><ArrowLeft size={18} strokeWidth={3} /></Link>
         
         <div className="relative">
@@ -144,7 +144,7 @@ const ChatThread = () => {
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="font-display text-lg text-white">{displayName}</div>
+          <div className="font-display text-lg text-[var(--text)]">{displayName}</div>
           <div className="text-xs font-mono2 text-[var(--text-3)] flex items-center gap-1">
             <Shield size={10} strokeWidth={3} /> Trust {other?.trustScore ?? 50} · {other?.onlineStatus === 'online' ? 'Online' : 'Offline'}
           </div>
@@ -210,7 +210,7 @@ const ChatThread = () => {
       )}
 
       {/* Footer / Input */}
-      <div className="p-3 border-t-[3px] border-white/10 bg-[var(--surface)] flex gap-2 items-center">
+      <div className="p-3 border-t-[3px] border-[var(--border)] bg-[var(--surface)] flex gap-2 items-center">
         <input
           type="file"
           ref={fileInputRef}
@@ -242,7 +242,7 @@ const ChatThread = () => {
       {/* Coin Transfer Modal */}
       {showCoinModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[var(--surface)] nb-border-3 p-6 text-white shadow-2xl space-y-4">
+          <div className="w-full max-w-md bg-[var(--surface)] nb-border-3 p-6 text-[var(--text)] shadow-2xl space-y-4">
             <h4 className="font-display text-2xl flex items-center gap-2">
               <Coins className="text-[var(--lime)]" size={24} strokeWidth={2.5} />
               Send Coins to {displayName}

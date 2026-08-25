@@ -164,7 +164,7 @@ const ListingDetail = () => {
             <Heart size={14} strokeWidth={2.5} /> {listing.saves} saves
           </div>
 
-          <p className="font-medium text-white/90">{listing.description}</p>
+          <p className="font-medium text-[var(--text)]">{listing.description}</p>
 
           <div className="nb-card p-4 bg-[var(--surface)]">
             <div className="font-mono2 text-xs uppercase text-[var(--text-3)] mb-2">Estimated Value</div>
@@ -196,7 +196,7 @@ const ListingDetail = () => {
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs font-mono2">
-                <Star size={12} className="fill-black text-white" /> {owner.rating}
+                <Star size={12} className="fill-black text-[var(--text)]" /> {owner.rating}
                 <span>·</span>
                 <Shield size={12} strokeWidth={2.5} /> Trust {owner.trustScore}
                 <span>·</span> {owner.swapsCompleted || 0} swaps
@@ -209,11 +209,11 @@ const ListingDetail = () => {
           {listing.history && listing.history.length > 0 && (
             <div className="nb-card p-4 bg-[var(--surface)]">
               <div className="font-mono2 text-[10px] uppercase text-[var(--text-3)] mb-3 font-bold tracking-wider">Listing History Timeline</div>
-              <div className="relative border-l-2 border-white/10 ml-2 pl-4 space-y-3.5">
+              <div className="relative border-l-2 border-[var(--border)] ml-2 pl-4 space-y-3.5">
                 {listing.history.map((h, i) => (
                   <div key={h.id || i} className="relative">
                     <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full border-2 border-black bg-[var(--lime)]" />
-                    <div className="text-[11px] font-bold text-white uppercase">{(h.action || "").replace("_", " ")}</div>
+                    <div className="text-[11px] font-bold text-[var(--text)] uppercase">{(h.action || "").replace("_", " ")}</div>
                     <div className="text-[9px] text-[var(--text-3)] font-mono2">
                       {h.created_at ? new Date(h.created_at).toLocaleString() : ""} {h.performed_by_username ? `by @${h.performed_by_username}` : ""}
                     </div>
@@ -232,32 +232,32 @@ const ListingDetail = () => {
                 </NbButton>
 
                 {/* Status Transitions */}
-                <div className="grid grid-cols-2 gap-1.5 bg-black/20 p-2 rounded-xl border-2 border-white/5">
+                <div className="grid grid-cols-2 gap-1.5 bg-[var(--surface-2)] p-2 rounded-xl border-2 border-[var(--border)]">
                   <div className="col-span-2 text-[10px] font-mono2 uppercase text-[var(--text-3)] text-center mb-1">
-                    Current Status: <span className="font-bold text-white uppercase">{listing.status}</span>
+                    Current Status: <span className="font-bold text-[var(--text)] uppercase">{listing.status}</span>
                   </div>
                   {listing.status === "active" && (
                     <>
                       <NbButton onClick={() => handleStatusChange("reserved")} className="text-[11px] py-1 bg-amber-500 text-black">
                         🟡 Reserve
                       </NbButton>
-                      <NbButton onClick={() => handleStatusChange("archived")} className="text-[11px] py-1 bg-gray-500 text-white">
+                      <NbButton onClick={() => handleStatusChange("archived")} className="text-[11px] py-1 bg-gray-500 text-[var(--text)]">
                         ⚪ Archive
                       </NbButton>
                     </>
                   )}
                   {listing.status === "reserved" && (
                     <>
-                      <NbButton onClick={() => handleStatusChange("traded")} className="text-[11px] py-1 bg-blue-500 text-white">
+                      <NbButton onClick={() => handleStatusChange("traded")} className="text-[11px] py-1 bg-blue-500 text-[var(--text)]">
                         🔵 Complete Swap
                       </NbButton>
-                      <NbButton onClick={() => handleStatusChange("active")} className="text-[11px] py-1 bg-green-500 text-white">
+                      <NbButton onClick={() => handleStatusChange("active")} className="text-[11px] py-1 bg-green-500 text-[var(--text)]">
                         🟢 Make Active
                       </NbButton>
                     </>
                   )}
                   {listing.status === "archived" && (
-                    <NbButton onClick={() => handleStatusChange("active")} className="col-span-2 text-[11px] py-1 bg-green-500 text-white">
+                    <NbButton onClick={() => handleStatusChange("active")} className="col-span-2 text-[11px] py-1 bg-green-500 text-[var(--text)]">
                       🟢 Restore (Make Active)
                     </NbButton>
                   )}
@@ -269,10 +269,10 @@ const ListingDetail = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2">
-                  <NbButton onClick={handleDelete} className="py-2 bg-[var(--pink)] text-white">
+                  <NbButton onClick={handleDelete} className="py-2 bg-[var(--pink)] text-[var(--text)]">
                     <Trash2 size={14} strokeWidth={3} className="mr-1 inline" /> Delete
                   </NbButton>
-                  <NbButton onClick={handleBoost} className="py-2 bg-[var(--purple)] text-white" disabled={listing.isBoosted || listing.status === "traded"}>
+                  <NbButton onClick={handleBoost} className="py-2 bg-[var(--purple)] text-[var(--text)]" disabled={listing.isBoosted || listing.status === "traded"}>
                     🚀 {listing.isBoosted ? "Boosted" : "Boost"}
                   </NbButton>
                 </div>
@@ -334,7 +334,7 @@ const ListingDetail = () => {
                 data-testid="propose-item-coins"
               >
                 <div>
-                  <div className="text-xs font-bold font-display text-white">🪙 Pure Coin Proposal</div>
+                  <div className="text-xs font-bold font-display text-[var(--text)]">🪙 Pure Coin Proposal</div>
                   <div className="text-[10px] font-mono2 text-[var(--text-3)]">No item required · Offer Barter Coins directly</div>
                 </div>
                 <span className="nb-tag tint-lime text-[10px]">COINS ONLY</span>
@@ -374,7 +374,7 @@ const ListingDetail = () => {
                       <span>₹{offeredVal}</span>
                     </div>
                   )}
-                  <div className="border-t border-white/10 my-1 pt-1 flex justify-between font-bold">
+                  <div className="border-t border-[var(--border)] my-1 pt-1 flex justify-between font-bold">
                     <span>Valuation Gap:</span>
                     <span>₹{gapInr}</span>
                   </div>
@@ -384,7 +384,7 @@ const ListingDetail = () => {
                     </div>
                   )}
                   {(!isPureCoin && gapCoins === 0 && targetVal === offeredVal) && (
-                    <div className="p-2 rounded text-xs font-bold text-center mt-2 bg-[var(--surface-3)] text-white">
+                    <div className="p-2 rounded text-xs font-bold text-center mt-2 bg-[var(--surface-3)] text-[var(--text)]">
                       ✅ Even swap! No coins required.
                     </div>
                   )}

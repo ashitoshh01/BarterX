@@ -20,7 +20,7 @@ export const SectionTitle = ({ children, kicker, className = "" }) => (
         {kicker}
       </div>
     )}
-    <h2 className="font-display text-3xl md:text-4xl text-white">{children}</h2>
+    <h2 className="font-display text-3xl md:text-4xl text-[var(--text)]">{children}</h2>
   </div>
 );
 
@@ -28,7 +28,7 @@ export const Chip = ({ children, active = false, onClick, testid, className = ""
   <button
     onClick={onClick}
     data-testid={testid}
-    className={`nb-tag transition-all cursor-pointer ${active ? "!bg-[var(--lime)] !text-black !border-transparent" : "hover:!border-white/20"} ${className}`}
+    className={`nb-tag transition-all cursor-pointer ${active ? "!bg-[var(--text)] !text-white !border-transparent" : "hover:!border-[var(--border-hi)]"} ${className}`}
   >
     {children}
   </button>
@@ -36,17 +36,18 @@ export const Chip = ({ children, active = false, onClick, testid, className = ""
 
 export const NbButton = React.forwardRef(({ className = "", variant = "primary", children, ...props }, ref) => {
   const variants = {
-    primary: "bg-[var(--lime)] text-black hover:brightness-110 hover:shadow-[0_0_40px_-8px_var(--lime-glow)]",
-    dark: "bg-white text-black hover:bg-white/90",
-    ghost: "bg-white/5 text-white border border-white/10 hover:bg-white/10 hover:border-white/20",
-    outline: "bg-transparent text-white border border-white/15 hover:border-white/40 hover:bg-white/5",
-    pink: "bg-[var(--pink)] text-white hover:brightness-110 hover:shadow-[0_0_40px_-8px_var(--pink-glow)]",
-    danger: "bg-[var(--pink)]/15 text-[var(--pink)] border border-[var(--pink)]/30 hover:bg-[var(--pink)]/25",
+    primary: "bg-[var(--lime)] text-black hover:brightness-105 hover:shadow-md",
+    dark: "bg-[var(--text)] text-white hover:bg-[var(--text)]/90",
+    ghost: "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface-3)] hover:border-[var(--border-hi)]",
+    outline: "bg-transparent text-[var(--text)] border border-[var(--border)] hover:border-[var(--border-hi)] hover:bg-[var(--surface-2)]",
+    light: "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface-3)]",
+    pink: "bg-[var(--pink)] text-white hover:brightness-105 hover:shadow-md",
+    danger: "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100",
   };
   return (
     <button
       ref={ref}
-      className={`nb-btn px-5 py-3 text-sm inline-flex items-center justify-center gap-2 ${variants[variant]} ${className}`}
+      className={`nb-btn px-5 py-3 text-sm inline-flex items-center justify-center gap-2 ${variants[variant] || variants.primary} ${className}`}
       {...props}
     >
       {children}
@@ -65,7 +66,7 @@ export const XPBar = ({ value = 40, max = 100, label, className = "", testid }) 
     {label && (
       <div className="flex justify-between mb-1.5 text-[10px] font-mono2 uppercase tracking-wider">
         <span className="text-[var(--text-2)]">{label}</span>
-        <span className="text-[var(--lime)]">{value}/{max}</span>
+        <span className="text-[var(--text)]">{value}/{max}</span>
       </div>
     )}
     <div className="xp-bar">
@@ -78,6 +79,6 @@ export const XPBar = ({ value = 40, max = 100, label, className = "", testid }) 
 export const LevelBadge = ({ level = 4, className = "" }) => (
   <div className={`inline-flex items-center gap-1.5 tint-lime px-2.5 py-1 rounded-full border font-mono2 text-[11px] font-bold ${className}`}>
     <span className="text-[9px]">LVL</span>
-    <span className="text-white">{level}</span>
+    <span className="text-[var(--text)]">{level}</span>
   </div>
 );

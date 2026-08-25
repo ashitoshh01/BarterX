@@ -159,7 +159,7 @@ const Logistics = () => {
           <div className="flex items-center gap-2">
             <Star className="text-[var(--lime)] fill-[var(--lime)]" size={24} />
             <div>
-              <div className="font-display text-sm text-white">Trade Completed!</div>
+              <div className="font-display text-sm text-[var(--text)]">Trade Completed!</div>
               <div className="text-xs font-mono2 text-[var(--text-3)]">Rate your trade partner to bump their Trust Score.</div>
             </div>
           </div>
@@ -221,7 +221,7 @@ const Logistics = () => {
           <p className="text-xs font-mono2 text-[var(--text-2)]">
             Provide this 4-digit PIN to the sender when you receive the package or meet up in person. They must enter this PIN to complete the trade.
           </p>
-          <div className="font-display text-4xl tracking-widest text-[var(--lime)] bg-black/40 px-4 py-2 rounded-lg inline-block font-mono2" data-testid="handshake-pin-display">
+          <div className="font-display text-4xl tracking-widest text-[var(--lime)] bg-[var(--surface-3)] px-4 py-2 rounded-lg inline-block font-mono2" data-testid="handshake-pin-display">
             {trade.handshake_pin}
           </div>
         </div>
@@ -229,8 +229,8 @@ const Logistics = () => {
 
       {/* Mark Delivered & PIN entry action */}
       {trade && trade.status !== "completed" && trade.logistics_status !== "delivered" && (
-        <div className="nb-card p-6 bg-[var(--surface)] space-y-4 border-2 border-white/10" data-testid="mark-delivered-card">
-          <div className="flex items-center gap-2 font-mono2 text-xs uppercase font-bold text-white">
+        <div className="nb-card p-6 bg-[var(--surface)] space-y-4 border-2 border-[var(--border)]" data-testid="mark-delivered-card">
+          <div className="flex items-center gap-2 font-mono2 text-xs uppercase font-bold text-[var(--text)]">
             <PackageCheck size={18} className="text-[var(--lime)]" /> Mark Trade as Delivered & Release Escrow
           </div>
           <p className="text-xs font-mono2 text-[var(--text-3)]">

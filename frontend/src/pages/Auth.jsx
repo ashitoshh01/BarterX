@@ -29,7 +29,7 @@ const AuthInput = ({ label, icon: Icon, error, ...props }) => (
       {label}
     </label>
     <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden transition-all ${error ? "border-red-500/60" : ""}`}>
-      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
         <Icon size={15} strokeWidth={2} />
       </span>
       <input
@@ -216,9 +216,7 @@ const Auth = () => {
       <div className="min-h-screen grid md:grid-cols-2 relative overflow-hidden" style={{ background: "var(--bg)" }}>
 
         {/* Left decorative panel */}
-        <div className="hidden md:flex flex-col justify-between p-10 relative overflow-hidden border-r border-white/5">
-          <div className="aurora" style={{ opacity: 0.5 }} />
-          <div className="grid-bg absolute inset-0" />
+        <div className="hidden md:flex flex-col justify-between p-10 relative overflow-hidden border-r border-[var(--border)] bg-[var(--surface-2)]">
           <Link to="/" className="relative z-10"><LogoWordmark size="text-lg" /></Link>
 
           <motion.div
@@ -228,7 +226,7 @@ const Auth = () => {
             className="relative z-10 space-y-6 my-auto py-4"
           >
             <div>
-              <h1 className="font-display text-5xl lg:text-6xl leading-[0.9] text-white">
+              <h1 className="font-display text-5xl lg:text-6xl leading-[0.9] text-[var(--text)]">
                 Trade<br />like it's<br />
                 <span className="font-serif-i italic text-[var(--lime)]">1892.</span>
               </h1>
@@ -242,7 +240,7 @@ const Auth = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative rounded-2xl overflow-hidden border border-white/15 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl group max-w-md"
+              className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-white p-1.5 shadow-lg group max-w-md"
             >
               <div className="relative w-full h-48 lg:h-60 rounded-xl overflow-hidden">
                 <img
@@ -250,12 +248,12 @@ const Auth = () => {
                   alt="Barter AI Match Visual"
                   className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-40" />
 
                 {/* Floating Badge on Image */}
                 <div className="absolute bottom-3 left-3 tint-lime border border-lime-400/40 rounded-xl px-3 py-1.5 backdrop-blur-md shadow-lg flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[var(--lime)] animate-ping" />
-                  <span className="text-[10px] font-mono2 font-bold text-white uppercase tracking-wider">AI Swap Engine · 98% Match Rate</span>
+                  <span className="text-[10px] font-mono2 font-bold text-[var(--text)] uppercase tracking-wider">AI Swap Engine · 98% Match Rate</span>
                 </div>
               </div>
             </motion.div>
@@ -271,18 +269,17 @@ const Auth = () => {
         </div>
 
         {/* Right form panel */}
-        <div className="flex items-center justify-center p-6 md:p-10 relative overflow-y-auto">
-          <div className="absolute inset-0 grid-bg opacity-30" />
+        <div className="flex items-center justify-center p-6 md:p-10 relative overflow-y-auto bg-white">
           <div className="w-full max-w-md relative py-8">
             <div className="md:hidden mb-10"><Link to="/"><LogoWordmark /></Link></div>
 
             {/* Tab switcher */}
-            <div className="backdrop-blur bg-white/[0.03] border border-white/8 rounded-full p-1 flex mb-8 w-fit">
+            <div className="backdrop-blur bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 flex mb-8 w-fit">
               {["signup", "login"].map(tab => (
                 <button
                   key={tab}
                   onClick={() => { setMode(tab); setSignupStep("form"); clearErrors(); }}
-                  className={`px-5 py-1.5 rounded-full text-xs font-medium transition-all ${mode === tab ? "bg-[var(--lime)] text-black" : "text-[var(--text-2)] hover:text-white"}`}
+                  className={`px-5 py-1.5 rounded-full text-xs font-medium transition-all ${mode === tab ? "bg-[var(--lime)] text-black" : "text-[var(--text-2)] hover:text-[var(--text)]"}`}
                   data-testid={`auth-tab-${tab}`}
                 >
                   {tab === "signup" ? "Sign up" : "Log in"}
@@ -296,7 +293,7 @@ const Auth = () => {
                 <span className="w-6 h-px bg-[var(--lime)]" />
                 {mode === "login" ? "WELCOME BACK" : signupStep === "otp" ? "VERIFY EMAIL" : "NEW HERE"}
               </div>
-              <h2 className="font-display text-5xl md:text-6xl text-white leading-[0.95]">
+              <h2 className="font-display text-5xl md:text-6xl text-[var(--text)] leading-[0.95]">
                 {mode === "login" ? (
                   <>Log <span className="font-serif-i italic">back</span> in.</>
                 ) : signupStep === "otp" ? (
@@ -326,7 +323,7 @@ const Auth = () => {
                     </div>
                   ) : (
                     <button
-                      className="w-full nb-btn bg-white/5 border border-white/10 hover:bg-white/10 py-3 rounded-full text-sm font-medium text-white flex items-center justify-center gap-3 transition-all"
+                      className="w-full nb-btn bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--surface-3)] py-3 rounded-full text-sm font-medium text-[var(--text)] flex items-center justify-center gap-3 transition-all"
                       onClick={() => toast.info("Add your REACT_APP_GOOGLE_CLIENT_ID in frontend/.env to enable Google Sign-In")}
                       type="button"
                     >
@@ -342,9 +339,9 @@ const Auth = () => {
                 </div>
 
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 h-px bg-white/10" />
+                  <div className="flex-1 h-px bg-[var(--surface-3)]" />
                   <span className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">or</span>
-                  <div className="flex-1 h-px bg-white/10" />
+                  <div className="flex-1 h-px bg-[var(--surface-3)]" />
                 </div>
               </>
             ) : null}
@@ -376,7 +373,7 @@ const Auth = () => {
                   <div>
                     <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Password</label>
                     <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         <Lock size={15} strokeWidth={2} />
                       </span>
                       <input
@@ -388,7 +385,7 @@ const Auth = () => {
                         autoComplete="current-password"
                         data-testid="auth-password"
                       />
-                      <button type="button" onClick={() => setShowPassword(p => !p)} className="pr-4 text-[var(--text-3)] hover:text-white">
+                      <button type="button" onClick={() => setShowPassword(p => !p)} className="pr-4 text-[var(--text-3)] hover:text-[var(--text)]">
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
@@ -460,7 +457,7 @@ const Auth = () => {
                   <div>
                     <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Password</label>
                     <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.password ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         <Lock size={15} strokeWidth={2} />
                       </span>
                       <input
@@ -472,7 +469,7 @@ const Auth = () => {
                         autoComplete="new-password"
                         data-testid="auth-password"
                       />
-                      <button type="button" onClick={() => setShowPassword(p => !p)} className="pr-4 text-[var(--text-3)] hover:text-white">
+                      <button type="button" onClick={() => setShowPassword(p => !p)} className="pr-4 text-[var(--text-3)] hover:text-[var(--text)]">
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
@@ -481,7 +478,7 @@ const Auth = () => {
                   <div>
                     <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-2 block">Confirm Password</label>
                     <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.confirm ? "border-red-500/60" : signupForm.confirm && signupForm.confirm === signupForm.password ? "border-green-500/40" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         {signupForm.confirm && signupForm.confirm === signupForm.password
                           ? <CheckCircle2 size={15} className="text-green-400" />
                           : <Lock size={15} strokeWidth={2} />}
@@ -515,10 +512,10 @@ const Auth = () => {
                   className="space-y-5"
                   data-testid="auth-otp-form"
                 >
-                  <div className="backdrop-blur bg-white/[0.04] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                  <div className="backdrop-blur bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Verification Sent To</p>
-                      <p className="text-sm font-bold text-white font-mono2">{signupForm.email}</p>
+                      <p className="text-sm font-bold text-[var(--text)] font-mono2">{signupForm.email}</p>
                     </div>
                     <button
                       type="button"
@@ -534,7 +531,7 @@ const Auth = () => {
                       6-Digit OTP Code
                     </label>
                     <div className={`flex items-center nb-input gap-3 p-0 overflow-hidden ${errors.otp ? "border-red-500/60" : ""}`}>
-                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-white/8 text-[var(--text-3)]">
+                      <span className="flex items-center justify-center w-11 h-full shrink-0 border-r border-[var(--border)] text-[var(--text-3)]">
                         <KeyRound size={16} strokeWidth={2} />
                       </span>
                       <input
@@ -542,7 +539,7 @@ const Auth = () => {
                         maxLength={6}
                         value={otp}
                         onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
-                        className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-white text-xl font-bold font-mono2 tracking-[0.4em] placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:text-[var(--text-3)]"
+                        className="flex-1 bg-transparent outline-none py-[0.9rem] pr-4 text-[var(--text)] text-xl font-bold font-mono2 tracking-[0.4em] placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:text-[var(--text-3)]"
                         placeholder="123456"
                         autoFocus
                         data-testid="auth-otp-input"
@@ -575,7 +572,7 @@ const Auth = () => {
             </AnimatePresence>
 
             <p className="mt-8 text-[10px] font-mono2 uppercase tracking-widest text-center text-[var(--text-3)]">
-              By continuing you agree to our <a href="#" className="text-white/80 underline">terms</a> and <a href="#" className="text-white/80 underline">privacy</a>.
+              By continuing you agree to our <a href="#" className="text-[var(--text)] underline">terms</a> and <a href="#" className="text-[var(--text)] underline">privacy</a>.
             </p>
           </div>
         </div>

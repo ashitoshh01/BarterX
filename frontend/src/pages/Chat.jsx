@@ -36,7 +36,7 @@ const Chat = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <div className="font-display text-lg text-white">{displayName}</div>
+                    <div className="font-display text-lg text-[var(--text)]">{displayName}</div>
                     <div className="text-xs font-mono2 text-[var(--lime)] font-bold">{lastTimeText}</div>
                   </div>
                   <div className="flex items-center gap-2">

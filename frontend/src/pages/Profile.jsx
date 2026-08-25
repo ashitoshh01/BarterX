@@ -173,12 +173,12 @@ const Profile = () => {
   return (
     <div className="space-y-6" data-testid="profile-page">
       {/* Sleek User Profile Header (No Picture / Job Junk) */}
-      <div className="nb-card p-6 bg-[var(--surface-2)] border-2 border-white/10 relative">
+      <div className="nb-card p-6 bg-[var(--surface-2)] border-2 border-[var(--border)] relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="font-display text-3xl md:text-4xl text-white flex items-center gap-3">
+            <div className="font-display text-3xl md:text-4xl text-[var(--text)] flex items-center gap-3">
               {user.avatar ? (
-                <img src={user.avatar} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-[2px_2px_0_0_#000]" alt="" />
+                <img src={user.avatar} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-sm" alt="" />
               ) : (
                 <User className="text-[var(--lime)]" size={32} />
               )}
@@ -210,7 +210,7 @@ const Profile = () => {
             )}
             <button
               onClick={handleLogout}
-              className="nb-btn bg-red-600/95 hover:bg-red-700 border border-red-500/20 px-3.5 py-2 rounded-full text-xs font-bold text-white flex items-center gap-1 shadow-[2px_2px_0_0_#000]"
+              className="nb-btn bg-red-500 hover:bg-red-600 border border-red-400 px-3.5 py-2 rounded-full text-xs font-bold text-white flex items-center gap-1"
               data-testid="profile-logout"
             >
               <LogOut size={12} /> Log out
@@ -222,20 +222,20 @@ const Profile = () => {
       {/* Basic Profile Form (Name, State, City, Profession, Bio) */}
       {editMode ? (
         <form onSubmit={handleSaveProfile} className="nb-card p-6 space-y-4 bg-[var(--surface)] border-2 border-[var(--lime)]">
-          <div className="flex justify-between items-center border-b border-white/10 pb-3">
-            <h3 className="font-display text-xl text-white">Update Basic Profile</h3>
-            <button type="button" onClick={() => setEditMode(false)} className="text-white/60 hover:text-white">
+          <div className="flex justify-between items-center border-b border-[var(--border)] pb-3">
+            <h3 className="font-display text-xl text-[var(--text)]">Update Basic Profile</h3>
+            <button type="button" onClick={() => setEditMode(false)} className="text-[var(--text-2)] hover:text-[var(--text)]">
               <X size={18} />
             </button>
           </div>
 
-          <div className="space-y-1 pb-2 border-b border-white/5">
+          <div className="space-y-1 pb-2 border-b border-[var(--border)]">
             <label className="text-[10px] font-mono2 uppercase font-bold text-[var(--text-3)]">Profile Picture</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setAvatarFile(e.target.files[0])}
-              className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2 text-sm text-white focus:border-[var(--lime)] outline-none"
+              className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2 text-sm text-[var(--text)] focus:border-[var(--lime)] outline-none"
             />
           </div>
 
@@ -247,7 +247,7 @@ const Profile = () => {
                 required
                 value={profileForm.name}
                 onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-sm font-bold text-white focus:border-[var(--lime)] outline-none"
+                className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2.5 text-sm font-bold text-[var(--text)] focus:border-[var(--lime)] outline-none"
                 placeholder="Enter your name"
               />
             </div>
@@ -259,7 +259,7 @@ const Profile = () => {
                 required
                 value={profileForm.city}
                 onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-sm font-bold text-white focus:border-[var(--lime)] outline-none"
+                className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2.5 text-sm font-bold text-[var(--text)] focus:border-[var(--lime)] outline-none"
                 placeholder="e.g. Mumbai, Delhi, Bangalore"
               />
             </div>
@@ -271,7 +271,7 @@ const Profile = () => {
                 required
                 value={profileForm.state}
                 onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-sm font-bold text-white focus:border-[var(--lime)] outline-none"
+                className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2.5 text-sm font-bold text-[var(--text)] focus:border-[var(--lime)] outline-none"
                 placeholder="e.g. Maharashtra, Karnataka"
               />
             </div>
@@ -283,16 +283,16 @@ const Profile = () => {
                 required
                 value={profileForm.profession}
                 onChange={(e) => setProfileForm({ ...profileForm, profession: e.target.value })}
-                className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-sm font-bold text-white focus:border-[var(--lime)] outline-none"
+                className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2.5 text-sm font-bold text-[var(--text)] focus:border-[var(--lime)] outline-none"
                 placeholder="e.g. Student, Designer, Developer, Trader"
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2 nb-border-2 rounded-xl p-3 bg-black/20 tint-amber">
+            <div className="space-y-2 md:col-span-2 nb-border-2 rounded-xl p-3 bg-[var(--surface-2)] tint-amber">
               <div className="flex justify-between items-center flex-wrap gap-2">
                 <div>
                   <label className="text-[10px] font-mono2 uppercase font-bold text-[var(--text-3)] block">Geographic Location</label>
-                  <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                  <div className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5 mt-0.5">
                     <MapPin size={13} className="text-[var(--lime)] shrink-0" />
                     {profileForm.location_name || (profileForm.city && profileForm.state ? `${profileForm.city}, ${profileForm.state}` : "No GPS coordinates set")}
                   </div>
@@ -301,7 +301,7 @@ const Profile = () => {
                   type="button"
                   onClick={handleGetLocation}
                   disabled={locating}
-                  className="nb-btn text-xs px-3 py-1.5 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1.5 shadow-[2px_2px_0_0_#000]"
+                  className="nb-btn text-xs px-3 py-1.5 rounded-lg font-bold bg-[var(--lime)] text-black flex items-center gap-1.5 shadow-sm"
                   data-testid="profile-use-location"
                 >
                   <MapPin size={12} /> {locating ? "Detecting..." : "Use My Current Location"}
@@ -314,19 +314,19 @@ const Profile = () => {
               <textarea
                 value={profileForm.bio}
                 onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                className="w-full bg-black/40 border-2 border-white/10 rounded-lg p-2.5 text-xs font-bold text-white focus:border-[var(--lime)] outline-none h-20"
+                className="w-full bg-[var(--surface-3)] border-2 border-[var(--border)] rounded-lg p-2.5 text-xs font-bold text-[var(--text)] focus:border-[var(--lime)] outline-none h-20"
                 placeholder="Brief note about what you trade or offer..."
               />
             </div>
           </div>
 
-          <div className="flex gap-2 justify-end pt-3 border-t border-white/10">
+          <div className="flex gap-2 justify-end pt-3 border-t border-[var(--border)]">
             <NbButton type="button" variant="light" onClick={() => setEditMode(false)}>Cancel</NbButton>
             <NbButton type="submit">Save Profile & Boost Trust Score</NbButton>
           </div>
         </form>
       ) : (
-        <p className="text-sm font-medium max-w-lg text-white/80">{user.bio || "No description provided."}</p>
+        <p className="text-sm font-medium max-w-lg text-[var(--text)]">{user.bio || "No description provided."}</p>
       )}
 
       {/* Stats Cards */}
@@ -339,7 +339,7 @@ const Profile = () => {
         ].map((s) => (
           <div key={s.l} className={`nb-card p-4 border ${s.t} flex flex-col justify-between`}>
             <div>
-              <div className="font-display text-3xl md:text-4xl text-white">{s.v}</div>
+              <div className="font-display text-3xl md:text-4xl text-[var(--text)]">{s.v}</div>
               <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">{s.l}</div>
             </div>
             {s.l === "Trust Score" && (
@@ -348,7 +348,7 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={() => setEditMode(true)}
-                    className="w-full text-[11px] font-bold py-1.5 px-2 rounded-xl bg-[var(--lime)] text-black hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-1 shadow-[2px_2px_0px_0px_#000] border border-black"
+                    className="w-full text-[11px] font-bold py-1.5 px-2 rounded-xl bg-[var(--lime)] text-black hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-1 shadow-sm border border-black"
                   >
                     <Edit3 size={11} strokeWidth={3} /> Complete Profile (+40)
                   </button>
@@ -374,7 +374,7 @@ const Profile = () => {
           <button
             key={t.k}
             onClick={() => setTab(t.k)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${tab === t.k ? "bg-black text-white" : ""}`}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${tab === t.k ? "bg-[var(--text)] text-white" : ""}`}
             data-testid={`profile-tab-${t.k}`}
           >
             {t.l} {t.n !== undefined ? `(${t.n})` : ""}
@@ -385,17 +385,17 @@ const Profile = () => {
       {/* Tab Contents */}
       {tab === "overview" && (
         <div className="nb-card p-5 bg-[var(--surface-2)] space-y-4">
-          <h4 className="font-display text-lg text-white">About Me & Location</h4>
-          <p className="text-xs font-mono2 text-white/80 leading-relaxed">{user.bio || "No details provided."}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-white/5 text-xs font-mono2">
+          <h4 className="font-display text-lg text-[var(--text)]">About Me & Location</h4>
+          <p className="text-xs font-mono2 text-[var(--text)] leading-relaxed">{user.bio || "No details provided."}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-[var(--border)] text-xs font-mono2">
             <div>
-              <span className="text-[var(--text-3)]">City:</span> <span className="text-white font-bold">{user.city || "Not set"}</span>
+              <span className="text-[var(--text-3)]">City:</span> <span className="text-[var(--text)] font-bold">{user.city || "Not set"}</span>
             </div>
             <div>
-              <span className="text-[var(--text-3)]">State:</span> <span className="text-white font-bold">{user.state || "Not set"}</span>
+              <span className="text-[var(--text-3)]">State:</span> <span className="text-[var(--text)] font-bold">{user.state || "Not set"}</span>
             </div>
             <div>
-              <span className="text-[var(--text-3)]">Profession:</span> <span className="text-white font-bold">{user.profession || "Not set"}</span>
+              <span className="text-[var(--text-3)]">Profession:</span> <span className="text-[var(--text)] font-bold">{user.profession || "Not set"}</span>
             </div>
           </div>
         </div>
@@ -412,22 +412,22 @@ const Profile = () => {
                   <ListingCard listing={l} />
                 </div>
                 {/* Listing Analytics */}
-                <div className="mt-2 bg-black/40 border-2 border-white/10 p-2 rounded-xl text-[10px] font-mono2 flex justify-around text-white/80 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)]">
+                <div className="mt-2 bg-[var(--surface-3)] border-2 border-[var(--border)] p-2 rounded-xl text-[10px] font-mono2 flex justify-around text-[var(--text)] shadow-sm">
                   <span>👀 {l.views} Views</span>
                   <span>💬 {l.chatCount} Chats</span>
                   <span>📥 {l.proposalCount} Proposals</span>
                 </div>
-                <div className="absolute bottom-24 right-4 left-4 p-2 bg-black/90 nb-border-2 rounded-xl flex justify-around gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-24 right-4 left-4 p-2 bg-[var(--text)] nb-border-2 rounded-xl flex justify-around gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Link to={`/app/listing/${l.id}`} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-white text-black flex items-center gap-1">
                     <Eye size={10} /> View
                   </Link>
                   <button type="button" onClick={() => handleOpenEditListing(l)} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-[var(--lime)] text-black flex items-center gap-1">
                     <Edit3 size={10} /> Edit
                   </button>
-                  <button type="button" onClick={() => handleDeleteListing(l.id)} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-[var(--pink)] text-white flex items-center gap-1">
+                  <button type="button" onClick={() => handleDeleteListing(l.id)} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-[var(--pink)] text-[var(--text)] flex items-center gap-1">
                     <Trash2 size={10} /> Delete
                   </button>
-                  <button type="button" onClick={() => handleBoostListing(l.id)} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-[var(--purple)] text-white flex items-center gap-1">
+                  <button type="button" onClick={() => handleBoostListing(l.id)} className="nb-btn px-2.5 py-1 text-[10px] font-bold bg-[var(--purple)] text-[var(--text)] flex items-center gap-1">
                     🚀 Boost
                   </button>
                 </div>
@@ -456,7 +456,7 @@ const Profile = () => {
               <div key={r.id} className="nb-card p-4 bg-[var(--surface)]" data-testid={`review-${r.id}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex-1">
-                    <div className="text-sm font-bold text-white">{r.from}</div>
+                    <div className="text-sm font-bold text-[var(--text)]">{r.from}</div>
                     <div className="text-[10px] font-mono2 text-[var(--text-3)]">{r.time}</div>
                   </div>
                   <div className="flex">
@@ -465,7 +465,7 @@ const Profile = () => {
                     ))}
                   </div>
                 </div>
-                <p className="text-sm font-medium text-white/90">{r.text}</p>
+                <p className="text-sm font-medium text-[var(--text)]">{r.text}</p>
               </div>
             ))
           )}
@@ -473,7 +473,7 @@ const Profile = () => {
       )}
 
       {/* Quick Action Links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4 border-t border-white/10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4 border-t border-[var(--border)]">
         <Link to="/app/verification"><NbButton variant="light" className="w-full text-xs" data-testid="profile-verify">Get verified</NbButton></Link>
         <Link to="/app/disputes"><NbButton variant="light" className="w-full text-xs" data-testid="profile-disputes">Disputes</NbButton></Link>
         <Link to="/app/service-swap"><NbButton variant="light" className="w-full text-xs" data-testid="profile-services">Services</NbButton></Link>
