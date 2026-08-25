@@ -2,12 +2,12 @@ import React from "react";
 
 export const EmptyState = ({ emoji = "◇", title, subtitle, action, testid = "empty-state" }) => (
   <div
-    className="nb-card p-12 text-center flex flex-col items-center gap-3 relative overflow-hidden"
+    className="nb-card p-8 text-center flex flex-col items-center gap-2 relative overflow-hidden max-w-sm mx-auto my-4"
     data-testid={testid}
   >
-    <div className="text-5xl mb-2 opacity-70">{emoji}</div>
-    <div className="font-display text-2xl">{title}</div>
-    {subtitle && <p className="text-sm text-[var(--text-2)] max-w-sm">{subtitle}</p>}
+    <div className="text-4xl mb-1 opacity-70">{emoji}</div>
+    <div className="font-display text-xl">{title}</div>
+    {subtitle && <p className="text-sm text-[var(--text-2)]">{subtitle}</p>}
     {action && <div className="mt-2">{action}</div>}
   </div>
 );

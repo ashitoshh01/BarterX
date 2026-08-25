@@ -1,7 +1,8 @@
 import React from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
-import { Home, Compass, PlusSquare, MessageCircle, User, Bell, Wallet, Sparkles, Repeat, Flame } from "lucide-react";
+import { Home, Compass, PlusSquare, MessageCircle, User, Bell, Wallet, Sparkles, Repeat, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useState } from "react";
 
 const nav = [
   { to: "/app/feed", label: "Feed", icon: Home, testid: "nav-feed" },
@@ -34,23 +35,6 @@ const TopBar = () => {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              data-testid={item.testid}
-              className={({ isActive }) =>
-                `px-3.5 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${
-                  isActive
-                    ? "bg-[var(--text)] text-white"
-                    : "text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--surface-3)]"
-                }`
-              }
-            >
-              <item.icon size={16} strokeWidth={2} />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
           <Link
             to="/app/create"
             data-testid="nav-create"
@@ -145,62 +129,77 @@ const BottomBar = () => {
   );
 };
 
-const SideRail = () => {
+const SideRail = ({ collapsed, setCollapsed }) => {
   const { user } = useApp();
   const level = 4;
   const xp = 340;
   const xpMax = 500;
 
   return (
-    <aside className="hidden lg:block w-56 shrink-0 sticky top-20 self-start">
+    <aside className={`hidden lg:flex flex-col shrink-0 sticky top-24 self-start transition-all duration-200 ${collapsed ? "w-16" : "w-56"}`}>
+      <div className="flex justify-end mb-4 pr-1">
+        <button 
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 hover:bg-[var(--surface-3)] rounded text-[var(--text-3)] hover:text-[var(--text)] transition-colors"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
+
       <div className="space-y-0.5">
         {[...nav, { to: "/app/create", label: "Create", icon: PlusSquare, testid: "nav-create-side" }, ...secondaryNav].map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             data-testid={`side-${item.testid}`}
+            title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+              `flex items-center gap-3 ${collapsed ? "justify-center px-0 py-3" : "px-4 py-2.5"} rounded-xl font-medium text-sm transition-all ${
                 isActive
                   ? "bg-[var(--surface-3)] text-[var(--text)] font-semibold"
                   : "text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
               }`
             }
           >
-            <item.icon size={16} strokeWidth={2} />
-            <span>{item.label}</span>
+            <item.icon size={18} strokeWidth={2} />
+            {!collapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
       </div>
 
       {/* Level card */}
-      <div className="mt-6 nb-card p-4 relative overflow-hidden" data-testid="side-level">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Level</span>
-            <span className="font-display text-2xl text-[var(--text)]">{level}</span>
+      {!collapsed && (
+        <div className="mt-6 nb-card p-4 relative overflow-hidden transition-all duration-200" data-testid="side-level">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-mono2 uppercase tracking-widest text-[var(--text-3)]">Level</span>
+              <span className="font-display text-2xl text-[var(--text)]">{level}</span>
+            </div>
+            <div className="tint-lime px-2 py-0.5 rounded-full text-[9px] font-mono2 font-bold">SWAPPER</div>
           </div>
-          <div className="tint-lime px-2 py-0.5 rounded-full text-[9px] font-mono2 font-bold">SWAPPER</div>
+          <div className="xp-bar mb-1.5">
+            <div className="xp-fill" style={{ width: `${(xp / xpMax) * 100}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] font-mono2 text-[var(--text-3)]">
+            <span>{xp} XP</span>
+            <span>{xpMax - xp} to LVL {level + 1}</span>
+          </div>
         </div>
-        <div className="xp-bar mb-1.5">
-          <div className="xp-fill" style={{ width: `${(xp / xpMax) * 100}%` }} />
-        </div>
-        <div className="flex justify-between text-[10px] font-mono2 text-[var(--text-3)]">
-          <span>{xp} XP</span>
-          <span>{xpMax - xp} to LVL {level + 1}</span>
-        </div>
-      </div>
+      )}
     </aside>
   );
 };
 
 export const AppLayout = ({ children }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
     <div className="min-h-screen text-[var(--text)] flex flex-col overflow-x-hidden w-full max-w-full relative bg-[var(--bg-2)]">
       <TopBar />
-      <div className="app-container w-full flex-1 flex gap-8 py-6 pb-24 md:pb-8">
-        <SideRail />
-        <main className="flex-1 min-w-0">{children}</main>
+      <div className="app-container w-full flex-1 flex gap-8 py-6 pb-24 md:pb-8 transition-all duration-200">
+        <SideRail collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+        <main className="flex-1 min-w-0 transition-all duration-200">{children}</main>
       </div>
       <BottomBar />
     </div>
