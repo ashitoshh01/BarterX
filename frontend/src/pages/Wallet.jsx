@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Gift, Zap, ShieldCheck, CreditCard, Landmark, Smartphone } from "lucide-react";
+import { TrendingUp, TrendingDown, Gift, Zap, ShieldCheck, CreditCard, Landmark, Smartphone, Send, Coins, ArrowRight, History } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
@@ -10,6 +10,8 @@ const Wallet = () => {
 
   // Buy Coins Modal State
   const [buyModalOpen, setBuyModalOpen] = useState(false);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [earnModalOpen, setEarnModalOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
 
@@ -68,6 +70,7 @@ const Wallet = () => {
       setTransferRecipient("");
       setTransferAmount("");
       setTransferNote("");
+      setSendModalOpen(false);
     } catch (err) {
       // handled
     } finally {
@@ -163,7 +166,7 @@ const Wallet = () => {
   const handleSimulatePayment = async () => {
     if (!razorpayOrder) return;
     setPaymentStep("processing");
-    
+
     // Simulate gateway hand-shake time
     setTimeout(async () => {
       try {
@@ -183,189 +186,129 @@ const Wallet = () => {
   };
 
   return (
-    <div className="space-y-6" data-testid="wallet-page">
-      <SectionTitle kicker="BAARTER COINS">Your wallet.</SectionTitle>
+    <div className="space-y-5 w-full pb-8" data-testid="wallet-page">
 
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="nb-card p-8 relative overflow-hidden"
+      {/* BALANCE CARD */}
+      <div
+        className="nb-card p-4 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 w-full"
         data-testid="wallet-balance"
       >
-        <div className="aurora" style={{ opacity: 0.4 }} />
-        <div className="grid-bg absolute inset-0 opacity-30" />
-        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="font-mono2 text-[10px] uppercase tracking-[0.3em] text-[var(--text-3)] mb-3">BALANCE</div>
-            <div className="font-display text-7xl md:text-8xl leading-none text-[var(--text)] flex items-baseline gap-2">
-              {(user.coins || 0).toLocaleString()}
-              <span className="text-3xl text-[var(--lime)]">◈</span>
-            </div>
-            <div className="font-mono2 text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-3">BAARTER COINS · BC</div>
+        <div className="aurora absolute inset-0 pointer-events-none" style={{ opacity: 0.2 }} />
+        <div className="grid-bg absolute inset-0 opacity-10" />
+        <div className="relative z-10 flex items-baseline gap-3">
+          <div className="font-display text-3xl font-bold leading-none text-[var(--text)] flex items-baseline gap-1.5" style={{ fontWeight: 700 }}>
+            {(user.coins || 0).toLocaleString()}
+            <span className="text-sm font-semibold text-[var(--lime)]" style={{ fontWeight: 600 }}>◈ BC</span>
           </div>
-          <NbButton
-            onClick={() => setBuyModalOpen(true)}
-            className="bg-[var(--lime)] text-black px-6 py-3 font-bold text-base hover:scale-105 transition-transform"
-            data-testid="buy-coins-btn"
-          >
-            ⚡ Buy Coins
-          </NbButton>
+          <div className="font-mono2 text-xs uppercase tracking-wider text-[var(--text-3)] pb-0.5" style={{ fontWeight: 500 }}>Available balance</div>
         </div>
-      </motion.div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { label: "Earned", value: `+${stats.earned}`, icon: TrendingUp, tint: "tint-lime" },
-          { label: "Spent", value: `-${stats.spent}`, icon: TrendingDown, tint: "tint-pink" },
-          { label: "Referrals", value: String(stats.referrals), icon: Gift, tint: "tint-amber" },
-        ].map((s) => (
-          <div key={s.label} className={`nb-card p-4 border ${s.tint}`}>
-            <s.icon size={18} strokeWidth={2} className="mb-2 opacity-80" />
-            <div className="font-display text-2xl text-[var(--text)]">{s.value}</div>
-            <div className="text-[10px] font-mono2 uppercase tracking-widest mt-1 opacity-80">{s.label}</div>
-          </div>
-        ))}
+        <NbButton
+          onClick={() => setBuyModalOpen(true)}
+          className="bg-[var(--lime)] text-black px-4 py-2 font-bold text-xs relative z-10 flex items-center gap-1.5 rounded-full"
+          data-testid="buy-coins-btn"
+        >
+          <Coins size={14} /> Buy Coins
+        </NbButton>
       </div>
 
-      <div>
-        <h3 className="font-display text-2xl mb-3">Recent activity</h3>
+      {/* ACTIONS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+        <button
+          onClick={() => setSendModalOpen(true)}
+          className="nb-card p-4 text-left hover:bg-[var(--surface-3)] transition-colors border-2 border-[var(--border)] hover:border-[var(--pink)] group flex flex-col h-full bg-[var(--surface)] w-full"
+        >
+          <div className="w-7 h-7 rounded-full tint-pink flex items-center justify-center mb-3">
+            <Send size={14} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div
+              className="font-display text-[13px] font-semibold flex justify-between items-center text-[var(--text)] leading-snug"
+              style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "-0.01em" }}
+            >
+              Send Coins
+              <ArrowRight size={15} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--pink)] -translate-x-2 group-hover:translate-x-0 duration-200" />
+            </div>
+            <div className="text-[11px] font-mono2 text-[var(--text-3)] leading-snug font-normal" style={{ fontWeight: 400 }}>
+              Send BC to another user directly.
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setBuyModalOpen(true)}
+          className="nb-card p-4 text-left hover:bg-[var(--surface-3)] transition-colors border-2 border-[var(--border)] hover:border-[var(--lime)] group flex flex-col h-full bg-[var(--surface)] w-full"
+        >
+          <div className="w-7 h-7 rounded-full tint-lime flex items-center justify-center mb-3">
+            <Coins size={14} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div
+              className="font-display text-[13px] font-semibold flex justify-between items-center text-[var(--text)] leading-snug"
+              style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "-0.01em" }}
+            >
+              Buy Coins
+              <ArrowRight size={15} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--lime)] -translate-x-2 group-hover:translate-x-0 duration-200" />
+            </div>
+            <div className="text-[11px] font-mono2 text-[var(--text-3)] leading-snug font-normal" style={{ fontWeight: 400 }}>
+              Purchase BC at student-friendly prices.
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setEarnModalOpen(true)}
+          className="nb-card p-4 text-left hover:bg-[var(--surface-3)] transition-colors border-2 border-[var(--border)] hover:border-[var(--amber)] group flex flex-col h-full bg-[var(--surface)] w-full"
+        >
+          <div className="w-7 h-7 rounded-full tint-amber flex items-center justify-center mb-3">
+            <TrendingUp size={14} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div
+              className="font-display text-[13px] font-semibold flex justify-between items-center text-[var(--text)] leading-snug"
+              style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "-0.01em" }}
+            >
+              Earn Coins
+              <ArrowRight size={15} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--amber)] -translate-x-2 group-hover:translate-x-0 duration-200" />
+            </div>
+            <div className="text-[11px] font-mono2 text-[var(--text-3)] leading-snug font-normal" style={{ fontWeight: 400 }}>
+              Complete activities to earn more BC.
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* RECENT ACTIVITY */}
+      <div className="w-full">
+        <h3
+          className="font-display text-[13px] font-semibold text-[var(--text)] mb-2.5"
+          style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "-0.01em" }}
+        >
+          Recent activity
+        </h3>
         {wallet.length === 0 ? (
-          <EmptyState emoji="💰" title="No transactions yet" subtitle="Complete swaps and earn coins to see activity here." />
+          <div className="nb-card p-4 flex flex-col items-center justify-center text-center border-dashed border border-[var(--border)] bg-[var(--surface-2)] w-full">
+            <History size={18} strokeWidth={2} className="text-[var(--text-3)] mb-2" />
+            <div className="font-bold text-[var(--text)] text-sm mb-0.5">No transactions yet</div>
+            <div className="text-xs font-mono2 text-[var(--text-3)] max-w-xs">Complete swaps or send coins to see your activity here.</div>
+          </div>
         ) : (
-          <div className="nb-card overflow-hidden divide-y-[3px] divide-white/8">
+          <div className="nb-card overflow-hidden divide-y-[1px] divide-[var(--border)] w-full">
             {wallet.map((w) => (
-              <div key={w.id} className="p-4 flex items-center gap-3 bg-[var(--surface)]" data-testid={`wallet-tx-${w.id}`}>
-                <div className={`w-10 h-10 rounded-full nb-border-2 flex items-center justify-center ${w.type === "earn" ? "tint-lime" : "tint-pink"}`}>
-                  {w.type === "earn" ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
+              <div key={w.id} className="p-2.5 flex items-center gap-3 bg-[var(--surface)] hover:bg-[var(--surface-3)] transition-colors w-full" data-testid={`wallet-tx-${w.id}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center border border-[var(--border)] ${w.type === "earn" ? "tint-lime" : "tint-pink"}`}>
+                  {w.type === "earn" ? <TrendingUp size={12} strokeWidth={2.5} /> : <TrendingDown size={12} strokeWidth={2.5} />}
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold text-sm">{w.reason}</div>
-                  <div className="text-xs font-mono2 text-[var(--text-3)]">{w.time}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-xs text-[var(--text)] truncate">{w.reason}</div>
+                  <div className="text-[10px] font-mono2 text-[var(--text-3)]">{w.time}</div>
                 </div>
-                <div className={`font-display text-xl ${w.type === "earn" ? "text-[var(--lime)]" : ""}`}>
+                <div className={`font-display text-sm font-bold ${w.type === "earn" ? "text-[var(--lime)]" : "text-[var(--text)]"}`}>
                   {w.amount > 0 ? "+" : ""}{w.amount}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-4">
-        {/* Send Coins Card */}
-        <div className="nb-card p-6 tint-pink flex flex-col justify-between" data-testid="p2p-transfer-card">
-          <div>
-            <div className="font-display text-2xl mb-2">💸 Send Coins (P2P)</div>
-            <p className="text-xs font-mono2 uppercase text-[var(--text-3)] mb-4">Transfer coins directly to another user's wallet</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Recipient Username</label>
-                <input
-                  type="text"
-                  placeholder="e.g. alex_m"
-                  value={transferRecipient}
-                  onChange={(e) => setTransferRecipient(e.target.value)}
-                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
-                  data-testid="p2p-recipient-input"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Amount (◈)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
-                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
-                  data-testid="p2p-amount-input"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono2 uppercase text-[var(--text-3)] mb-1">Optional Note</label>
-                <input
-                  type="text"
-                  placeholder="Valuation gap / Tip / Thank you!"
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                  className="nb-input py-2 text-sm w-full bg-[var(--surface-2)]"
-                  data-testid="p2p-note-input"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <NbButton
-              size="sm"
-              disabled={isTransferring}
-              onClick={handleSendCoins}
-              className="w-full text-center"
-              data-testid="p2p-send-btn"
-            >
-              {isTransferring ? "Sending..." : "Send Coins"}
-            </NbButton>
-          </div>
-        </div>
-
-        {/* Buy Coins Store */}
-        <div className="nb-card p-6 tint-lime flex flex-col justify-between">
-          <div>
-            <div className="font-display text-2xl mb-2">⚡ Buy Coins Store</div>
-            <p className="text-xs font-mono2 uppercase text-[var(--text-3)] mb-4">Get coins at student prices to cover trade valuation gaps</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-              {[
-                { coins: 50, price: 250, label: "Starter Pack" },
-                { coins: 100, price: 450, label: "Trader Choice (10% Off)" },
-                { coins: 250, price: 1000, label: "Pro Booster (20% Off)" },
-                { coins: 500, price: 1750, label: "Whale Swapper (30% Off)" }
-              ].map((pkg) => (
-                <button
-                  key={pkg.coins}
-                  onClick={() => handleInitiatePayment(pkg.coins)}
-                  className="nb-border-2 bg-[var(--surface)] hover:nb-shadow hover:tint-lime transition-all p-3 rounded-lg text-left"
-                >
-                  <div className="font-display text-lg">{pkg.coins} ◈</div>
-                  <div className="text-[10px] text-[var(--text-3)] font-mono2">{pkg.label}</div>
-                  <div className="text-xs font-bold mt-1 text-[var(--lime)]">₹{pkg.price}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              id="custom-coins"
-              placeholder="Custom amount"
-              className="nb-input py-2 text-sm flex-1 bg-[var(--surface-2)]"
-            />
-            <NbButton
-              size="sm"
-              onClick={() => {
-                const input = document.getElementById("custom-coins");
-                const amount = parseInt(input?.value || "0");
-                if (amount <= 0 || isNaN(amount)) {
-                  toast.error("Enter a valid amount to purchase.");
-                  return;
-                }
-                handleInitiatePayment(amount);
-                if (input) input.value = "";
-              }}
-            >
-              Buy
-            </NbButton>
-          </div>
-        </div>
-
-        {/* Earn Coins Info */}
-        <div className="nb-card p-6 tint-amber">
-          <Zap size={28} strokeWidth={2.5} className="mb-2" />
-          <div className="font-display text-2xl mb-2">Earn more coins</div>
-          <ul className="space-y-1 text-sm font-medium">
-            <li>· Complete a swap: <b>+50 BC</b></li>
-            <li>· Refer a friend: <b>+25 BC each</b></li>
-            <li>· Verify your ID: <b>+100 BC</b></li>
-            <li>· Get 5-star rating: <b>+10 BC</b></li>
-          </ul>
-        </div>
       </div>
 
       {/* Razorpay Simulated Overlay */}
@@ -379,17 +322,17 @@ const Wallet = () => {
               className="w-full max-w-md bg-[#1a1f36] nb-border-2 overflow-hidden rounded-xl text-[var(--text)] shadow-2xl flex flex-col"
             >
               {/* Header */}
-              <div className="bg-[#111625] p-5 border-b border-[var(--border)] flex justify-between items-center">
+              <div className="bg-[#111625] p-4 border-b border-[var(--border)] flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-[var(--text)] font-bold text-sm">R</div>
                   <div>
                     <h4 className="font-display text-sm leading-tight">Razorpay Checkout</h4>
-                    <span className="text-[10px] font-mono2 text-[var(--text-3)]">SECURED BY RAZORPAY</span>
+                    <span className="text-xs font-mono2 text-[var(--text-3)]">SECURED BY RAZORPAY</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setRazorpayOrder(null)}
-                  className="text-white/40 hover:text-[var(--text)] text-lg font-bold"
+                  className="text-white/40 hover:text-[var(--text)] text-sm font-bold"
                   disabled={paymentStep === "processing"}
                 >
                   ✕
@@ -397,11 +340,11 @@ const Wallet = () => {
               </div>
 
               {/* Order Info */}
-              <div className="bg-[#1b233a] px-5 py-3 border-b border-[var(--border)] flex justify-between items-center text-sm font-mono2">
+              <div className="bg-[#1b233a] px-4 py-2.5 border-b border-[var(--border)] flex justify-between items-center text-xs font-mono2">
                 <div>
                   <span className="text-[var(--text-2)]">ORDER ID:</span> {razorpayOrder.order_id}
                 </div>
-                <div className="font-bold text-lg text-[var(--lime)]">
+                <div className="font-bold text-base text-[var(--lime)]">
                   ₹{razorpayOrder.amount_inr}.00
                 </div>
               </div>
@@ -418,11 +361,10 @@ const Wallet = () => {
                       <button
                         key={m.id}
                         onClick={() => setPaymentMethod(m.id)}
-                        className={`p-2.5 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-bold ${
-                          paymentMethod === m.id
+                        className={`p-2.5 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-bold ${paymentMethod === m.id
                             ? "border-[var(--lime)] bg-[var(--lime)]/10 text-[var(--text)]"
                             : "border-[var(--border)] bg-[#161a2b] text-[var(--text-2)] hover:text-[var(--text)]"
-                        }`}
+                          }`}
                       >
                         <m.icon size={16} />
                         {m.label}
@@ -440,9 +382,9 @@ const Wallet = () => {
                           value={upiId}
                           onChange={(e) => setUpiId(e.target.value)}
                           placeholder="username@upi"
-                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm"
+                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm py-2"
                         />
-                        <div className="text-[10px] text-white/40 font-mono2">e.g., username@okaxis, handle@paytm</div>
+                        <div className="text-xs text-white/40 font-mono2">e.g., username@okaxis, handle@paytm</div>
                       </div>
                     )}
 
@@ -455,7 +397,7 @@ const Wallet = () => {
                             value={cardNumber}
                             onChange={(e) => setCardNumber(e.target.value)}
                             placeholder="4242 4242 4242 4242"
-                            className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
+                            className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2 py-2"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -466,7 +408,7 @@ const Wallet = () => {
                               value={cardExpiry}
                               onChange={(e) => setCardExpiry(e.target.value)}
                               placeholder="MM/YY"
-                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
+                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2 py-2"
                             />
                           </div>
                           <div className="space-y-1">
@@ -476,7 +418,7 @@ const Wallet = () => {
                               value={cardCvv}
                               onChange={(e) => setCardCvv(e.target.value)}
                               placeholder="•••"
-                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2"
+                              className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm font-mono2 py-2"
                             />
                           </div>
                         </div>
@@ -489,7 +431,7 @@ const Wallet = () => {
                         <select
                           value={selectedBank}
                           onChange={(e) => setSelectedBank(e.target.value)}
-                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm"
+                          className="nb-input bg-[#1a1f35] border-[var(--border)] text-[var(--text)] w-full text-sm py-2"
                         >
                           <option value="sbi">State Bank of India (SBI)</option>
                           <option value="hdfc">HDFC Bank</option>
@@ -500,15 +442,15 @@ const Wallet = () => {
                     )}
                   </div>
 
-                  <NbButton onClick={handleSimulatePayment} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-[var(--text)] font-bold">
+                  <NbButton onClick={handleSimulatePayment} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-[var(--text)] text-sm font-bold">
                     Pay ₹{razorpayOrder.amount_inr}.00
                   </NbButton>
                 </div>
               )}
 
               {paymentStep === "processing" && (
-                <div className="p-10 flex flex-col items-center justify-center space-y-4">
-                  <div className="w-12 h-12 border-4 border-[var(--border-hi)] border-t-blue-500 rounded-full animate-spin" />
+                <div className="p-8 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-10 h-10 border-3 border-[var(--border-hi)] border-t-blue-500 rounded-full animate-spin" />
                   <div className="text-center">
                     <p className="font-bold text-base">Processing Payment...</p>
                     <p className="text-xs text-white/40 font-mono2 mt-1">Please do not close or refresh this page.</p>
@@ -517,19 +459,19 @@ const Wallet = () => {
               )}
 
               {paymentStep === "success" && (
-                <div className="p-8 flex flex-col items-center justify-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-[var(--lime)]/10 text-[var(--lime)] flex items-center justify-center">
-                    <ShieldCheck size={36} />
+                <div className="p-6 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-[var(--lime)]/10 text-[var(--lime)] flex items-center justify-center">
+                    <ShieldCheck size={32} />
                   </div>
                   <div className="text-center">
-                    <p className="font-display text-2xl text-[var(--lime)]">Payment Successful!</p>
-                    <p className="text-sm text-[var(--text)] font-mono2 mt-2">
+                    <p className="font-display text-xl text-[var(--lime)] font-bold">Payment Successful!</p>
+                    <p className="text-sm text-[var(--text)] font-mono2 mt-1">
                       +{razorpayOrder.amount_coins} Coins Credited
                     </p>
                   </div>
                   <NbButton
                     onClick={() => setRazorpayOrder(null)}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-[var(--text)] font-bold mt-4"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-[var(--text)] text-sm font-bold mt-3"
                   >
                     Done
                   </NbButton>
@@ -545,65 +487,174 @@ const Wallet = () => {
         {buyModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setBuyModalOpen(false)}>
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-[var(--text)] shadow-2xl space-y-4"
-              data-testid="buy-coins-modal"
+              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-[var(--text)] shadow-2xl space-y-5"
             >
               <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <div>
                   <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">COIN STORE</div>
-                  <h3 className="font-display text-2xl">⚡ Buy Barter Coins</h3>
+                  <h3 className="font-display text-xl font-bold">Buy Coins</h3>
                 </div>
-                <button onClick={() => setBuyModalOpen(false)} className="nb-btn bg-[var(--surface)] px-3 py-1 text-sm">✕</button>
+                <button onClick={() => setBuyModalOpen(false)} className="nb-btn bg-[var(--surface)] hover:bg-[var(--surface-3)] px-3 py-1.5 text-sm rounded-lg">✕</button>
               </div>
 
-              <p className="text-xs font-mono2 text-[var(--text-3)]">
-                Select a coin pack or enter a custom amount. Purchased coins are added to your wallet balance immediately.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { coins: 50, price: "₹250", label: "Starter" },
-                  { coins: 200, price: "₹900", label: "Pro Trader" },
-                  { coins: 500, price: "₹1,750", label: "Whale" },
+                  { coins: 50, price: 250, label: "Starter Pack" },
+                  { coins: 100, price: 450, label: "Trader Choice (10% Off)" },
+                  { coins: 250, price: 1000, label: "Pro Booster (20% Off)" },
+                  { coins: 500, price: 1750, label: "Whale Swapper (30% Off)" }
                 ].map((tier) => (
                   <button
                     key={tier.coins}
                     disabled={purchasing}
                     onClick={() => handleBuyCoinsTier(tier.coins)}
-                    className="nb-card p-4 text-center bg-[var(--surface)] hover:tint-lime transition-all border-2 border-[var(--border)] hover:border-[var(--lime)]"
-                    data-testid={`buy-tier-${tier.coins}`}
+                    className="nb-card p-3 text-left bg-[var(--surface)] hover:tint-lime transition-all border-2 border-[var(--border)] hover:border-[var(--lime)] flex flex-col justify-between"
                   >
-                    <div className="font-display text-2xl text-[var(--lime)]">{tier.coins} ◈</div>
-                    <div className="text-xs font-bold text-[var(--text)] mt-1">{tier.price}</div>
-                    <div className="text-[9px] font-mono2 text-[var(--text-3)] uppercase mt-0.5">{tier.label}</div>
+                    <div className="font-display text-2xl font-bold text-[var(--text)]">{tier.coins} ◈</div>
+                    <div className="text-xs font-mono2 text-[var(--text-3)] uppercase mt-1 mb-2">{tier.label}</div>
+                    <div className="text-sm font-bold text-[var(--lime)]">₹{tier.price}</div>
                   </button>
                 ))}
               </div>
 
-              <div className="border-t border-[var(--border)] pt-3 space-y-2">
-                <label className="block text-xs font-mono2 uppercase text-[var(--text-3)]">Or Custom Coin Amount</label>
+              <div className="border-t border-[var(--border)] pt-4 space-y-2">
+                <label className="block text-xs font-mono2 uppercase text-[var(--text-3)]">Custom Amount</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     placeholder="e.g. 150"
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
-                    className="nb-input py-2 text-sm flex-1 bg-[var(--surface)]"
-                    data-testid="custom-coins-input"
+                    className="nb-input py-2 text-sm flex-1 bg-[var(--surface)] border-[var(--border)] focus:border-[var(--lime)]"
                   />
                   <NbButton
                     disabled={purchasing || !customAmount}
                     onClick={() => handleBuyCoinsTier(customAmount)}
-                    className="bg-[var(--lime)] text-black py-2 px-4 text-xs font-bold"
-                    data-testid="custom-buy-btn"
+                    className="bg-[var(--lime)] text-black py-2 px-5 text-sm font-bold rounded-lg"
                   >
                     {purchasing ? "Buying..." : "Buy"}
                   </NbButton>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Send Coins Modal */}
+      <AnimatePresence>
+        {sendModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSendModalOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-md overflow-hidden rounded-xl text-[var(--text)] shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div>
+                  <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">P2P TRANSFER</div>
+                  <h3 className="font-display text-xl font-bold">Send Coins</h3>
+                </div>
+                <button onClick={() => setSendModalOpen(false)} className="nb-btn bg-[var(--surface)] hover:bg-[var(--surface-3)] px-3 py-1.5 text-sm rounded-lg">✕</button>
+              </div>
+
+              <p className="text-xs font-mono2 text-[var(--text-3)]">Transfer coins directly to another user's wallet.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono2 uppercase text-[var(--text-3)] mb-1">Recipient Username</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. alex_m"
+                    value={transferRecipient}
+                    onChange={(e) => setTransferRecipient(e.target.value)}
+                    className="nb-input py-2.5 text-sm w-full bg-[var(--surface)] border-[var(--border)] focus:border-[var(--pink)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono2 uppercase text-[var(--text-3)] mb-1">Amount (◈)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    className="nb-input py-2.5 text-sm w-full bg-[var(--surface)] border-[var(--border)] focus:border-[var(--pink)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono2 uppercase text-[var(--text-3)] mb-1">Optional Note</label>
+                  <input
+                    type="text"
+                    placeholder="Valuation gap / Tip / Thank you!"
+                    value={transferNote}
+                    onChange={(e) => setTransferNote(e.target.value)}
+                    className="nb-input py-2.5 text-sm w-full bg-[var(--surface)] border-[var(--border)] focus:border-[var(--pink)]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <NbButton
+                  disabled={isTransferring}
+                  onClick={handleSendCoins}
+                  className="w-full text-center py-2.5 bg-[var(--pink)] text-white hover:bg-[var(--pink)]/90 text-sm font-bold rounded-lg"
+                >
+                  {isTransferring ? "Sending..." : "Send Coins"}
+                </NbButton>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Earn Coins Modal */}
+      <AnimatePresence>
+        {earnModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEarnModalOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="nb-card p-6 bg-[var(--surface-2)] w-full max-w-sm overflow-hidden rounded-xl text-[var(--text)] shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div>
+                  <div className="font-mono2 text-xs uppercase text-[var(--text-3)]">ACTIVITIES</div>
+                  <h3 className="font-display text-xl font-bold">Earn Coins</h3>
+                </div>
+                <button onClick={() => setEarnModalOpen(false)} className="nb-btn bg-[var(--surface)] hover:bg-[var(--surface-3)] px-3 py-1.5 text-sm rounded-lg">✕</button>
+              </div>
+
+              <ul className="space-y-3">
+                <li className="flex justify-between items-center bg-[var(--surface)] p-3 rounded-lg border border-[var(--border)] text-sm">
+                  <span className="font-medium">Complete a swap</span>
+                  <span className="font-bold text-[var(--lime)] font-mono2 text-sm">+50 BC</span>
+                </li>
+                <li className="flex justify-between items-center bg-[var(--surface)] p-3 rounded-lg border border-[var(--border)] text-sm">
+                  <span className="font-medium">Refer a friend</span>
+                  <span className="font-bold text-[var(--lime)] font-mono2 text-sm">+25 BC each</span>
+                </li>
+                <li className="flex justify-between items-center bg-[var(--surface)] p-3 rounded-lg border border-[var(--border)] text-sm">
+                  <span className="font-medium">Verify your ID</span>
+                  <span className="font-bold text-[var(--lime)] font-mono2 text-sm">+100 BC</span>
+                </li>
+                <li className="flex justify-between items-center bg-[var(--surface)] p-3 rounded-lg border border-[var(--border)] text-sm">
+                  <span className="font-medium">Get a 5-star rating</span>
+                  <span className="font-bold text-[var(--lime)] font-mono2 text-sm">+10 BC</span>
+                </li>
+              </ul>
+
+              <div className="pt-2">
+                <NbButton onClick={() => setEarnModalOpen(false)} className="w-full text-center py-2.5 bg-[var(--surface)] border-2 border-[var(--border)] hover:bg-[var(--surface-3)] text-sm font-bold rounded-lg">
+                  Got it
+                </NbButton>
               </div>
             </motion.div>
           </div>
