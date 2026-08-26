@@ -13,9 +13,6 @@ const nav = [
 
 const secondaryNav = [
   { to: "/app/proposals", label: "Proposals", icon: Repeat, testid: "nav-proposals" },
-  { to: "/app/wallet", label: "Wallet", icon: Wallet, testid: "nav-wallet" },
-  { to: "/app/notifications", label: "Notifications", icon: Bell, testid: "nav-notifications" },
-  { to: "/app/profile", label: "Profile", icon: User, testid: "nav-profile" },
 ];
 
 const TopBar = () => {
@@ -50,10 +47,10 @@ const TopBar = () => {
           </div>
           <Link
             to="/app/wallet"
-            className="hidden sm:flex items-center gap-1.5 tint-lime px-3 py-1.5 rounded-full text-xs font-mono2 font-bold"
+            className="flex items-center gap-1.5 tint-lime px-3 py-1.5 rounded-full text-xs font-mono2 font-bold"
             data-testid="top-coins"
           >
-            <span>◈</span> {user.coins}
+            <Wallet size={14} strokeWidth={2.5} /> {user.coins}
           </Link>
           <Link
             to="/app/notifications"
@@ -67,7 +64,7 @@ const TopBar = () => {
               </span>
             )}
           </Link>
-          <Link to="/app/profile" data-testid="top-avatar" className="relative">
+          <Link to="/app/profile" data-testid="top-avatar" className="relative hidden sm:block">
             <img
               src={user.avatar}
               alt={user.name}
