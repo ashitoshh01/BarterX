@@ -63,10 +63,12 @@ const Landing = () => {
       {/* ═══════════ NAVBAR ═══════════ */}
       <header
         style={{
-          position: "sticky",
+          position: "fixed",
           top: 0,
-          zIndex: 100,
-          background: "rgba(255,255,255,0.92)",
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid #f0f0f0",
         }}
@@ -156,13 +158,23 @@ const Landing = () => {
           </button>
         </nav>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu (Overlapping Overlay & Sticky/Fixed) */}
         {mobileMenuOpen && (
           <div
             style={{
-              background: "#fff",
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              width: "100%",
+              maxHeight: "calc(100vh - 72px)",
+              overflowY: "auto",
+              background: "#ffffff",
               borderTop: "1px solid #f0f0f0",
-              padding: "16px 24px 24px",
+              borderBottom: "1px solid #e8e8e8",
+              padding: "20px 24px 24px",
+              boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.15)",
+              zIndex: 1000,
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -223,7 +235,7 @@ const Landing = () => {
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "80px 24px 60px",
+          padding: "120px 24px 60px",
         }}
       >
         <div
@@ -722,7 +734,7 @@ const Landing = () => {
           }}
         >
           {/* Brand */}
-          <div>
+          <div className="landing-footer-brand">
             <div
               style={{
                 fontWeight: 800,
@@ -927,8 +939,11 @@ const Landing = () => {
             gap: 32px !important;
           }
           .landing-footer-grid {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 32px !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 32px 24px !important;
+          }
+          .landing-footer-brand {
+            grid-column: 1 / -1 !important;
           }
           .landing-nav-links {
             display: none !important;
@@ -946,7 +961,11 @@ const Landing = () => {
             grid-template-columns: 1fr !important;
           }
           .landing-footer-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 32px 20px !important;
+          }
+          .landing-footer-brand {
+            grid-column: 1 / -1 !important;
           }
         }
 
