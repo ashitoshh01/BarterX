@@ -280,7 +280,7 @@ const Explore = () => {
           </div>
         ) : displayListings.length === 0 ? (
           <EmptyState
-            emoji="📍"
+            icon={Compass}
             title={selectedRadius !== "all" ? `No listings within ${selectedRadius} km` : "Nothing here yet"}
             subtitle={selectedRadius !== "all" ? "Try increasing the radius to 25 km or 50 km to find more items." : "Try broadening your search or picking a different category."}
             action={
@@ -317,8 +317,8 @@ const Explore = () => {
                   <div className="font-display text-xl truncate flex items-center justify-between gap-2">
                     <span>{l.title}</span>
                     {l.distance_formatted && (
-                      <span className="nb-tag tint-lime text-[10px] shrink-0 font-bold text-black">
-                        📍 {l.distance_formatted}
+                      <span className="nb-tag tint-lime text-[10px] shrink-0 font-bold text-black flex items-center gap-1">
+                        <MapPin size={10} strokeWidth={2.5} /> {l.distance_formatted}
                       </span>
                     )}
                   </div>

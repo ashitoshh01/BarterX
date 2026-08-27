@@ -1,13 +1,21 @@
 import React from "react";
 
-export const EmptyState = ({ emoji = "◇", title, subtitle, action, testid = "empty-state" }) => (
+export const EmptyState = ({ emoji, icon: Icon, title, subtitle, action, testid = "empty-state" }) => (
   <div
-    className="nb-card p-6 md:p-8 text-center flex flex-col items-center gap-2 relative overflow-hidden max-w-sm mx-auto my-4 w-full"
+    className="nb-card p-6 md:p-8 text-center flex flex-col items-center justify-center gap-3 relative overflow-hidden max-w-sm mx-auto my-4 w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xs"
     data-testid={testid}
   >
-    <div className="text-4xl mb-1 opacity-70">{emoji}</div>
-    <div className="font-display !text-xl md:!text-2xl break-words w-full">{title}</div>
-    {subtitle && <p className="text-sm text-[var(--text-2)]">{subtitle}</p>}
+    {Icon ? (
+      <div className="w-12 h-12 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--lime)] shadow-xs">
+        <Icon size={24} strokeWidth={1.75} />
+      </div>
+    ) : emoji ? (
+      <div className="w-12 h-12 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xl shadow-xs">
+        {emoji}
+      </div>
+    ) : null}
+    <div className="font-display text-xl md:text-2xl font-bold text-[var(--text)] tracking-tight">{title}</div>
+    {subtitle && <p className="text-xs md:text-sm text-[var(--text-2)] font-medium max-w-xs">{subtitle}</p>}
     {action && <div className="mt-2">{action}</div>}
   </div>
 );

@@ -15,21 +15,21 @@ L.Icon.Default.mergeOptions({
 const userIcon = L.divIcon({
   className: "custom-user-marker",
   html: `<div style="
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     background: #ccff00;
     border: 3px solid #000000;
     border-radius: 50%;
-    box-shadow: 0 0 15px #ccff00;
+    box-shadow: 0 0 12px rgba(204,255,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 8px;
     font-weight: bold;
     color: #000;
-  ">📍</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
+  ">•</div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 });
 
 // Custom listing marker icon (Black & Amber pin)
@@ -51,7 +51,7 @@ const createListingIcon = (distanceText) => {
       align-items: center;
       gap: 4px;
     ">
-      <span>📦</span>
+      <span style="color: #ccff00;">✦</span>
       <span>${distanceText || "Item"}</span>
     </div>`,
     iconSize: [80, 26],
@@ -130,7 +130,7 @@ const ListingMap = ({
           .addTo(map)
           .bindPopup(`
             <div style="font-family: system-ui, sans-serif; padding: 4px;">
-              <strong style="color: #000; font-size: 13px;">📍 You (Current Location)</strong>
+              <strong style="color: #000; font-size: 13px;">You (Current Location)</strong>
               <div style="font-size: 11px; color: #555;">${userLocation.locationName || "Saved Profile Location"}</div>
             </div>
           `);
@@ -159,8 +159,8 @@ const ListingMap = ({
 
         popupContent.innerHTML = `
           <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #000;">${item.title}</div>
-          <div style="font-size: 11px; color: #666; margin-bottom: 4px;">📍 ${item.location || "Nearby"}</div>
-          ${distText ? `<div style="font-size: 11px; font-weight: bold; color: #2563eb; margin-bottom: 6px;">⚡ ${distText} away</div>` : ""}
+          <div style="font-size: 11px; color: #666; margin-bottom: 4px;">${item.location || "Nearby"}</div>
+          ${distText ? `<div style="font-size: 11px; font-weight: bold; color: #2563eb; margin-bottom: 6px;">✦ ${distText} away</div>` : ""}
           <div style="display: inline-block; background: #e2e8f0; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">
             ${item.condition || "Item"}
           </div>
@@ -214,7 +214,7 @@ const ListingMap = ({
       <div ref={mapContainerRef} className="w-full h-full z-0" />
       {listings.length === 0 && (
         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-white text-xs font-mono2 px-3 py-2 rounded-lg nb-border-2 z-[1000] flex items-center gap-2">
-          <span>📍</span> No nearby listings found for this radius.
+          <span>✦</span> No nearby listings found for this radius.
         </div>
       )}
     </div>

@@ -88,27 +88,26 @@ const mapUserProfile = (profile) => ({
 const mapCategory = (cat) => {
   const nameLower = cat.name.toLowerCase();
   let tint = "tint-mint";
-  let emoji = "✦";
   if (nameLower.includes("book") || nameLower.includes("note")) {
-    tint = "tint-pink"; emoji = "📚";
+    tint = "tint-pink";
   } else if (nameLower.includes("electronic") || nameLower.includes("tech")) {
-    tint = "tint-blue"; emoji = "💻";
+    tint = "tint-blue";
   } else if (nameLower.includes("hostel") || nameLower.includes("essential")) {
-    tint = "tint-amber"; emoji = "🛏️";
+    tint = "tint-amber";
   } else if (nameLower.includes("cloth") || nameLower.includes("wear") || nameLower.includes("apparel") || nameLower.includes("accessor")) {
-    tint = "tint-purple"; emoji = "👕";
+    tint = "tint-purple";
   } else if (nameLower.includes("sport") || nameLower.includes("hobby") || nameLower.includes("game")) {
-    tint = "tint-mint"; emoji = "⚽";
+    tint = "tint-mint";
   } else if (nameLower.includes("service")) {
-    tint = "tint-lime"; emoji = "🛠️";
+    tint = "tint-lime";
   } else {
-    tint = "tint-pink"; emoji = "📦";
+    tint = "tint-pink";
   }
   return {
     id: cat.id,
     name: cat.name,
     tint,
-    emoji,
+    emoji: "✦",
     type: cat.is_service ? "service" : "product",
   };
 };

@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, MessageCircle, Coins, Repeat, Shield, CheckCheck } from "lucide-react";
+import { Sparkles, MessageCircle, Coins, Repeat, Shield, CheckCheck, Bell } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 
@@ -32,7 +32,7 @@ const Notifications = () => {
       </div>
 
       {notifications.length === 0 ? (
-        <EmptyState emoji="🔔" title="All caught up" subtitle="You're up to date on everything." />
+        <EmptyState icon={Bell} title="All caught up" subtitle="You're up to date on everything." />
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => {

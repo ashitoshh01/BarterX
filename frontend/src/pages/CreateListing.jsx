@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, Plus, X, MapPin } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Plus, X, MapPin, Package, Sparkles, Rocket, Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { NbButton, SectionTitle } from "@/components/UI";
 import { toast } from "sonner";
@@ -230,7 +230,7 @@ const CreateListing = () => {
           images: form.images,
           status: form.status,
         });
-        toast.success("Listing updated successfully! 🎉", { id: tid });
+        toast.success("Listing updated successfully!", { id: tid });
       } else {
         await addListing({
           type: form.type,
@@ -250,7 +250,7 @@ const CreateListing = () => {
           wants: form.wants,
           images: form.images,
         });
-        toast.success("Listing live! 🎉", { id: tid });
+        toast.success("Listing live!", { id: tid });
       }
       localStorage.removeItem(id ? `draft_edit_${id}` : "draft_create");
       nav("/app/feed");
@@ -274,7 +274,7 @@ const CreateListing = () => {
   if (id && existingListing?.status === "traded") {
     return (
       <div className="p-10 text-center space-y-4 max-w-lg mx-auto bg-[var(--surface)] nb-card mt-12">
-        <div className="text-6xl">🔒</div>
+        <Lock size={40} className="mx-auto text-[var(--text-3)]" />
         <h2 className="font-display text-3xl">Completed Listing</h2>
         <p className="text-sm text-[var(--text-2)]">This listing is completed (traded) and cannot be modified.</p>
         <NbButton onClick={() => nav("/app/feed")}>Return to Feed</NbButton>
@@ -316,11 +316,12 @@ const CreateListing = () => {
                       key={t}
                       type="button"
                       onClick={() => upd("type", t)}
-                      className={`nb-btn py-4 rounded-xl font-bold text-sm uppercase ${form.type === t ? "bg-[var(--text)] text-white" : "bg-[var(--surface)]"}`}
+                      className={`nb-btn py-4 rounded-xl font-bold text-sm uppercase flex items-center justify-center gap-2 ${form.type === t ? "bg-[var(--text)] text-white" : "bg-[var(--surface)]"}`}
                       data-testid={`create-type-${t}`}
                       disabled={!!id} // type shouldn't change during edit
                     >
-                      {t === "product" ? "📦 Product" : "🎨 Service"}
+                      {t === "product" ? <Package size={16} /> : <Sparkles size={16} />}
+                      {t}
                     </button>
                   ))}
                 </div>
@@ -432,26 +433,26 @@ const CreateListing = () => {
                   >
                     {existingListing?.status === "active" && (
                       <>
-                        <option value="active">🟢 Active</option>
-                        <option value="reserved">🟡 Reserved</option>
-                        <option value="archived">⚪ Archived</option>
+                        <option value="active">Active</option>
+                        <option value="reserved">Reserved</option>
+                        <option value="archived">Archived</option>
                       </>
                     )}
                     {existingListing?.status === "reserved" && (
                       <>
-                        <option value="reserved">🟡 Reserved</option>
-                        <option value="active">🟢 Active</option>
-                        <option value="traded">🔵 Completed</option>
+                        <option value="reserved">Reserved</option>
+                        <option value="active">Active</option>
+                        <option value="traded">Completed</option>
                       </>
                     )}
                     {existingListing?.status === "archived" && (
                       <>
-                        <option value="archived">⚪ Archived</option>
-                        <option value="active">🟢 Active</option>
+                        <option value="archived">Archived</option>
+                        <option value="active">Active</option>
                       </>
                     )}
                     {existingListing?.status === "traded" && (
-                      <option value="traded">🔵 Completed</option>
+                      <option value="traded">Completed</option>
                     )}
                   </select>
                 </div>
@@ -512,7 +513,7 @@ const CreateListing = () => {
 
           {step === 4 && (
             <div className="text-center py-6">
-              <div className="text-6xl mb-3 pop-in">🚀</div>
+              <Rocket size={44} className="mx-auto text-[var(--lime)] mb-3 pop-in" />
               <div className="font-display text-3xl mb-2">{id ? "Save edits?" : "Ready to launch?"}</div>
               <p className="text-sm text-[var(--text-2)] mb-6">Preview below. You can edit anytime.</p>
               <div className="nb-card p-4 bg-[var(--surface-2)] text-left space-y-2 max-w-sm mx-auto">

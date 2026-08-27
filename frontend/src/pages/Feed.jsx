@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sparkles, TrendingUp, MapPin, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, MapPin, ArrowRight, Flame } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ListingCard from "@/components/ListingCard";
 import { NbButton, SectionTitle, EmptyState } from "@/components/UI";
@@ -160,7 +160,7 @@ const Feed = () => {
         {forYouLoading ? (
           <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Loading recommendations...</div>
         ) : forYou.length === 0 ? (
-          <EmptyState emoji="🌱" title="Nothing yet" subtitle="We're learning what you're interested in. Explore a few listings and your recommendations will improve." />
+          <EmptyState icon={Sparkles} title="Nothing yet" subtitle="We're learning what you're interested in. Explore a few listings and your recommendations will improve." />
         ) : (
           <motion.div
             initial="hidden"
@@ -187,7 +187,7 @@ const Feed = () => {
         {trendingLoading ? (
           <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Finding trends...</div>
         ) : trending.length === 0 ? (
-          <EmptyState emoji="🔥" title="Nothing trending yet" subtitle="As the marketplace gets active, the hottest listings will appear here." />
+          <EmptyState icon={Flame} title="Nothing trending yet" subtitle="As the marketplace gets active, the hottest listings will appear here." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {trending.map((l) => <ListingCard key={l.id} listing={l} />)}
@@ -203,7 +203,7 @@ const Feed = () => {
         {localLoading ? (
           <div className="h-32 flex items-center justify-center text-[var(--text-2)] font-mono2 text-sm">Searching nearby...</div>
         ) : local.length === 0 ? (
-          <EmptyState emoji="📍" title="No local swaps" subtitle="Update your location in profile settings to discover nearby listings." />
+          <EmptyState icon={MapPin} title="No local swaps" subtitle="Update your location in profile settings to discover nearby listings." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
             {local.map((l) => <ListingCard key={l.id} listing={l} />)}

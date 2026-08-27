@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Heart, MapPin, Sparkles } from "lucide-react";
+import { Heart, MapPin, Sparkles, Zap } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import api from "@/lib/api";
 
@@ -90,8 +90,8 @@ export const ListingCard = ({ listing, compact = false }) => {
               </span>
             )}
             {listing.isBoosted && (
-              <span className="nb-tag tint-purple font-black">
-                ⚡ Featured
+              <span className="nb-tag tint-purple font-black flex items-center gap-1">
+                <Zap size={9} strokeWidth={2.5} /> Featured
               </span>
             )}
             {listing.status === "archived" && (
@@ -145,8 +145,8 @@ export const ListingCard = ({ listing, compact = false }) => {
                 <MapPin size={10} strokeWidth={2} /> {listing.location}
               </span>
               {(listing.distance_formatted || listing.distance_km !== null) && (
-                <span className="nb-tag tint-lime py-0 px-1.5 text-[9px] font-bold border-none" data-testid={`listing-distance-${listing.id}`}>
-                  📍 {listing.distance_formatted || `${listing.distance_km} km away`}
+                <span className="nb-tag tint-lime py-0 px-1.5 text-[9px] font-bold border-none flex items-center gap-1" data-testid={`listing-distance-${listing.id}`}>
+                  <MapPin size={9} strokeWidth={2.5} /> {listing.distance_formatted || `${listing.distance_km} km away`}
                 </span>
               )}
             </div>

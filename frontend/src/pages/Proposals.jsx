@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, X, Repeat, ArrowRight, MessageCircle } from "lucide-react";
+import { Check, X, Repeat, ArrowRight, MessageCircle, Inbox, AlertCircle, Coins } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
@@ -183,7 +183,7 @@ const Proposals = () => {
 
       {filtered.length === 0 ? (
         <EmptyState
-          emoji="📭"
+          icon={Inbox}
           title="Nothing here yet"
           subtitle={tab === "incoming" ? "When people propose swaps to you, they'll show up here." : "Propose a swap from any listing to get started."}
         />
@@ -223,19 +223,19 @@ const Proposals = () => {
                 </div>
 
                 {p.coinsOffered !== 0 && (
-                  <div className={`nb-border-2 rounded-lg p-2.5 text-xs font-mono2 font-bold text-center mb-3 ${
+                  <div className={`nb-border-2 rounded-lg p-2.5 text-xs font-mono2 font-bold text-center mb-3 flex items-center justify-center gap-1.5 ${
                     p.coinsOffered > 0
                       ? (p.direction === "incoming" ? "bg-[var(--lime)] text-black" : "bg-[var(--pink)] text-[var(--text)]")
                       : (p.direction === "incoming" ? "bg-[var(--pink)] text-[var(--text)]" : "bg-[var(--lime)] text-black")
                   }`}>
                     {p.coinsOffered > 0 ? (
                       p.direction === "incoming"
-                        ? `💰 You will receive ${p.coinsOffered} ◈ coins on swap completion.`
-                        : `⚠️ You will pay ${p.coinsOffered} ◈ coins on swap completion.`
+                        ? <><Coins size={14} /> You will receive {p.coinsOffered} ◈ coins on swap completion.</>
+                        : <><AlertCircle size={14} /> You will pay {p.coinsOffered} ◈ coins on swap completion.</>
                     ) : (
                       p.direction === "incoming"
-                        ? `⚠️ You will pay ${Math.abs(p.coinsOffered)} ◈ coins on swap completion.`
-                        : `💰 You will receive ${Math.abs(p.coinsOffered)} ◈ coins on swap completion.`
+                        ? <><AlertCircle size={14} /> You will pay {Math.abs(p.coinsOffered)} ◈ coins on swap completion.</>
+                        : <><Coins size={14} /> You will receive {Math.abs(p.coinsOffered)} ◈ coins on swap completion.</>
                     )}
                   </div>
                 )}

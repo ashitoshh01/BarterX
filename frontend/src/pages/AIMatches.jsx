@@ -31,7 +31,7 @@ const AIMatches = () => {
 
       {aiMatches.length === 0 ? (
         <EmptyState
-          emoji="✨"
+          icon={Sparkles}
           title="No recommendations yet"
           subtitle="Create an active listing with what you offer and what you are looking for to generate smart barter recommendations!"
           action={

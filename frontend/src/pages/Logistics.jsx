@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Truck, MapPin, Loader2, ShieldCheck, PackageCheck, Star } from "lucide-react";
+import { Truck, MapPin, Loader2, ShieldCheck, PackageCheck, Star, Package } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
 import ReviewModal from "@/components/ReviewModal";
@@ -92,7 +92,7 @@ const Logistics = () => {
       setTrades((prev) =>
         prev.map((t) => (t.id === trade.id ? { ...t, ...res.data } : t))
       );
-      toast.success("Logistics saved & swapper notified 📦");
+      toast.success("Logistics saved & swapper notified");
     } catch (err) {
       toast.error("Failed to save logistics.");
     } finally {
@@ -115,7 +115,7 @@ const Logistics = () => {
       setTrades((prev) =>
         prev.map((t) => (t.id === trade.id ? { ...t, ...res.data } : t))
       );
-      toast.success("Delivery verified! Escrow released & trade completed 🎉");
+      toast.success("Delivery verified! Escrow released & trade completed.");
       setPinInput("");
       setShowReviewModal(true);
     } catch (err) {
@@ -130,7 +130,7 @@ const Logistics = () => {
     return (
       <div className="space-y-6" data-testid="logistics-page">
         <SectionTitle kicker="SHIPPING & MEETUP">Logistics.</SectionTitle>
-        <EmptyState emoji="📦" title="No active trades" subtitle="Complete a swap to manage shipping and meetup logistics." />
+        <EmptyState icon={Package} title="No active trades" subtitle="Complete a swap to manage shipping and meetup logistics." />
       </div>
     );
   }
@@ -168,7 +168,7 @@ const Logistics = () => {
             className="bg-[var(--lime)] text-black font-bold text-xs py-1.5 px-4"
             data-testid="rate-partner-btn"
           >
-            Rate Partner ⭐
+            Rate Partner
           </NbButton>
         </div>
       )}
@@ -205,8 +205,8 @@ const Logistics = () => {
             </div>
           </div>
           {trade.meetup_location && (
-            <div className="text-xs font-mono2 bg-black/30 px-3 py-1.5 rounded text-amber-200">
-              📍 {trade.meetup_location} {trade.meetup_datetime ? `· ${new Date(trade.meetup_datetime).toLocaleString()}` : ''}
+            <div className="text-xs font-mono2 bg-black/30 px-3 py-1.5 rounded text-amber-200 flex items-center gap-1">
+              <MapPin size={12} /> {trade.meetup_location} {trade.meetup_datetime ? `· ${new Date(trade.meetup_datetime).toLocaleString()}` : ''}
             </div>
           )}
         </div>
@@ -300,7 +300,7 @@ const Logistics = () => {
             </div>
           </div>
           <div className="nb-border-2 rounded-lg tint-lime p-3 text-sm font-medium">
-            📦 Shipping cost split 50/50 by default. Adjust in the contract.
+            Shipping cost split 50/50 by default. Adjust in the contract.
           </div>
         </div>
       ) : (
@@ -319,8 +319,8 @@ const Logistics = () => {
               <input type="time" value={form.meetupTime} onChange={(e) => upd("meetupTime", e.target.value)} className="nb-input" />
             </div>
           </div>
-          <div className="nb-border-2 rounded-lg tint-amber p-3 text-sm font-medium">
-            📍 Choose public places. Verify the other swapper's trust score before meeting.
+          <div className="nb-border-2 rounded-lg tint-amber p-3 text-sm font-medium flex items-center gap-1.5">
+            <MapPin size={14} className="shrink-0 text-[var(--amber)]" /> Choose public places. Verify the other swapper's trust score before meeting.
           </div>
         </div>
       )}
