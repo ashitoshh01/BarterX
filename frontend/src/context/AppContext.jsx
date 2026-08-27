@@ -148,10 +148,10 @@ const mapItemToListing = (item) => {
           username: item.owner.username,
           name: item.owner.display_name || item.owner.username,
           handle: `@${item.owner.username}`,
-          avatar: getAbsoluteUrl(item.owner.avatar) || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
-          verified: item.owner.verified || false,
-          trustScore: item.owner.trust_score || 50,
-          rating: item.owner.rating || 0.0,
+          avatar: getAbsoluteUrl(item.owner.avatar || item.owner.profile_picture_url) || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+          verified: item.owner.verified || item.owner.is_verified || false,
+          trustScore: item.owner.trust_score || item.owner.trustScore || 50,
+          rating: item.owner.rating || item.owner.average_rating || 0.0,
           coinBalance: item.owner.coin_balance || 0,
         }
       : {

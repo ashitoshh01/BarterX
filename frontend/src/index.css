@@ -85,10 +85,8 @@ body {
 
 .font-display {
   font-family: "Inter", -apple-system, sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .app-container {
