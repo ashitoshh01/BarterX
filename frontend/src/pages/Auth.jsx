@@ -23,7 +23,7 @@ const isPlaceholder = (id) => {
 const isGoogleAuthEnabled = Boolean(GOOGLE_CLIENT_ID && !isPlaceholder(GOOGLE_CLIENT_ID));
 
 // ─── Input Field Component ─────────────────────────────────────────────────
-const AuthInput = ({ label, icon: Icon, error, ...props }) => (
+const AuthInput = React.forwardRef(({ label, icon: Icon, error, ...props }, ref) => (
   <div>
     <label className="text-[10px] font-mono2 uppercase tracking-widest text-[var(--text-3)] mb-1.5 block">
       {label}
@@ -33,6 +33,7 @@ const AuthInput = ({ label, icon: Icon, error, ...props }) => (
         <Icon size={16} strokeWidth={2} />
       </span>
       <input
+        ref={ref}
         className="flex-1 bg-transparent outline-none py-3 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
         {...props}
       />
@@ -43,7 +44,7 @@ const AuthInput = ({ label, icon: Icon, error, ...props }) => (
       </p>
     )}
   </div>
-);
+));
 
 // ─── Main Component ────────────────────────────────────────────────────────
 const Auth = () => {
@@ -55,6 +56,13 @@ const Auth = () => {
 
   const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
   const [signupForm, setSignupForm] = useState({ name: "", username: "", email: "", password: "", confirm: "" });
+  
+  // Input refs for enter-to-next-field navigation
+  const loginPasswordRef = React.useRef(null);
+  const signupUsernameRef = React.useRef(null);
+  const signupEmailRef = React.useRef(null);
+  const signupPasswordRef = React.useRef(null);
+  const signupConfirmRef = React.useRef(null);
   
   // OTP Verification state
   const [signupStep, setSignupStep] = useState("form"); // "form" | "otp"
@@ -358,6 +366,12 @@ const Auth = () => {
                     type="text"
                     value={loginForm.identifier}
                     onChange={e => setLoginForm({ ...loginForm, identifier: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        loginPasswordRef.current?.focus();
+                      }
+                    }}
                     placeholder="you@example.com or your_username"
                     autoComplete="username"
                     error={errors.identifier}
@@ -370,6 +384,7 @@ const Auth = () => {
                         <Lock size={16} strokeWidth={2} />
                       </span>
                       <input
+                        ref={loginPasswordRef}
                         type={showPassword ? "text" : "password"}
                         value={loginForm.password}
                         onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
@@ -420,28 +435,48 @@ const Auth = () => {
                     type="text"
                     value={signupForm.name}
                     onChange={e => setSignupForm({ ...signupForm, name: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        signupUsernameRef.current?.focus();
+                      }
+                    }}
                     placeholder="Your full name"
                     autoComplete="name"
                     error={errors.name}
                     data-testid="auth-name"
                   />
                   <AuthInput
+                    ref={signupUsernameRef}
                     label="Username"
                     icon={AtSign}
                     type="text"
                     value={signupForm.username}
                     onChange={e => setSignupForm({ ...signupForm, username: e.target.value.replace(/\s/g, "_") })}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        signupEmailRef.current?.focus();
+                      }
+                    }}
                     placeholder="your_username"
                     autoComplete="username"
                     error={errors.username}
                     data-testid="auth-username"
                   />
                   <AuthInput
+                    ref={signupEmailRef}
                     label="Email Address"
                     icon={Mail}
                     type="email"
                     value={signupForm.email}
                     onChange={e => setSignupForm({ ...signupForm, email: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        signupPasswordRef.current?.focus();
+                      }
+                    }}
                     placeholder="you@example.com"
                     autoComplete="email"
                     error={errors.email}
@@ -454,9 +489,16 @@ const Auth = () => {
                         <Lock size={16} strokeWidth={2} />
                       </span>
                       <input
+                        ref={signupPasswordRef}
                         type={showPassword ? "text" : "password"}
                         value={signupForm.password}
                         onChange={e => setSignupForm({ ...signupForm, password: e.target.value })}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            signupConfirmRef.current?.focus();
+                          }
+                        }}
                         className="flex-1 bg-transparent outline-none py-3 text-sm text-[var(--text)] placeholder:text-[var(--text-3)] font-medium"
                         placeholder="Min 8 characters"
                         autoComplete="new-password"
@@ -477,6 +519,7 @@ const Auth = () => {
                           : <Lock size={16} strokeWidth={2} />}
                       </span>
                       <input
+                        ref={signupConfirmRef}
                         type={showPassword ? "text" : "password"}
                         value={signupForm.confirm}
                         onChange={e => setSignupForm({ ...signupForm, confirm: e.target.value })}
