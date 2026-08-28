@@ -32,7 +32,6 @@ from .serializers import (
     ContractSerializer, TradeSerializer, DisputeSerializer, SavedItemSerializer,
     WalletTransactionSerializer, ImageModerationResultSerializer, AdminActionLogSerializer
 )
-from .email_services import send_otp_email
 from chat.services import broadcast_to_group
 from .pdf_service import generate_contract_pdf
 from .ai_service import get_ai_matches
@@ -243,14 +242,14 @@ class SendOTPView(generics.GenericAPIView):
             defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
         )
 
-        success, detail, dev_otp = send_otp_email(email, otp)
-        if not success:
-            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+        print(f"\n==================================================")
+        print(f"  [DEV MODE] Verification OTP for {email}: {otp}")
+        print(f"==================================================\n")
 
-        resp_data = {"message": "Verification OTP sent to email successfully."}
-        if dev_otp:
-            resp_data["dev_otp"] = dev_otp
-        return Response(resp_data, status=status.HTTP_200_OK)
+        return Response({
+            "message": "Verification OTP generated successfully.",
+            "dev_otp": otp
+        }, status=status.HTTP_200_OK)
 
 
 class VerifyOTPAndRegisterView(generics.GenericAPIView):
@@ -351,9 +350,11 @@ class RequestPasswordResetView(generics.GenericAPIView):
                 defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
             )
 
-            send_otp_email(email, otp)
+            print(f"\n==================================================")
+            print(f"  [DEV MODE] Password Reset OTP for {email}: {otp}")
+            print(f"==================================================\n")
         
-        return Response({"message": "If an account with that email exists, we have sent a password reset code."}, status=status.HTTP_200_OK)
+        return Response({"message": "If an account with that email exists, a password reset code has been generated."}, status=status.HTTP_200_OK)
 
 
 class VerifyAndSetNewPasswordView(generics.GenericAPIView):
@@ -1047,9 +1048,11 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
             email=new_email,
             defaults={'otp_hash': otp_hash, 'attempts': 0, 'created_at': timezone.now()}
         )
-        send_otp_email(new_email, otp)
+        print(f"\n==================================================")
+        print(f"  [DEV MODE] Email Change OTP for {new_email}: {otp}")
+        print(f"==================================================\n")
         
-        return Response({"message": "Verification OTP sent to your new email."})
+        return Response({"message": "Verification OTP generated for your new email.", "dev_otp": otp})
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def verify_email_change(self, request):
