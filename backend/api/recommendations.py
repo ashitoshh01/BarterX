@@ -315,8 +315,9 @@ def get_nearby(user, lat=None, lng=None, radius_km=50.0):
     if user.is_authenticated:
         base_qs = base_qs.exclude(owner=user)
 
+    cos_lat = math.cos(math.radians(lat))
     lat_delta = radius_km / 111.0
-    lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
+    lng_delta = radius_km / (111.0 * cos_lat) if abs(cos_lat) > 1e-6 else radius_km / 111.0
     
     candidates = list(
         base_qs.filter(
@@ -327,19 +328,36 @@ def get_nearby(user, lat=None, lng=None, radius_km=50.0):
         ).order_by('-created_at')[:150]
     )
     
+    # Also include items whose owner profile is within bounding box if item lat/lng is null
+    candidate_ids = {c.id for c in candidates}
+    for item in base_qs:
+        if item.id not in candidate_ids:
+            item_lat = item.latitude or (item.owner.profile.latitude if hasattr(item.owner, 'profile') else None)
+            item_lng = item.longitude or (item.owner.profile.longitude if hasattr(item.owner, 'profile') else None)
+            if item_lat is not None and item_lng is not None:
+                if abs(item_lat - lat) <= lat_delta and abs(item_lng - lng) <= lng_delta:
+                    candidates.append(item)
+
     scored_items = []
     for item in candidates:
-        if item.latitude is None or item.longitude is None:
+        item_lat = item.latitude or (item.owner.profile.latitude if hasattr(item.owner, 'profile') else None)
+        item_lng = item.longitude or (item.owner.profile.longitude if hasattr(item.owner, 'profile') else None)
+        
+        if item_lat is None or item_lng is None:
             continue
             
         try:
-            distance = haversine_distance_km(lat, lng, item.latitude, item.longitude)
+            distance = haversine_distance_km(lat, lng, item_lat, item_lng)
         except Exception:
             continue
             
         if distance > radius_km:
             continue
             
+        # Attach distance to item instance so serializers return it
+        item.distance_km = round(distance, 1)
+        item.distance_formatted = f"{round(distance, 1)} km away" if distance >= 0.1 else "Less than 100m away"
+        
         # Proximity score (higher is better, max 1.0)
         prox_score = max(0.0, 1.0 - (distance / radius_km))
         
@@ -351,5 +369,5 @@ def get_nearby(user, lat=None, lng=None, radius_km=50.0):
         scored_items.append((item, score))
         
     scored_items.sort(key=lambda x: x[1], reverse=True)
-    return [item for item, score in scored_items][:30]
+    return [item for item, score in scored_items][:50]
 

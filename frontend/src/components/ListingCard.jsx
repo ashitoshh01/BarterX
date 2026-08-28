@@ -47,7 +47,7 @@ export const ListingCard = ({ listing, compact = false }) => {
       ([entry]) => {
         if (entry.isIntersecting) {
           viewTimer.current = setTimeout(() => {
-            api.post(`/api/items/${listing.id}/log-view/`).catch(() => {});
+            api.post(`/items/${listing.id}/log-view/`).catch(() => {});
           }, 1500);
         } else {
           if (viewTimer.current) clearTimeout(viewTimer.current);

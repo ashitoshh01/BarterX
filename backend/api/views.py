@@ -560,7 +560,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'nearby', 'history']:
+        if self.action in ['list', 'retrieve', 'nearby', 'history', 'log_view']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
@@ -581,22 +581,54 @@ class BarterItemViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        viewed_session_key = f'viewed_item_{instance.id}'
-        if not request.session.get(viewed_session_key):
-            from django.db.models import F
+
+        # Deduplicate views using a composite key of user ID + IP address.
+        # Session-based dedup doesn't work with stateless JWT auth.
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        if ',' in client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+        user_id = request.user.id if request.user.is_authenticated else 'anon'
+        cache_key = f'viewed_item_{instance.id}_{user_id}_{client_ip}'
+
+        from django.core.cache import cache
+        from django.db.models import F
+
+        if not cache.get(cache_key):
             BarterItem.objects.filter(pk=instance.pk).update(views_count=F('views_count') + 1)
-            # Manually increment the in-memory object so the serializer below returns the fresh value
-            instance.views_count += 1
-            request.session[viewed_session_key] = True
+            instance.refresh_from_db(fields=['views_count'])
+            cache.set(cache_key, True, timeout=300)  # 5-minute dedup window
+
+            # Also log interaction for the recommendation engine
+            if request.user.is_authenticated:
+                from .services import log_interaction
+                log_interaction(request.user, instance, 'view')
+
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.AllowAny], url_path='log-view')
     def log_view(self, request, pk=None):
+        """Card-level view tracking from intersection observer in the frontend."""
         instance = self.get_object()
-        from .services import log_interaction
-        log_interaction(request.user, instance, 'view')
-        return Response({"detail": "View logged."})
+
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        if ',' in client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+        user_id = request.user.id if request.user.is_authenticated else 'anon'
+        cache_key = f'card_view_{instance.id}_{user_id}_{client_ip}'
+
+        from django.core.cache import cache
+        from django.db.models import F
+
+        if not cache.get(cache_key):
+            BarterItem.objects.filter(pk=instance.pk).update(views_count=F('views_count') + 1)
+            cache.set(cache_key, True, timeout=120)  # 2-minute dedup for card views
+
+            if request.user.is_authenticated:
+                from .services import log_interaction
+                log_interaction(request.user, instance, 'view')
+
+        return Response({"detail": "View logged.", "views_count": instance.views_count + 1})
 
     def create(self, request, *args, **kwargs):
         # We need minimum 1 image. They can be passed as a list under 'images' or individually as files.

@@ -215,16 +215,33 @@ class BarterItemListSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     category_name = serializers.ReadOnlyField(source='category.name')
     additional_images = BarterItemImageSerializer(many=True, read_only=True)
+    distance_km = serializers.SerializerMethodField()
+    distance_formatted = serializers.SerializerMethodField()
+    saves_count = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterItem
         fields = (
             'id', 'title', 'description', 'offering', 'wanting', 'category', 'category_name',
-            'image_url', 'image', 'condition', 'owner', 'location', 'status',
+            'image_url', 'image', 'condition', 'owner', 'location', 'location_name', 'city', 'state', 'country',
+            'latitude', 'longitude', 'distance_km', 'distance_formatted', 'status',
             'age_months', 'purchase_price', 'item_score', 'is_boosted', 'boosted_at',
-            'boost_expires_at', 'views_count', 'additional_images', 'created_at', 'updated_at'
+            'boost_expires_at', 'views_count', 'saves_count', 'additional_images', 'created_at', 'updated_at'
         )
         read_only_fields = ('owner', 'item_score', 'is_boosted', 'boosted_at', 'boost_expires_at', 'views_count')
+
+    def get_saves_count(self, obj):
+        # Use annotated value if available (from queryset), otherwise query
+        if hasattr(obj, 'annotated_saves_count'):
+            return obj.annotated_saves_count
+        return obj.saved_by.count()
+
+    def get_distance_km(self, obj):
+        val = getattr(obj, 'distance_km', None)
+        return float(val) if val is not None else None
+
+    def get_distance_formatted(self, obj):
+        return getattr(obj, 'distance_formatted', None)
 
     def get_owner(self, obj):
         profile = getattr(obj.owner, 'profile', None)
@@ -257,11 +274,17 @@ class BarterItemSerializer(serializers.ModelSerializer):
     chat_count = serializers.SerializerMethodField()
     distance_km = serializers.SerializerMethodField()
     distance_formatted = serializers.SerializerMethodField()
+    saves_count = serializers.SerializerMethodField()
 
     class Meta:
         model = BarterItem
         fields = '__all__'
         read_only_fields = ('owner', 'item_score', 'is_boosted', 'boosted_at', 'boost_expires_at', 'views_count')
+
+    def get_saves_count(self, obj):
+        if hasattr(obj, 'annotated_saves_count'):
+            return obj.annotated_saves_count
+        return obj.saved_by.count()
 
     def get_distance_km(self, obj):
         val = getattr(obj, 'distance_km', None)

@@ -180,7 +180,7 @@ const mapItemToListing = (item) => {
     distance_formatted: item.distance_formatted || (item.distance_km !== null && item.distance_km !== undefined ? `${item.distance_km} km away` : null),
     posted: item.created_at ? new Date(item.created_at).toLocaleDateString() : "recently",
     views: item.views_count ?? 0,
-    saves: 0,
+    saves: item.saves_count ?? 0,
     item_score: item.item_score,
     status: item.status,
     isBoosted: item.is_boosted,
@@ -1018,7 +1018,7 @@ export const AppProvider = ({ children }) => {
     try {
       setError(null);
       const res = await api.get("/items/nearby/", { params });
-      const rawList = res.data.results || [];
+      const rawList = Array.isArray(res.data) ? res.data : (res.data.results || []);
       const mapped = rawList.map(mapItemToListing);
       return {
         count: res.data.count || mapped.length,
