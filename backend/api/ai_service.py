@@ -1,9 +1,12 @@
 import os
 import json
 import math
+import warnings
 from django.utils import timezone
 from .models import BarterItem
 from .distance_service import haversine_distance_km, format_distance
+
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
 import google.generativeai as genai
 
 # Try to configure the Gemini API key from the environment
