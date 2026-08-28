@@ -241,18 +241,7 @@ if _redis_url:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                'hosts': [
-                    {
-                        'address': _redis_url,
-                        'health_check_interval': 30,
-                        'socket_connect_timeout': 5,
-                        'socket_keepalive': True,
-                    }
-                ],
-                'capacity': 1500,
-                'expiry': 60,
-            },
+            'CONFIG': {'hosts': [_redis_url]},
         },
     }
 else:
@@ -266,18 +255,7 @@ else:
         CHANNEL_LAYERS = {
             'default': {
                 'BACKEND': 'channels_redis.core.RedisChannelLayer',
-                'CONFIG': {
-                    'hosts': [
-                        {
-                            'address': 'redis://127.0.0.1:6379/0',
-                            'health_check_interval': 30,
-                            'socket_connect_timeout': 5,
-                            'socket_keepalive': True,
-                        }
-                    ],
-                    'capacity': 1500,
-                    'expiry': 60,
-                },
+                'CONFIG': {'hosts': [("127.0.0.1", 6379)]},
             },
         }
     except Exception:

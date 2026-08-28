@@ -357,6 +357,7 @@ export const AppProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const socketRef = React.useRef(null);
+  const wsRetryCountRef = React.useRef(0);
   const [wsConnected, setWsConnected] = useState(false);
   const activeRoomIdRef = React.useRef(null);
 
@@ -393,11 +394,13 @@ export const AppProvider = ({ children }) => {
         if (type === "authenticated") {
           console.log("WebSocket authenticated, user_id:", data?.user_id);
           setWsConnected(true);
+          wsRetryCountRef.current = 0;
           return;
         }
 
         if (type === "auth_error") {
           console.error("WebSocket auth failed:", data?.message);
+          wsRetryCountRef.current = 3;
           ws.close(4001);
           return;
         }
@@ -588,10 +591,9 @@ export const AppProvider = ({ children }) => {
     ws.onclose = (event) => {
       setWsConnected(false);
       // Only retry up to 3 times to prevent log spamming when server is in standard HTTP mode
-      if (!ws._retryCount) ws._retryCount = 0;
-      if (ws._retryCount < 3) {
-        ws._retryCount += 1;
-        console.log(`WebSocket disconnected. Retrying (${ws._retryCount}/3) in 5 seconds...`);
+      if (wsRetryCountRef.current < 3) {
+        wsRetryCountRef.current += 1;
+        console.log(`WebSocket disconnected. Retrying (${wsRetryCountRef.current}/3) in 5 seconds...`);
         setTimeout(() => {
           const currentToken = localStorage.getItem("barter_token");
           if (currentToken) {
@@ -599,7 +601,7 @@ export const AppProvider = ({ children }) => {
           }
         }, 5000);
       } else {
-        console.log("WebSocket max retry limit reached. Real-time updates paused.");
+        console.log("WebSocket max retries reached. Stopping reconnection attempts.");
       }
     };
 
