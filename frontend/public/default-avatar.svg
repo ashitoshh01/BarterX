@@ -1,20 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Background -->
-  <circle cx="50" cy="50" r="50" fill="#f5f5f5" />
-  
-  <!-- Person Silhouette -->
-  <circle cx="50" cy="40" r="14" fill="#cccccc" />
-  <path d="M 28 80 C 28 60, 38 55, 50 55 C 62 55, 72 60, 72 80 Z" fill="#cccccc" />
-  
-  <!-- Left Lime Arrow -->
-  <g stroke="#a3e635" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M 42 81 A 32 32 0 0 1 42 19" />
-    <path d="M 32 23 L 43 19 L 36 10" />
-  </g>
-  
-  <!-- Right Black Arrow -->
-  <g stroke="#1a1a1a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="rotate(180 50 50)">
-    <path d="M 42 81 A 32 32 0 0 1 42 19" />
-    <path d="M 32 23 L 43 19 L 36 10" />
-  </g>
+<svg viewBox="0 0 1240 1240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="620" cy="620" r="620" fill="#f5f5f5"/>
+
+  <!-- Person icon -->
+  <circle cx="620" cy="535" r="100" fill="#cccccc"/>
+  <path d="M 450 810
+           C 450 700 525 630 620 630
+           C 715 630 790 700 790 810
+           L 790 810
+           C 790 810 620 850 450 810
+           Z" fill="#cccccc"/>
+
+  <!-- Green arrow (top-left, counter-clockwise start, arrowhead pointing up-right) -->
+  <path d="M 590 955
+           C 420 940 300 800 300 620
+           C 300 440 420 310 590 285"
+        fill="none" stroke="#a4d233" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 460 285 L 590 285 L 500 380"
+        fill="none" stroke="#a4d233" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Black arrow (top-right, clockwise, arrowhead pointing down-left) -->
+  <path d="M 690 288
+           C 855 310 970 445 970 620
+           C 970 790 860 920 700 950"
+        fill="none" stroke="#1a1a1a" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 820 965 L 700 950 L 770 845"
+        fill="none" stroke="#1a1a1a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
