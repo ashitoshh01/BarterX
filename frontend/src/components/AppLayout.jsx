@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { Home, Compass, PlusSquare, MessageCircle, User, Bell, Wallet, Sparkles, Repeat, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LogoWordmark } from "@/components/Logo";
 
 const nav = [
@@ -167,6 +167,13 @@ const SideRail = ({ collapsed, setCollapsed }) => {
 
 export const AppLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/app/chat")) {
+      setSidebarCollapsed(true);
+    }
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen text-[var(--text)] flex flex-col overflow-x-hidden w-full max-w-full relative bg-[var(--bg-2)]">

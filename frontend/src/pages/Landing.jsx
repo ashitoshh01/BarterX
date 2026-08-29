@@ -24,6 +24,21 @@ import {
 const Landing = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleScrollTo = (e, id) => {
+    e.preventDefault();
+    if (id === '#') {
+      const rootEl = document.getElementById('root') || document.documentElement;
+      rootEl.scrollTo({ top: 0, behavior: 'smooth' });
+      setMobileMenuOpen(false);
+      return;
+    }
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setMobileMenuOpen(false);
+  };
+
   /* Override global dark theme while Landing is mounted */
   useEffect(() => {
     const html = document.documentElement;
@@ -99,13 +114,13 @@ const Landing = () => {
               gap: 32,
             }}
           >
-            <a href="#how" style={navLinkStyle}>
+            <a href="#how" onClick={(e) => handleScrollTo(e, 'how')} style={navLinkStyle}>
               How it works
             </a>
-            <a href="#explore" style={navLinkStyle}>
+            <a href="#explore" onClick={(e) => handleScrollTo(e, 'explore')} style={navLinkStyle}>
               Explore
             </a>
-            <a href="#faq" style={navLinkStyle}>
+            <a href="#faq" onClick={(e) => handleScrollTo(e, 'faq')} style={navLinkStyle}>
               FAQ
             </a>
           </div>
@@ -170,21 +185,21 @@ const Landing = () => {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <a
                 href="#how"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleScrollTo(e, 'how')}
                 style={{ ...navLinkStyle, fontSize: 16 }}
               >
                 How it works
               </a>
               <a
                 href="#explore"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleScrollTo(e, 'explore')}
                 style={{ ...navLinkStyle, fontSize: 16 }}
               >
                 Explore
               </a>
               <a
                 href="#faq"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleScrollTo(e, 'faq')}
                 style={{ ...navLinkStyle, fontSize: 16 }}
               >
                 FAQ
@@ -747,22 +762,22 @@ const Landing = () => {
             <div style={footerHeadingStyle}>PRODUCT</div>
             <ul style={footerListStyle}>
               <li>
-                <a href="#explore" style={footerLinkStyle}>
+                <a href="#explore" onClick={(e) => handleScrollTo(e, 'explore')} style={footerLinkStyle}>
                   Explore
                 </a>
               </li>
               <li>
-                <a href="#how" style={footerLinkStyle}>
+                <a href="#how" onClick={(e) => handleScrollTo(e, 'how')} style={footerLinkStyle}>
                   How it works
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Matching
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Safety
                 </a>
               </li>
@@ -774,22 +789,22 @@ const Landing = () => {
             <div style={footerHeadingStyle}>COMPANY</div>
             <ul style={footerListStyle}>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   About
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Blog
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Careers
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Contact
                 </a>
               </li>
@@ -801,17 +816,17 @@ const Landing = () => {
             <div style={footerHeadingStyle}>LEGAL</div>
             <ul style={footerListStyle}>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Terms
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Privacy
                 </a>
               </li>
               <li>
-                <a href="#" style={footerLinkStyle}>
+                <a href="#" onClick={(e) => handleScrollTo(e, '#')} style={footerLinkStyle}>
                   Community Guidelines
                 </a>
               </li>
@@ -891,8 +906,9 @@ const Landing = () => {
         }
 
         /* Smooth scroll */
-        html {
+        html, body, #root {
           scroll-behavior: smooth;
+          scroll-padding-top: 72px;
         }
 
         /* Nav link hover */
