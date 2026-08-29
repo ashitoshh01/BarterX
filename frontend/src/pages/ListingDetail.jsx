@@ -6,6 +6,7 @@ import { useApp } from "@/context/AppContext";
 import { NbButton } from "@/components/UI";
 import ListingCard from "@/components/ListingCard";
 import { toast } from "sonner";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 
 const ListingDetail = () => {
   const { id } = useParams();
@@ -33,7 +34,7 @@ const ListingDetail = () => {
   const owner = isOwner
     ? {
         name: user.name || (typeof listing.owner === "object" ? listing.owner.name || listing.owner.username : listing.owner) || "You",
-        avatar: user.avatar || (typeof listing.owner === "object" ? listing.owner.avatar : null) || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+        avatar: user.avatar || (typeof listing.owner === "object" ? listing.owner.avatar : null) || DEFAULT_AVATAR,
         trustScore: user.trustScore ?? 50,
         rating: user.rating ?? 0.0,
         swapsCompleted: user.swapsCompleted ?? 0,
@@ -42,7 +43,7 @@ const ListingDetail = () => {
     : (typeof listing.owner === "object" && listing.owner !== null)
     ? {
         name: listing.owner.name || listing.owner.display_name || listing.owner.username || "Anonymous",
-        avatar: listing.owner.avatar || listing.owner.profile_picture_url || listing.owner.profile?.profile_picture_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+        avatar: listing.owner.avatar || listing.owner.profile_picture_url || listing.owner.profile?.profile_picture_url || DEFAULT_AVATAR,
         trustScore: listing.owner.trustScore ?? listing.owner.trust_score ?? 50,
         rating: listing.owner.rating ?? listing.owner.average_rating ?? 0.0,
         swapsCompleted: listing.owner.swapsCompleted ?? listing.owner.swaps_completed ?? 0,
@@ -50,7 +51,7 @@ const ListingDetail = () => {
       }
     : {
         name: listing.owner || "Anonymous",
-        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+        avatar: DEFAULT_AVATAR,
         trustScore: 50,
         rating: 0.0,
         swapsCompleted: 0,
@@ -230,7 +231,7 @@ const ListingDetail = () => {
               src={owner.avatar}
               className="w-11 h-11 rounded-full border border-[var(--border)] object-cover shrink-0"
               alt={owner.name}
-              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"; }}
+              onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
             />
             <div className="flex-1 min-w-0">
               <div className="font-display text-sm font-semibold text-[var(--text)] flex items-center gap-1.5 truncate">

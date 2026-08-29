@@ -149,7 +149,7 @@ def seed_data():
         profile.bio = random.choice(bios)
         profile.trust_score = random.randint(45, 95)
         profile.coin_balance = random.randint(100, 1000)
-        profile.profile_picture_url = f"https://images.unsplash.com/photo-{1500000000000 + idx * 10000}?w=150&h=150&fit=crop"
+        # Leave profile_picture_url empty — frontend will show the Baarter default avatar
         profile.save()
 
         # Seed 2 random listings for this user

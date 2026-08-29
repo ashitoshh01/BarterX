@@ -8,6 +8,7 @@ import { useApp } from "@/context/AppContext";
 import ListingCard from "@/components/ListingCard";
 import { NbButton } from "@/components/UI";
 import { toast } from "sonner";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 
 import { reverseGeocode } from "@/lib/geocoding";
 
@@ -178,9 +179,9 @@ const Profile = () => {
           <div className="space-y-1">
             <div className="font-display text-3xl md:text-4xl text-[var(--text)] flex items-center gap-3">
               {user.avatar ? (
-                <img src={user.avatar} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-sm" alt="" />
+                <img src={user.avatar} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-sm" alt="" onError={(e) => { e.target.src = DEFAULT_AVATAR; }} />
               ) : (
-                <User className="text-[var(--lime)]" size={32} />
+                <img src={DEFAULT_AVATAR} className="w-12 h-12 rounded-full border-2 border-black object-cover shadow-sm" alt="" />
               )}
               {user.name}
               {user.verified && (

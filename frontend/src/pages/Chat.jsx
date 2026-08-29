@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, Outlet, useParams, useNavigate } from "react-router-dom";
 import { ArrowRight, Search, Edit } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 import { EmptyState } from "@/components/UI";
 
 const Chat = () => {
@@ -26,13 +27,17 @@ const Chat = () => {
               <p className="text-[10px] font-mono2 text-[var(--text-3)] uppercase tracking-wider mb-1">Messages</p>
               <h1 className="text-2xl font-display">Chats.</h1>
             </div>
-            <button className="w-8 h-8 rounded-full bg-[var(--lime)] flex items-center justify-center hover:brightness-110 transition-all text-black">
+            <button 
+              onClick={() => document.getElementById('chat-search-input')?.focus()}
+              className="w-8 h-8 rounded-full bg-[var(--lime)] flex items-center justify-center hover:brightness-110 transition-all text-black"
+            >
               <Edit size={16} strokeWidth={2.5} />
             </button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" size={16} strokeWidth={2} />
             <input 
+              id="chat-search-input"
               type="text" 
               placeholder="Search conversations..." 
               value={search}
@@ -52,7 +57,7 @@ const Chat = () => {
               {filteredChats.map((c) => {
                 const other = users[c.with] || c.other || {};
                 const displayName = other.name || other.username || c.with || "Barter User";
-                const avatarUrl = other.avatar || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop";
+                const avatarUrl = other.avatar || DEFAULT_AVATAR;
                 const lastMsgText = c.lastMessage || "No messages yet";
                 const lastTimeText = c.lastTime || "";
                 const isSelected = id === c.id;
@@ -129,7 +134,10 @@ const Chat = () => {
             </div>
             <h2 className="text-2xl font-display mb-2 text-[var(--text)]">Select a chat to start</h2>
             <p className="text-[var(--text-2)] mb-8 max-w-sm">Choose from your existing conversations or start a new one.</p>
-            <button className="nb-btn px-6 py-2.5 bg-[var(--lime)] text-black rounded-full font-bold text-sm flex items-center gap-2">
+            <button 
+              onClick={() => document.getElementById('chat-search-input')?.focus()}
+              className="nb-btn px-6 py-2.5 bg-[var(--lime)] text-black rounded-full font-bold text-sm flex items-center gap-2"
+            >
               <Edit size={16} strokeWidth={2.5} />
               New Conversation
             </button>

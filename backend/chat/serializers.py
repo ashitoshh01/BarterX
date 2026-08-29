@@ -29,7 +29,7 @@ class ChatUserSerializer(serializers.ModelSerializer):
                 return obj.profile.profile_picture_url
         except UserProfile.DoesNotExist:
             pass
-        return "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"
+        return None
 
     def get_online_status(self, obj):
         try:
@@ -99,7 +99,7 @@ class MessageSerializer(serializers.ModelSerializer):
                 return obj.sender.profile.profile_picture_url
         except UserProfile.DoesNotExist:
             pass
-        return "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"
+        return None
 
     def get_attachment_url(self, obj):
         if obj.attachment:

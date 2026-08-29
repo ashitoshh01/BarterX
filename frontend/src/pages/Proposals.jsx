@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { SectionTitle, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 
 const statusColors = {
   pending: "tint-amber",
@@ -201,7 +202,7 @@ const Proposals = () => {
               <div key={p.id} className="nb-card p-4 md:p-5 bg-[var(--surface)]" data-testid={`proposal-${p.id}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <img src={other.avatar || `https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop`} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt="" />
+                    <img src={other.avatar || DEFAULT_AVATAR} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt="" />
                     <div>
                       <div className="font-bold text-sm">{otherName} <span className="font-mono2 text-[var(--text-3)] font-normal">{otherHandle}</span></div>
                       <div className="text-xs font-mono2 text-[var(--text-3)]">{p.created}</div>

@@ -250,7 +250,7 @@ class BarterItemListSerializer(serializers.ModelSerializer):
                 "id": obj.owner.id,
                 "username": obj.owner.username,
                 "display_name": profile.display_name or obj.owner.username,
-                "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+                "avatar": profile.profile_picture_url or None,
                 "verified": profile.is_verified,
                 "trust_score": profile.trust_score,
                 "rating": profile.average_rating
@@ -259,7 +259,7 @@ class BarterItemListSerializer(serializers.ModelSerializer):
             "id": obj.owner.id,
             "username": obj.owner.username,
             "display_name": obj.owner.username,
-            "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+            "avatar": None,
             "verified": False,
             "trust_score": 50,
             "rating": 0.0
@@ -310,7 +310,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
                 "id": obj.owner.id,
                 "username": obj.owner.username,
                 "display_name": profile.display_name or obj.owner.username,
-                "avatar": profile.profile_picture_url or "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+                "avatar": profile.profile_picture_url or None,
                 "verified": profile.is_verified,
                 "trust_score": profile.trust_score,
                 "rating": profile.average_rating
@@ -319,7 +319,7 @@ class BarterItemSerializer(serializers.ModelSerializer):
             "id": obj.owner.id,
             "username": obj.owner.username,
             "display_name": obj.owner.username,
-            "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
+            "avatar": None,
             "verified": False,
             "trust_score": 50,
             "rating": 0.0

@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { Home, Compass, PlusSquare, MessageCircle, User, Bell, Wallet, Sparkles, Repeat, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 import { useState, useEffect } from "react";
 import { LogoWordmark } from "@/components/Logo";
 
@@ -65,9 +66,10 @@ const TopBar = () => {
           </Link>
           <Link to="/app/profile" data-testid="top-avatar" className="relative hidden sm:block">
             <img
-              src={user.avatar}
+              src={user.avatar || DEFAULT_AVATAR}
               alt={user.name}
               className="w-9 h-9 rounded-full border border-[var(--border)] object-cover"
+              onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
             />
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[var(--lime)] border-2 border-white rounded-full" />
           </Link>

@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Heart, MapPin, Sparkles, Zap } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 import api from "@/lib/api";
 
 const conditionTint = {
@@ -25,7 +26,7 @@ export const ListingCard = ({ listing, compact = false }) => {
   const owner = listing.owner || {
     name: "Anonymous",
     handle: "@anonymous",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+    avatar: DEFAULT_AVATAR,
     verified: false,
     trustScore: 50,
   };
@@ -157,7 +158,7 @@ export const ListingCard = ({ listing, compact = false }) => {
                 src={owner.avatar}
                 alt={owner.name}
                 className="w-6 h-6 rounded-full border border-[var(--border)] object-cover shrink-0"
-                onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"; }}
+                onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
               />
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-[var(--text)] truncate flex items-center gap-1">

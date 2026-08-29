@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Send, ArrowLeft, MoreVertical, Shield, Paperclip, Coins } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { DEFAULT_AVATAR } from "@/lib/constants";
 import { NbButton } from "@/components/UI";
 import { toast } from "sonner";
 
@@ -137,7 +138,7 @@ const ChatThread = () => {
         <Link to="/app/chat" className="p-2 hover:bg-[var(--surface-3)] rounded-lg md:hidden"><ArrowLeft size={20} strokeWidth={2.5} /></Link>
         
         <div className="relative">
-          <img src={other.avatar || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt={displayName} />
+          <img src={other.avatar || DEFAULT_AVATAR} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt={displayName} />
           {other?.onlineStatus === 'online' && (
             <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-[var(--lime)] border-[1.5px] border-black" />
           )}
