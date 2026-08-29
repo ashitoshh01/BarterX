@@ -65,8 +65,9 @@ function App() {
           <Route path="/app/edit/:id" element={<Shell><CreateListing /></Shell>} />
           <Route path="/app/matches" element={<Shell><AIMatches /></Shell>} />
           <Route path="/app/proposals" element={<Shell><Proposals /></Shell>} />
-          <Route path="/app/chat" element={<Shell><Chat /></Shell>} />
-          <Route path="/app/chat/:id" element={<Shell><ChatThread /></Shell>} />
+          <Route path="/app/chat" element={<Shell><Chat /></Shell>}>
+            <Route path=":id" element={<ChatThread />} />
+          </Route>
           <Route path="/app/tracker/:id" element={<Shell><SwapTracker /></Shell>} />
           <Route path="/app/contracts" element={<Shell><Contracts /></Shell>} />
           <Route path="/app/logistics" element={<Shell><Logistics /></Shell>} />

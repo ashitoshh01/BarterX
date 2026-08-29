@@ -161,6 +161,46 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(conversation)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['post'])
+    def get_or_create_for_user(self, request):
+        """Start a direct chat with another user by username."""
+        username = request.data.get('username')
+        if not username:
+            return Response({"detail": "username is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.contrib.auth.models import User
+        try:
+            other_user = User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if other_user == request.user:
+            return Response({"detail": "Cannot start a chat with yourself."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find existing conversation
+        # Filter for exact 2 participants
+        convs = Conversation.objects.filter(participants=request.user).filter(participants=other_user).filter(barter_interest__isnull=True)
+        
+        if convs.exists():
+            conversation = convs.first()
+            serializer = self.get_serializer(conversation)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Create new conversation
+        conversation = Conversation.objects.create()
+        conversation.participants.add(request.user, other_user)
+
+        # Generate system message
+        create_message(
+            conversation=conversation,
+            sender=request.user,
+            message_type='SYSTEM',
+            text="Conversation started."
+        )
+
+        serializer = self.get_serializer(conversation)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'])
     def confirmation_status(self, request, pk=None):
         """Get deal confirmation status for a chat room."""

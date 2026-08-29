@@ -131,10 +131,10 @@ const ChatThread = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] nb-card bg-[var(--surface)] overflow-hidden" data-testid="chat-thread">
+    <div className="flex flex-col h-full w-full bg-[var(--bg-2)] overflow-hidden" data-testid="chat-thread">
       {/* Header */}
-      <div className="flex items-center gap-3 p-3 border-b-[3px] border-[var(--border)] bg-[var(--surface)]">
-        <Link to="/app/chat" className="p-2 hover:bg-black/5 rounded-lg"><ArrowLeft size={18} strokeWidth={3} /></Link>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] bg-[var(--surface)] shrink-0">
+        <Link to="/app/chat" className="p-2 hover:bg-[var(--surface-3)] rounded-lg md:hidden"><ArrowLeft size={20} strokeWidth={2.5} /></Link>
         
         <div className="relative">
           <img src={other.avatar || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop"} className="w-10 h-10 rounded-full nb-border-2 object-cover" alt={displayName} />
@@ -156,7 +156,7 @@ const ChatThread = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--surface-2)]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--bg-2)]">
         {chat.messages && chat.messages.map((m, i) => {
           const isMe = m.from === user.id || m.from === "u_me";
           return (
@@ -210,7 +210,7 @@ const ChatThread = () => {
       )}
 
       {/* Footer / Input */}
-      <div className="p-3 border-t-[3px] border-[var(--border)] bg-[var(--surface)] flex gap-2 items-center">
+      <div className="p-4 border-t border-[var(--border)] bg-[var(--surface)] flex gap-2 items-center shrink-0">
         <input
           type="file"
           ref={fileInputRef}

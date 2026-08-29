@@ -40,7 +40,7 @@ IS_PRODUCTION = os.environ.get("ENVIRONMENT", "").strip().lower() == "production
 # ─── Core security settings ───────────────────────────────────────────────────
 
 # REQUIRED in production. Locally falls back to the insecure dev key.
-_dev_secret = "django-insecure-e-$hl5ue6$h$f=c33*1!(c=h8__ee4%#k(%imhp4za6gs6l!t_"
+_dev_secret = "dev-secret-key-replace-in-production"
 SECRET_KEY = os.environ.get("SECRET_KEY", _dev_secret)
 
 if IS_PRODUCTION and SECRET_KEY == _dev_secret:

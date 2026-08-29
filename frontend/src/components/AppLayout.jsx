@@ -168,21 +168,31 @@ const SideRail = ({ collapsed, setCollapsed }) => {
 export const AppLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
+  const isChat = location.pathname.startsWith("/app/chat");
+  const isChatThread = location.pathname.match(/^\/app\/chat\/.+/);
 
   useEffect(() => {
-    if (location.pathname.startsWith("/app/chat")) {
+    if (isChat) {
       setSidebarCollapsed(true);
     }
-  }, [location.pathname]);
+  }, [location.pathname, isChat]);
 
   return (
-    <div className="min-h-screen text-[var(--text)] flex flex-col overflow-x-hidden w-full max-w-full relative bg-[var(--bg-2)]">
+    <div className={`text-[var(--text)] flex flex-col w-full max-w-full relative bg-[var(--bg-2)] ${isChat ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
       <TopBar />
-      <div className="app-container w-full flex-1 flex gap-8 py-6 pb-24 md:pb-8 transition-all duration-200">
-        <SideRail collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
-        <main className="flex-1 min-w-0 transition-all duration-200">{children}</main>
+      <div className={`w-full flex-1 flex transition-all duration-200 ${isChat ? "h-[calc(100vh-4rem)]" : "app-container gap-8 py-6 pb-24 md:pb-8"}`}>
+        {isChat ? (
+          <div className="hidden lg:block border-r border-[var(--border)] bg-[var(--surface)] h-full overflow-y-auto pl-[clamp(1rem,3vw,2.5rem)] pr-4 pt-6 shrink-0">
+            <SideRail collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+          </div>
+        ) : (
+          <SideRail collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+        )}
+        <main className={`flex-1 min-w-0 transition-all duration-200 ${isChat ? "flex flex-col h-full bg-[var(--bg-2)]" : ""}`}>
+          {children}
+        </main>
       </div>
-      <BottomBar />
+      {(!isChatThread) && <BottomBar />}
     </div>
   );
 };

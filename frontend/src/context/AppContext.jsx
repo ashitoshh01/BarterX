@@ -1163,6 +1163,24 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const startUserChat = useCallback(async (username) => {
+    try {
+      const res = await api.post("/chatrooms/get_or_create_for_user/", { username });
+      const mapped = mapConversation(res.data, user);
+      
+      setChats((prev) => {
+        const alreadyExists = prev.some((c) => c.id === mapped.id);
+        if (alreadyExists) return prev;
+        return [mapped, ...prev];
+      });
+      return mapped.id;
+    } catch (err) {
+      console.error("Failed to start direct chat:", err);
+      toast.error(parseBackendError(err, "Failed to start conversation. User might not exist."));
+      throw err;
+    }
+  }, [user]);
+
   const startListingChat = useCallback(async (listingId) => {
     try {
       const res = await api.post("/chatrooms/get_or_create_for_listing/", { listing_id: listingId });
@@ -1505,7 +1523,7 @@ export const AppProvider = ({ children }) => {
     user, setUser, isAuthed, login, logout, updateProfile,
     listings, setListings, addListing, editListing, deleteListing, refreshFeed, getNearbyListings,
     proposals, respondProposal, createProposal,
-    chats, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment,
+    chats, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, startUserChat, wsConnected, sendAttachment,
     notifications, markAllRead,
     saved, toggleSave,
     contracts, setContracts,
@@ -1515,7 +1533,7 @@ export const AppProvider = ({ children }) => {
     users: dynamicUsers, categories: categoriesList,
     aiMatches, tracker: SWAP_TRACKER, reviews: reviewsList, submitReview,
     loading, error, boostListing,
-  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, getNearbyListings, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
+  }), [user, isAuthed, listings, proposals, chats, notifications, saved, contracts, trades, disputes, wallet, reviewsList, categoriesList, aiMatches, loading, error, login, logout, updateProfile, addListing, editListing, deleteListing, refreshFeed, getNearbyListings, respondProposal, createProposal, sendMessage, loadChatMessages, joinChatRoom, leaveChatRoom, setTypingStatus, startListingChat, startUserChat, wsConnected, sendAttachment, markAllRead, toggleSave, boostListing, dynamicUsers, purchaseCoins, createRazorpayOrder, verifyRazorpayPayment, transferCoins, submitReview]);
 
   if (loading) {
     return (
