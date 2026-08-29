@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { LogoWordmark } from "@/components/Logo";
 import {
   ArrowRight,
   Shield,
@@ -86,18 +87,7 @@ const Landing = () => {
         >
           {/* Logo */}
           <Link to="/" style={{ textDecoration: "none" }}>
-            <span
-              style={{
-                fontFamily: '"Inter", sans-serif',
-                fontWeight: 800,
-                fontSize: 26,
-                color: "#1a1a1a",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              baarter
-              <span style={{ color: "#C8F000" }}>.</span>
-            </span>
+            <LogoWordmark size="text-2xl" markSize={32} />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -735,16 +725,8 @@ const Landing = () => {
         >
           {/* Brand */}
           <div className="landing-footer-brand">
-            <div
-              style={{
-                fontWeight: 800,
-                fontSize: 22,
-                color: "#1a1a1a",
-                letterSpacing: "-0.03em",
-                marginBottom: 12,
-              }}
-            >
-              baarter<span style={{ color: "#C8F000" }}>.</span>
+            <div style={{ marginBottom: 12 }}>
+              <LogoWordmark size="text-2xl" markSize={32} />
             </div>
             <p
               style={{

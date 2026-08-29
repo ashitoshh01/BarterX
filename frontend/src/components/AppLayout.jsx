@@ -3,6 +3,7 @@ import { NavLink, Link, useLocation } from "react-router-dom";
 import { Home, Compass, PlusSquare, MessageCircle, User, Bell, Wallet, Sparkles, Repeat, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useState } from "react";
+import { LogoWordmark } from "@/components/Logo";
 
 const nav = [
   { to: "/app/feed", label: "Feed", icon: Home, testid: "nav-feed" },
@@ -26,9 +27,7 @@ const TopBar = () => {
     >
       <div className="app-container h-16 flex items-center justify-between gap-4">
         <Link to="/app/feed" className="flex items-center gap-2" data-testid="top-logo">
-          <span className="font-display text-xl tracking-tight text-[var(--text)]">
-            baarter<span className="text-[var(--lime)]">.</span>
-          </span>
+          <LogoWordmark size="text-xl" markSize={24} />
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">

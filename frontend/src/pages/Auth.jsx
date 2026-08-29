@@ -225,7 +225,7 @@ const Auth = () => {
 
         {/* Left decorative panel */}
         <div className="hidden md:flex flex-col p-10 relative overflow-hidden border-r border-[var(--border)] bg-[var(--surface-2)]">
-          <Link to="/" className="relative z-10 mb-12"><LogoWordmark size="text-sm" markSize={18} /></Link>
+          <Link to="/" className="relative z-10 mb-12"><LogoWordmark size="text-2xl" markSize={32} /></Link>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -272,7 +272,7 @@ const Auth = () => {
         {/* Right form panel */}
         <div className="flex items-center justify-center p-6 md:p-10 relative overflow-y-auto bg-white">
           <div className="w-full max-w-[380px] relative py-6">
-            <div className="md:hidden mb-8"><Link to="/"><LogoWordmark size="text-sm" markSize={18} /></Link></div>
+            <div className="md:hidden mb-8"><Link to="/"><LogoWordmark size="text-2xl" markSize={32} /></Link></div>
 
             {/* Tab switcher */}
             <div className="backdrop-blur bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 flex mb-6 w-fit">
