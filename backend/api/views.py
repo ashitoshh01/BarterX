@@ -560,7 +560,7 @@ class BarterItemViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-is_boosted', '-created_at')
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'nearby', 'history', 'log_view']:
+        if self.action in ['list', 'retrieve', 'nearby', 'history', 'log_view', 'recommendations', 'trending']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 

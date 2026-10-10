@@ -5,7 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { SectionTitle, EmptyState } from "@/components/UI";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { DEFAULT_AVATAR } from "@/lib/constants";
+import { DEFAULT_AVATAR, DEFAULT_ITEM_IMAGE } from "@/lib/constants";
 
 const statusColors = {
   pending: "tint-amber",
@@ -213,12 +213,12 @@ const Proposals = () => {
 
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mb-3">
                   <Link to={theirItem ? `/app/listing/${theirItem.id}` : "#"} className="nb-border-2 rounded-lg p-2 bg-[var(--surface-2)] hover:tint-amber transition-colors">
-                    <img src={theirItem?.images?.[0] || theirItem?.image || theirItem?.image_url || "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
+                    <img src={theirItem?.images?.[0] || theirItem?.image || theirItem?.image_url || DEFAULT_ITEM_IMAGE} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
                     <div className="text-xs font-bold mt-1 line-clamp-1">{theirItem?.title || "Requested item"}</div>
                   </Link>
                   <Repeat size={20} strokeWidth={3} />
                   <Link to={yourItem ? `/app/listing/${yourItem.id}` : "#"} className="nb-border-2 rounded-lg p-2 tint-amber hover:bg-[var(--surface)] transition-colors">
-                    <img src={yourItem?.images?.[0] || yourItem?.image || yourItem?.image_url || "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
+                    <img src={yourItem?.images?.[0] || yourItem?.image || yourItem?.image_url || DEFAULT_ITEM_IMAGE} className="w-full h-20 object-cover nb-border-2 rounded" alt="" />
                     <div className="text-xs font-bold mt-1 line-clamp-1">{yourItem?.title || "Offered item"}</div>
                   </Link>
                 </div>

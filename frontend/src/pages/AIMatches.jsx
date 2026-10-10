@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, Repeat, MapPin, ShieldCheck, Cpu } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { SectionTitle, NbButton, EmptyState } from "@/components/UI";
+import { DEFAULT_ITEM_IMAGE } from "@/lib/constants";
 
 const AIMatches = () => {
   const { aiMatches, listings, users } = useApp();
@@ -54,7 +55,7 @@ const AIMatches = () => {
               yourItem = {
                 title: "Your Active Item",
                 estValue: 100,
-                images: [theirItem.images?.[0] || "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"],
+                images: [theirItem.images?.[0] || DEFAULT_ITEM_IMAGE],
               };
             }
 
@@ -62,7 +63,7 @@ const AIMatches = () => {
               ? theirItem.owner
               : (users[theirItem.owner] || { handle: "@swapper", name: "Trusted Swapper" });
 
-            const fallbackImage = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800";
+            const fallbackImage = DEFAULT_ITEM_IMAGE;
 
             return (
               <motion.div

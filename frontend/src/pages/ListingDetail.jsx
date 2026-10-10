@@ -6,7 +6,7 @@ import { useApp } from "@/context/AppContext";
 import { NbButton } from "@/components/UI";
 import ListingCard from "@/components/ListingCard";
 import { toast } from "sonner";
-import { DEFAULT_AVATAR } from "@/lib/constants";
+import { DEFAULT_AVATAR, DEFAULT_ITEM_IMAGE } from "@/lib/constants";
 
 const ListingDetail = () => {
   const { id } = useParams();
@@ -150,7 +150,7 @@ const ListingDetail = () => {
               src={listing.images[activeImg]}
               className="w-full h-full object-cover"
               alt={listing.title}
-              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
+              onError={(e) => { e.target.src = DEFAULT_ITEM_IMAGE; }}
             />
           </div>
           {listing.images.length > 1 && (
@@ -166,7 +166,7 @@ const ListingDetail = () => {
                     src={img}
                     className="w-full h-full object-cover"
                     alt=""
-                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800"; }}
+                    onError={(e) => { e.target.src = DEFAULT_ITEM_IMAGE; }}
                   />
                 </button>
               ))}

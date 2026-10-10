@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Sparkles, TrendingUp, MapPin, ArrowRight, Flame } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useApp, mapItemToListing } from "@/context/AppContext";
 import ListingCard from "@/components/ListingCard";
 import { NbButton, SectionTitle, EmptyState } from "@/components/UI";
 import Marquee from "@/components/Marquee";
+import { DEFAULT_ITEM_IMAGE } from "@/lib/constants";
 import api from "@/lib/api";
 
 const Feed = () => {
@@ -25,7 +26,9 @@ const Feed = () => {
     
     api.get('/items/recommendations/').then(res => {
       if (isMounted) {
-        setForYou(res.data.results || res.data);
+        const raw = res.data.results || res.data;
+        const mapped = Array.isArray(raw) ? raw.map(mapItemToListing) : [];
+        setForYou(mapped);
         setForYouLoading(false);
       }
     }).catch(err => {
@@ -34,7 +37,9 @@ const Feed = () => {
     
     api.get('/items/trending/').then(res => {
       if (isMounted) {
-        setTrending(res.data.results || res.data);
+        const raw = res.data.results || res.data;
+        const mapped = Array.isArray(raw) ? raw.map(mapItemToListing) : [];
+        setTrending(mapped);
         setTrendingLoading(false);
       }
     }).catch(err => {
@@ -43,7 +48,9 @@ const Feed = () => {
     
     api.get('/items/nearby/').then(res => {
       if (isMounted) {
-        setLocal(res.data.results || res.data);
+        const raw = res.data.results || res.data;
+        const mapped = Array.isArray(raw) ? raw.map(mapItemToListing) : [];
+        setLocal(mapped);
         setLocalLoading(false);
       }
     }).catch(err => {
@@ -143,7 +150,7 @@ const Feed = () => {
           <p className="text-sm font-medium text-[var(--text-2)] mb-4">{topMatch.reason}</p>
           <Link to={`/app/listing/${topMatchListing.id}`}>
             <div className="flex items-center gap-4 nb-border-2 bg-[var(--surface-2)] p-3 rounded-xl hover:bg-[var(--surface)] transition-colors">
-              <img src={topMatchListing.images[0]} className="w-16 h-16 object-cover nb-border-2 rounded" alt="" />
+              <img src={topMatchListing.images?.[0] || DEFAULT_ITEM_IMAGE} className="w-16 h-16 object-cover nb-border-2 rounded" alt="" />
               <div className="flex-1 min-w-0">
                 <div className="font-display text-lg truncate">{topMatchListing.title}</div>
                 <div className="text-xs font-mono2 text-[var(--text-3)]">~₹{topMatchListing.estValue}</div>

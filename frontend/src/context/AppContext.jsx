@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useCall
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { USERS, SWAP_TRACKER } from "@/mock/data";
-import { DEFAULT_AVATAR } from "@/lib/constants";
+import { DEFAULT_AVATAR, DEFAULT_ITEM_IMAGE } from "@/lib/constants";
 
 // Default user shape for pre-auth state
 const DEFAULT_USER = {
@@ -27,7 +27,7 @@ const AppContext = createContext(null);
 
 // ─── Schema Mapping Helpers ──────────────────────────────────────────────────
 
-const getAbsoluteUrl = (path) => {
+export const getAbsoluteUrl = (path) => {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
     return path;
@@ -113,14 +113,14 @@ const mapCategory = (cat) => {
   };
 };
 
-const mapItemToListing = (item) => {
+export const mapItemToListing = (item) => {
   const images = [];
   if (item.image) {
     images.push(getAbsoluteUrl(item.image));
   } else if (item.image_url) {
     images.push(getAbsoluteUrl(item.image_url));
   } else {
-    images.push("https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800");
+    images.push(DEFAULT_ITEM_IMAGE);
   }
   if (item.additional_images && item.additional_images.length > 0) {
     item.additional_images.forEach(img => {
